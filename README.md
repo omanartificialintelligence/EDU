@@ -1,20 +1,44 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# منصة الإبداع للمجال الأول
 
-# Run and deploy your AI Studio app
+منصة تعليمية متكاملة مخصصة لمعلمات المجال الأول، تهدف إلى تسهيل التواصل، تبادل الخبرات، وإدارة الموارد التعليمية والمشاريع المدرسية.
 
-This contains everything you need to run your app locally.
+## المميزات الرئيسية
 
-View your app in AI Studio: https://ai.studio/apps/f27f7626-103d-41bf-aba3-0a8ab2eed6bd
+*   **لوحة تحكم المشرفة:** إدارة المعلمات، المشاريع، التعميمات، والأرشفة السنوية.
+*   **لوحة تحكم المعلمة:** رفع الدروس، المشاركة في المشاريع، والتواصل مع المشرفة.
+*   **نظام المحادثة الفوري:** تواصل مباشر بين المشرفة والمعلمات عبر WebSockets.
+*   **إدارة الدروس والموارد:** رفع الملفات (PDF, Word, PowerPoint) والتعليق عليها.
+*   **إدارة المشاريع:** متابعة تنفيذ المشاريع المدرسية ورفع المخرجات.
+*   **الأرشفة الإلكترونية:** نظام أرشفة تلقائي للسنوات الدراسية السابقة.
 
-## Run Locally
+## التقنيات المستخدمة
 
-**Prerequisites:**  Node.js
+*   **Frontend:** React 19, Tailwind CSS, Motion (Framer Motion), Lucide Icons.
+*   **Backend:** Node.js, Express.
+*   **Real-time:** Socket.io.
+*   **Build Tool:** Vite.
+*   **Language:** TypeScript.
 
+## التشغيل محلياً
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+1.  قم بتثبيت التبعيات:
+    ```bash
+    npm install
+    ```
+
+2.  قم بتشغيل خادم التطوير:
+    ```bash
+    npm run dev
+    ```
+
+3.  افتح المتصفح على الرابط: `http://localhost:3000`
+
+## البناء للإنتاج
+
+```bash
+npm run build
+```
+
+## الترخيص
+
+هذا المشروع مرخص تحت رخصة MIT.

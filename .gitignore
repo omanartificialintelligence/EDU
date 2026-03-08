@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Temporary files
+fix_keys.ts
+map_calls.txt
+map_calls_teacher.txt
+migrated_prompt_history
