@@ -1170,7 +1170,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 <motion.div 
                                   initial={{ opacity: 0, scale: 0.9 }}
                                   animate={{ opacity: 1, scale: 1 }}
-                                  key={`${assignment.grade}-${assignment.subject}`} 
+                                  key={`${assignment.grade}-${assignment.subject}-${idx}`} 
                                   className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm group hover:border-indigo-200 transition-all"
                                 >
                                   <div className="w-2 h-2 rounded-full bg-indigo-500" />
@@ -1491,7 +1491,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 <span className="text-[10px] font-bold text-slate-400">المعلمة المسؤولة:</span>
                                 <div className="flex flex-wrap gap-1">
                                   {teachers.filter(t => t.assignments?.some(a => a.subject === viewingSubject && a.grade === activeGradeTab)).map((t, i) => (
-                                    <span key={t.id} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[10px] font-black">
+                                    <span key={`${t.id}-${i}`} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[10px] font-black">
                                       {t.name}
                                     </span>
                                   ))}
@@ -1787,7 +1787,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         {attachmentFiles.length > 0 && (
                           <div className="space-y-2 mt-4">
                             {attachmentFiles.map((file, idx) => (
-                              <div key={file.url} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                              <div key={`${file.url}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                                 <div className="flex items-center gap-3">
                                   <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-indigo-600 shadow-sm">
                                     <FileText className="w-4 h-4" />
@@ -2000,7 +2000,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       {post.attachments.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                           {post.attachments.map((att, i) => (
-                            <div key={att.url} className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-500 flex items-center gap-2">
+                            <div key={`${att.url}-${i}`} className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-500 flex items-center gap-2">
                               <FileText className="w-3 h-3" /> {att.name}
                             </div>
                           ))}
@@ -2578,7 +2578,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             {msg.attachments && msg.attachments.length > 0 && (
                               <div className="mt-2 space-y-1">
                                 {msg.attachments.map((att, idx) => (
-                                  <div key={att.url} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
+                                  <div key={`${att.url}-${idx}`} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
                                     {att.type === 'image' ? <ImageIcon className="w-4 h-4" /> : <FileIcon className="w-4 h-4" />}
                                     <a href={att.url} download={att.name} target="_blank" rel="noopener noreferrer" className="underline text-xs truncate max-w-[150px] block">
                                       {att.name}
@@ -2953,7 +2953,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 <div className="space-y-2 mt-4">
                   <p className="text-xs font-bold text-slate-500">المرفقات:</p>
                   {newLessonAttachments.map((att, i) => (
-                    <div key={att.name + i} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
+                    <div key={`${att.name}-${i}`} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
                       {att.name}
                       <button onClick={() => setNewLessonAttachments(newLessonAttachments.filter((_, idx) => idx !== i))} className="text-red-500">حذف</button>
                     </div>
@@ -3183,7 +3183,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   <label className="text-sm font-black text-slate-700">تعيين المعلمات</label>
                   <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-100">
                     {teachers.filter(t => t.isActive).map((teacher, index) => (
-                      <label key={teacher.id} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-indigo-500 transition-all">
+                      <label key={`${teacher.id}-${index}`} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-indigo-500 transition-all">
                         <input 
                           type="checkbox"
                           checked={newProjectTeachers.includes(teacher.id)}
