@@ -859,7 +859,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                             <span className="text-xs font-bold text-slate-500">فريق العمل:</span>
                             <div className="flex -space-x-2 space-x-reverse">
                               {project.assignedTeacherIds.map((teacherId, i) => (
-                                <div key={teacherId} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600" title={teacherId === user.id ? 'أنا' : 'زميلة'}>
+                                <div key={`${teacherId}-${i}`} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600" title={teacherId === user.id ? 'أنا' : 'زميلة'}>
                                   {teacherId === user.id ? 'أنا' : 'ز'}
                                 </div>
                               ))}
@@ -975,7 +975,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         
                         <div className="grid grid-cols-1 gap-3">
                           {submissionFiles.map((file, idx) => (
-                            <div key={file.url} className="bg-slate-50 rounded-xl border border-slate-100 p-3">
+                            <div key={`${file.url}-${idx}`} className="bg-slate-50 rounded-xl border border-slate-100 p-3">
                               <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-3 overflow-hidden">
                                   <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-slate-100 text-slate-400">
