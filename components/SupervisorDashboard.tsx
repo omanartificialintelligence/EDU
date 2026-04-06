@@ -10,7 +10,7 @@ import {
   Clock, Shield, MessageSquare, Pin, FileText, Download, Calendar,
   TrendingUp, Award, Activity, Settings, Share2, Send, Trash2,
   Phone, Hash, BookOpen, GraduationCap, User as UserIcon,
-  FileIcon, Link as LinkIcon, Video, Music, Image as ImageIcon, ChevronDown, Eye, ListTodo, Edit
+  FileIcon, Link as LinkIcon, Video, Music, Image as ImageIcon, ChevronDown, Eye, ListTodo
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -43,7 +43,7 @@ interface SupervisorDashboardProps {
   onAddTeacher: (id: string, name: string, email?: string, phone?: string, assignments?: { grade: string; subject: string }[]) => void;
   onSoftDeleteTeacher: (id: string) => void;
   onRestoreTeacher: (id: string) => void;
-  onUpdateTeacher: (originalId: string, teacher: User) => void;
+  onUpdateTeacher: (teacher: User) => void;
   onResetPassword: (teacherId: string) => string;
   onAddProject: (project: Project) => void;
   onDeleteProject: (projectId: string) => void;
@@ -88,43 +88,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [messageAttachment, setMessageAttachment] = useState<string | null>(null);
   const [messageAttachmentName, setMessageAttachmentName] = useState<string>('');
   const [messageAttachmentType, setMessageAttachmentType] = useState<'image' | 'file'>('file');
-  const [editingTeacher, setEditingTeacher] = useState<User | null>(null);
-  const [editTeacherName, setEditTeacherName] = useState('');
-  const [editTeacherId, setEditTeacherId] = useState('');
-  const [editTeacherPhone, setEditTeacherPhone] = useState('');
-  const [editTeacherAssignments, setEditTeacherAssignments] = useState<{grade: string, subject: string}[]>([]);
-  const [editAssignmentGrade, setEditAssignmentGrade] = useState('الصف الأول');
-  const [editAssignmentSubject, setEditAssignmentSubject] = useState('لغة عربية');
-  
-  useEffect(() => {
-    if (editingTeacher) {
-      setEditTeacherName(editingTeacher.name);
-      setEditTeacherId(editingTeacher.id);
-      setEditTeacherPhone(editingTeacher.phoneNumber || '');
-      setEditTeacherAssignments(editingTeacher.assignments || []);
-    }
-  }, [editingTeacher]);
-
-  const handleUpdateTeacher = () => {
-    if (!editingTeacher) return;
-    if (!editTeacherName || !editTeacherId) {
-      alert('يرجى إدخال الاسم والرقم الوظيفي');
-      return;
-    }
-
-    const updatedTeacher: User = {
-      ...editingTeacher,
-      name: editTeacherName,
-      id: editTeacherId,
-      code: editTeacherId,
-      phoneNumber: editTeacherPhone,
-      assignments: editTeacherAssignments
-    };
-
-    onUpdateTeacher(editingTeacher.id, updatedTeacher);
-    setEditingTeacher(null);
-    alert('تم تحديث بيانات المعلمة بنجاح');
-  };
   
   const AVAILABLE_GRADES = ['الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع'];
   const AVAILABLE_SUBJECTS = ['لغة عربية', 'تربية إسلامية'];
@@ -565,7 +528,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
      // Update supervisor profile
      if (editName !== user.name || editJobTitle !== user.jobTitle) {
-       onUpdateTeacher(user.id, { ...user, name: editName, jobTitle: editJobTitle });
+       onUpdateTeacher({ ...user, name: editName, jobTitle: editJobTitle });
      }
 
      onUpdateSecurity({
@@ -710,7 +673,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
   // Stats for Charts
   const statsData = useMemo(() => [
-    { name: 'المعلمات', value: teachers.filter(t => t.role === UserRole.TEACHER).length, color: '#4f46e5' },
+    { name: 'المعلمات', value: teachers.length, color: '#4f46e5' },
     { name: 'الدروس', value: lessonMaterials.length, color: '#10b981' },
     { name: 'التعاميم', value: posts.length, color: '#ef4444' },
   ], [teachers, lessonMaterials, posts]);
@@ -975,7 +938,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {[
-                    { label: 'المعلمات النشطات', value: teachers.filter(t => t.isActive && t.role === UserRole.TEACHER).length, icon: Users, color: 'indigo' },
+                    { label: 'المعلمات النشطات', value: teachers.filter(t => t.isActive).length, icon: Users, color: 'indigo' },
                     { label: 'الدروس المرفوعة', value: lessonMaterials.length, icon: Palette, color: 'amber' },
                     { label: 'التعاميم المنشورة', value: posts.length, icon: MessageSquare, color: 'rose' },
                   ].map((stat, i) => (
@@ -1374,13 +1337,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           >
                             <Shield className="w-3.5 h-3.5" />
                             تغيير كلمة المرور
-                          </button>
-                          <button 
-                            onClick={() => setEditingTeacher(teacher)}
-                            className="w-10 h-10 rounded-lg bg-slate-50 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center justify-center"
-                            title="تعديل"
-                          >
-                            <Edit className="w-4 h-4" />
                           </button>
                           <button 
                             onClick={() => onSoftDeleteTeacher(teacher.id)}
@@ -3258,153 +3214,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
       </AnimatePresence>
 
 
-
-      {/* Edit Teacher Modal */}
-      <AnimatePresence>
-        {editingTeacher && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 overflow-y-auto">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden my-8"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
-                    <Edit className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-black text-slate-900">تعديل بيانات المعلمة</h3>
-                    <p className="text-slate-500 font-bold text-xs">تحديث معلومات المعلمة والمهام المسندة</p>
-                  </div>
-                </div>
-                <button onClick={() => setEditingTeacher(null)} className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400">
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <div className="p-8 space-y-8 overflow-y-auto max-h-[70vh]">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mr-2">
-                      <UserIcon className="w-3 h-3" /> الاسم الكامل
-                    </label>
-                    <input 
-                      type="text" 
-                      value={editTeacherName} 
-                      onChange={(e) => setEditTeacherName(e.target.value)} 
-                      className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all shadow-sm" 
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mr-2">
-                      <Hash className="w-3 h-3" /> الرقم الوظيفي
-                    </label>
-                    <input 
-                      type="text" 
-                      value={editTeacherId} 
-                      onChange={(e) => setEditTeacherId(e.target.value)} 
-                      className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all shadow-sm" 
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mr-2">
-                      <Phone className="w-3 h-3" /> رقم الهاتف
-                    </label>
-                    <input 
-                      type="text" 
-                      value={editTeacherPhone} 
-                      onChange={(e) => setEditTeacherPhone(e.target.value)} 
-                      className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all shadow-sm" 
-                    />
-                  </div>
-                </div>
-
-                <div className="bg-slate-50/50 p-6 rounded-[2rem] border border-slate-100 space-y-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-slate-100">
-                      <BookOpen className="w-5 h-5 text-indigo-600" />
-                    </div>
-                    <h4 className="font-black text-sm text-slate-700">المواد والصفوف المسندة</h4>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1 space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">الصف الدراسي</label>
-                      <select 
-                        value={editAssignmentGrade} 
-                        onChange={(e) => setEditAssignmentGrade(e.target.value)} 
-                        className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-transparent shadow-sm focus:border-indigo-500 font-bold text-sm outline-none"
-                      >
-                        {AVAILABLE_GRADES.map(g => <option key={g} value={g}>{g}</option>)}
-                      </select>
-                    </div>
-
-                    <div className="flex-1 space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">المادة العلمية</label>
-                      <select 
-                        value={editAssignmentSubject} 
-                        onChange={(e) => setEditAssignmentSubject(e.target.value)} 
-                        className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-transparent shadow-sm focus:border-indigo-500 font-bold text-sm outline-none"
-                      >
-                        {AVAILABLE_SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </div>
-
-                    <div className="flex items-end">
-                      <button 
-                        type="button" 
-                        onClick={() => {
-                          if (!editTeacherAssignments.some(a => a.grade === editAssignmentGrade && a.subject === editAssignmentSubject)) {
-                            setEditTeacherAssignments([...editTeacherAssignments, { grade: editAssignmentGrade, subject: editAssignmentSubject }]);
-                          }
-                        }} 
-                        className="w-full sm:w-auto px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"
-                      >
-                        إضافة
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-3 mt-4">
-                    {editTeacherAssignments.map((assignment, idx) => (
-                      <div key={idx} className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
-                        <span className="font-bold text-xs text-slate-700">{assignment.grade} • {assignment.subject}</span>
-                        <button 
-                          type="button" 
-                          onClick={() => setEditTeacherAssignments(editTeacherAssignments.filter((_, i) => i !== idx))} 
-                          className="text-slate-300 hover:text-red-500 transition-colors"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-8 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row gap-4">
-                <button 
-                  onClick={handleUpdateTeacher}
-                  className="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-black text-base shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all"
-                >
-                  حفظ التغييرات
-                </button>
-                <button 
-                  onClick={() => setEditingTeacher(null)}
-                  className="flex-1 bg-white text-slate-600 py-4 rounded-2xl font-black text-base border border-slate-200 hover:bg-slate-50 transition-all"
-                >
-                  إلغاء
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* Preview Modal */}
       <AnimatePresence>

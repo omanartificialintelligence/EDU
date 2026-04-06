@@ -387,7 +387,7 @@ const App: React.FC = () => {
         onSoftDeleteTeacher={handleSoftDeleteTeacher}
         onRestoreTeacher={handleRestoreTeacher}
         onDeletePermanentlyTeacher={handleDeletePermanentlyTeacher}
-        onUpdateTeacher={(originalId, updatedTeacher) => setTeachers(prev => prev.map(t => t.id === originalId ? updatedTeacher : t))}
+        onUpdateTeacher={(updatedTeacher) => setTeachers(prev => prev.map(t => t.id === updatedTeacher.id ? updatedTeacher : t))}
         onResetPassword={handleResetPassword}
         onAddProject={(p) => setProjects(prev => [p, ...prev])}
         onDeleteProject={(id) => setProjects(prev => prev.filter(p => p.id !== id))}
