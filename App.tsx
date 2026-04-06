@@ -310,6 +310,7 @@ const App: React.FC = () => {
       onLogin={handleLogin} 
       teachers={teachers} 
       onForgotPassword={handleForgotPasswordRequest}
+      onUpdateSupervisorConfig={(config) => setSupervisorConfig(prev => ({ ...prev, ...config }))}
       supervisorConfig={supervisorConfig}
       currentYear={currentAcademicYear}
       currentSemester={currentSemester}
