@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserRole, User, AuthState, Project, Post, ResetRequest, LessonMaterial, LessonComment, SupervisorConfig, Notification, Message, Attachment } from './types';
 import LoginForm from './components/LoginForm';
+import SetupForm from './components/SetupForm';
 import TeacherDashboard from './components/TeacherDashboardV2';
 import SupervisorDashboard from './components/SupervisorDashboard';
 import ChangePasswordForm from './components/ChangePasswordForm';
@@ -114,7 +115,8 @@ const App: React.FC = () => {
         backupPassword: 'admin', 
         academicYear: '2025-2026', 
         semester: 'الفصل الدراسي الأول',
-        archiveYears: ['2024-2025', '2023-2024']
+        archiveYears: ['2024-2025', '2023-2024'],
+        isSetupComplete: false
       };
     }
     const saved = localStorage.getItem('app_supervisor_config');
@@ -123,7 +125,8 @@ const App: React.FC = () => {
       backupPassword: 'admin', 
       academicYear: '2025-2026', 
       semester: 'الفصل الدراسي الأول',
-      archiveYears: ['2024-2025', '2023-2024']
+      archiveYears: ['2024-2025', '2023-2024'],
+      isSetupComplete: false
     };
   });
 
@@ -305,6 +308,13 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSetupComplete = (supervisor: User, config: SupervisorConfig) => {
+    setSupervisorConfig(config);
+    setTeachers([supervisor]);
+    setAuth({ user: supervisor, isAuthenticated: true });
+    alert('تم إعداد النظام بنجاح! يمكنك الآن البدء في استخدام المنصة.');
+  };
+
   if (!auth.isAuthenticated) {
     return <LoginForm 
       onLogin={handleLogin} 
@@ -314,6 +324,10 @@ const App: React.FC = () => {
       currentYear={currentAcademicYear}
       currentSemester={currentSemester}
     />;
+  }
+
+  if (auth.user?.id === 'admin' && !supervisorConfig.isSetupComplete) {
+    return <SetupForm onComplete={handleSetupComplete} />;
   }
 
   if (showChangePassword) {
