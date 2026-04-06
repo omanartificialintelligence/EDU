@@ -51,6 +51,7 @@ export interface SupervisorConfig {
   semester?: string; // الفصل الدراسي (نص)
   appLogoUrl?: string;
   archiveYears?: string[];
+  isSetupComplete?: boolean;
 }
 
 export interface LessonComment {

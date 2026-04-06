@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserRole, User, AuthState, Project, Post, ResetRequest, LessonMaterial, LessonComment, SupervisorConfig, Notification, Message, Attachment } from './types';
 import LoginForm from './components/LoginForm';
+import SetupForm from './components/SetupForm';
 import TeacherDashboard from './components/TeacherDashboardV2';
 import SupervisorDashboard from './components/SupervisorDashboard';
 import ChangePasswordForm from './components/ChangePasswordForm';
@@ -65,45 +66,76 @@ const App: React.FC = () => {
   };
 
   const [teachers, setTeachers] = useState<User[]>(() => {
+    const isReset = localStorage.getItem('app_reset_v5');
+    if (!isReset) return [];
     const saved = localStorage.getItem('app_teachers_list');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [lessonMaterials, setLessonMaterials] = useState<LessonMaterial[]>(() => {
+    const isReset = localStorage.getItem('app_reset_v5');
+    if (!isReset) return [];
     const saved = localStorage.getItem('app_lesson_materials');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [projects, setProjects] = useState<Project[]>(() => {
+    const isReset = localStorage.getItem('app_reset_v5');
+    if (!isReset) return [];
     const saved = localStorage.getItem('app_projects');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [posts, setPosts] = useState<Post[]>(() => {
+    const isReset = localStorage.getItem('app_reset_v5');
+    if (!isReset) return [];
     const saved = localStorage.getItem('app_posts');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [resetRequests, setResetRequests] = useState<ResetRequest[]>(() => {
+    const isReset = localStorage.getItem('app_reset_v5');
+    if (!isReset) return [];
     const saved = localStorage.getItem('app_reset_requests');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [notifications, setNotifications] = useState<Notification[]>(() => {
+    const isReset = localStorage.getItem('app_reset_v5');
+    if (!isReset) return [];
     const saved = localStorage.getItem('app_notifications');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [supervisorConfig, setSupervisorConfig] = useState<SupervisorConfig>(() => {
+    const isReset = localStorage.getItem('app_reset_v5');
+    if (!isReset) {
+      return { 
+        mainPassword: 'admin', 
+        backupPassword: 'admin', 
+        academicYear: '2025-2026', 
+        semester: 'الفصل الدراسي الأول',
+        archiveYears: ['2024-2025', '2023-2024'],
+        isSetupComplete: false
+      };
+    }
     const saved = localStorage.getItem('app_supervisor_config');
     return saved ? JSON.parse(saved) : { 
-      mainPassword: '', 
-      backupPassword: '', 
+      mainPassword: 'admin', 
+      backupPassword: 'admin', 
       academicYear: '2025-2026', 
       semester: 'الفصل الدراسي الأول',
-      archiveYears: ['2024-2025', '2023-2024']
+      archiveYears: ['2024-2025', '2023-2024'],
+      isSetupComplete: false
     };
   });
+
+  useEffect(() => {
+    if (!localStorage.getItem('app_reset_v5')) {
+      localStorage.clear();
+      localStorage.setItem('app_reset_v5', 'true');
+    }
+  }, []);
 
   const currentAcademicYear = supervisorConfig.academicYear || "2025-2026";
   const currentSemester = supervisorConfig.semester || "الفصل الأول";
@@ -152,7 +184,7 @@ const App: React.FC = () => {
         (p.academicYear !== currentYear || p.semester !== currentSemester) && !p.isArchived ? { ...p, isArchived: true } : p
       ));
     }
-  }, [supervisorConfig.academicYear, supervisorConfig.semester]);
+  }, [supervisorConfig]);
 
   const handleLogin = (user: User) => {
     if (!user.isActive) {
@@ -276,6 +308,13 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSetupComplete = (supervisor: User, config: SupervisorConfig) => {
+    setSupervisorConfig(config);
+    setTeachers([supervisor]);
+    setAuth({ user: supervisor, isAuthenticated: true });
+    alert('تم إعداد النظام بنجاح! يمكنك الآن البدء في استخدام المنصة.');
+  };
+
   if (!auth.isAuthenticated) {
     return <LoginForm 
       onLogin={handleLogin} 
@@ -285,6 +324,10 @@ const App: React.FC = () => {
       currentYear={currentAcademicYear}
       currentSemester={currentSemester}
     />;
+  }
+
+  if (auth.user?.id === 'admin' && !supervisorConfig.isSetupComplete) {
+    return <SetupForm onComplete={handleSetupComplete} />;
   }
 
   if (showChangePassword) {
