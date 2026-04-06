@@ -33,24 +33,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, teachers, onForgotPasswo
     const isSupervisor = cleanCode === '16115506' || cleanCode.toUpperCase().startsWith('S') || cleanCode.startsWith('99') || cleanCode.toUpperCase() === 'OM12345' || cleanCode.toLowerCase() === 'admin';
     
     if (isSupervisor) {
-      // If setup is not complete, only admin/admin is allowed
-      if (!supervisorConfig.isSetupComplete) {
-        if (cleanCode.toLowerCase() === 'admin' && cleanPass === 'admin') {
-          onLogin({ 
-            id: 'admin', 
-            name: 'مدير النظام', 
-            role: UserRole.SUPERVISOR, 
-            code: 'admin',
-            isActive: true,
-            joinedAt: '2026'
-          });
-          return;
-        } else {
-          setError('يرجى استخدام بيانات المسؤول الافتراضية للإعداد');
-          return;
-        }
-      }
-
       const isValidSupervisor = 
         (cleanCode === '16115506' && (cleanPass === '16115506' || cleanPass === supervisorConfig.mainPassword || cleanPass === supervisorConfig.backupPassword)) ||
         (cleanCode.toUpperCase() === 'S12345' && cleanPass === 'OM12345') || 
