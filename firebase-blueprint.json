@@ -1,44 +1,188 @@
 {
   "entities": {
-    "Lesson": {
-      "title": "Lesson",
-      "description": "Educational lesson data entered by the admin.",
+    "User": {
+      "title": "User",
+      "description": "A user of the system (Teacher or Supervisor)",
       "type": "object",
       "properties": {
-        "title": {
-          "type": "string",
-          "description": "The name of the lesson."
-        },
-        "content": {
-          "type": "string",
-          "description": "The content of the lesson."
-        },
-        "date": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The date the lesson was created or scheduled."
-        },
-        "adminId": {
-          "type": "string",
-          "description": "The UID of the admin who created the lesson."
-        }
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["TEACHER", "SUPERVISOR", "TEMP_SUPERVISOR"] },
+        "code": { "type": "string" },
+        "password": { "type": "string" },
+        "mustChangePassword": { "type": "boolean" },
+        "isActive": { "type": "boolean" },
+        "joinedAt": { "type": "string" },
+        "email": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "jobTitle": { "type": "string" },
+        "subject": { "type": "string" },
+        "teachingGrades": { "type": "string" },
+        "assignments": { "type": "array" },
+        "supervisoryVisitDate": { "type": "string" },
+        "tempPermissions": { "type": "object" },
+        "auditLogs": { "type": "array" }
       },
-      "required": ["title", "content", "date", "adminId"]
+      "required": ["id", "name", "role", "code", "isActive"]
+    },
+    "LessonMaterial": {
+      "title": "LessonMaterial",
+      "description": "Educational material uploaded by a teacher",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "teacherId": { "type": "string" },
+        "teacherName": { "type": "string" },
+        "lessonTitle": { "type": "string" },
+        "description": { "type": "string" },
+        "attachments": { "type": "array" },
+        "comments": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "academicYear": { "type": "string" },
+        "semester": { "type": "string" },
+        "subject": { "type": "string" },
+        "grade": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "isActive": { "type": "boolean" },
+        "isModelLesson": { "type": "boolean" },
+        "supervisorNotes": { "type": "string" },
+        "isStarred": { "type": "boolean" },
+        "publishDate": { "type": "string" },
+        "tags": { "type": "array" },
+        "voiceNoteUrl": { "type": "string" },
+        "isArchived": { "type": "boolean" }
+      },
+      "required": ["id", "teacherId", "lessonTitle", "createdAt", "status"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A project assigned by a supervisor",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "attachments": { "type": "array" },
+        "tasks": { "type": "array" },
+        "assignedTeacherIds": { "type": "array" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "academicYear": { "type": "string" },
+        "semester": { "type": "string" },
+        "submissions": { "type": "object" },
+        "isArchived": { "type": "boolean" }
+      },
+      "required": ["id", "name", "createdAt"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "A post in the news feed",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "attachments": { "type": "array" },
+        "isPinned": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "academicYear": { "type": "string" },
+        "semester": { "type": "string" },
+        "isArchived": { "type": "boolean" }
+      },
+      "required": ["id", "authorId", "title", "createdAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A system or comment notification",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "message": { "type": "string" },
+        "isRead": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "type": { "type": "string", "enum": ["comment", "system"] }
+      },
+      "required": ["id", "userId", "message", "isRead", "createdAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A chat message",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "recipientId": { "type": "string" },
+        "text": { "type": "string" },
+        "attachments": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "isRead": { "type": "boolean" }
+      },
+      "required": ["id", "senderId", "recipientId", "text", "createdAt"]
+    },
+    "SupervisorConfig": {
+      "title": "SupervisorConfig",
+      "description": "Global configuration for the supervisor",
+      "type": "object",
+      "properties": {
+        "mainPassword": { "type": "string" },
+        "backupPassword": { "type": "string" },
+        "academicYear": { "type": "string" },
+        "semester": { "type": "string" },
+        "appLogoUrl": { "type": "string" },
+        "archiveYears": { "type": "array" }
+      }
+    },
+    "ResetRequest": {
+      "title": "ResetRequest",
+      "description": "A password reset request",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "requestedAt": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "resolved"] }
+      },
+      "required": ["id", "userId", "requestedAt", "status"]
     }
   },
   "firestore": {
-    "lessons": {
-      "schema": "Lesson",
-      "description": "Collection of lessons shared between admin and teacher."
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
     },
-    "connection_test": {
-      "schema": {
-        "type": "object",
-        "properties": {
-          "status": { "type": "string" }
-        }
-      },
-      "description": "Used for verifying database connectivity."
+    "/lessonMaterials/{materialId}": {
+      "schema": "LessonMaterial",
+      "description": "Uploaded lesson materials"
+    },
+    "/projects/{projectId}": {
+      "schema": "Project",
+      "description": "Assigned projects"
+    },
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "News feed posts"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications"
+    },
+    "/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Chat messages"
+    },
+    "/config/supervisor": {
+      "schema": "SupervisorConfig",
+      "description": "Global settings"
+    },
+    "/resetRequests/{requestId}": {
+      "schema": "ResetRequest",
+      "description": "Password reset requests"
     }
   }
 }

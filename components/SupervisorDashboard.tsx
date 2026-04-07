@@ -44,7 +44,7 @@ interface SupervisorDashboardProps {
   onSoftDeleteTeacher: (id: string) => void;
   onRestoreTeacher: (id: string) => void;
   onUpdateTeacher: (originalId: string, teacher: User) => void;
-  onResetPassword: (teacherId: string) => string;
+  onResetPassword: (teacherId: string) => Promise<string>;
   onAddProject: (project: Project) => void;
   onDeleteProject: (projectId: string) => void;
   onUpdateProjectSubmission: (projectId: string, submission: ProjectSubmission) => void;
@@ -1364,8 +1364,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       {(isMainSupervisor || (isTempSupervisor && (user.tempPermissions?.hasFullAccess || user.tempPermissions?.canManageUsers))) && (
                         <div className="flex gap-2">
                           <button 
-                            onClick={() => {
-                                const pass = onResetPassword(teacher.id);
+                            onClick={async () => {
+                                const pass = await onResetPassword(teacher.id);
                                 setResetPassword(pass);
                                 setResetTeacherName(teacher.name);
                                 setResetTeacherPhone(teacher.phoneNumber || '');

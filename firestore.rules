@@ -1,52 +1,138 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     // ===============================================================
     // Assumed Data Model
     // ===============================================================
     //
-    // Collection: lessons
-    // Fields:
-    //   - title: string (required, 1-200 chars)
-    //   - content: string (required, 1-5000 chars)
-    //   - date: string (required, ISO format)
-    //   - adminId: string (required, matches auth.uid)
+    // Collection: users
+    // Fields: id, name, role, code, password, mustChangePassword, isActive, joinedAt, email, phoneNumber, jobTitle, subject, teachingGrades, assignments, supervisoryVisitDate, tempPermissions, auditLogs
+    //
+    // Collection: lessonMaterials
+    // Fields: id, teacherId, teacherName, lessonTitle, description, attachments, comments, createdAt, academicYear, semester, subject, grade, status, isActive, isModelLesson, supervisorNotes, isStarred, publishDate, tags, voiceNoteUrl, isArchived
+    //
+    // Collection: projects
+    // Fields: id, name, description, attachments, tasks, assignedTeacherIds, startDate, endDate, createdAt, academicYear, semester, submissions, isArchived
+    //
+    // Collection: posts
+    // Fields: id, authorId, authorName, title, content, attachments, isPinned, createdAt, academicYear, semester, isArchived
+    //
+    // Collection: notifications
+    // Fields: id, userId, message, isRead, createdAt, type
+    //
+    // Collection: messages
+    // Fields: id, senderId, senderName, recipientId, text, attachments, createdAt, isRead
+    //
+    // Collection: config/supervisor
+    // Fields: mainPassword, backupPassword, academicYear, semester, appLogoUrl, archiveYears
+    //
+    // Collection: resetRequests
+    // Fields: id, userId, userName, requestedAt, status
     //
     // ===============================================================
 
+    // ===============================================================
     // Helper Functions
+    // ===============================================================
+
     function isAuthenticated() {
       return request.auth != null;
     }
 
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SUPERVISOR' ||
+          (request.auth.token.email == "omanartificialintelligence@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isTeacher() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'TEACHER';
+    }
+
+    function isTempSupervisor() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'TEMP_SUPERVISOR';
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.id is string && data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.role in ['TEACHER', 'SUPERVISOR', 'TEMP_SUPERVISOR'] &&
+             data.isActive is bool;
+    }
+
     function isValidLesson(data) {
-      return data.keys().hasAll(['title', 'content', 'date', 'adminId']) &&
-             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
-             data.content is string && data.content.size() > 0 && data.content.size() <= 5000 &&
-             data.date is string &&
-             data.adminId == request.auth.uid;
+      return data.id is string && data.teacherId is string && data.lessonTitle is string &&
+             data.lessonTitle.size() > 0 && data.lessonTitle.size() < 200 &&
+             data.status in ['pending', 'approved', 'rejected'];
     }
 
-    match /lessons/{lessonId} {
-      // Teachers and Admins can read all lessons if authenticated
-      allow read: if isAuthenticated();
-      
-      // Only authenticated users can create lessons (Admin role assumed)
-      allow create: if isAuthenticated() && isValidLesson(request.resource.data);
-      
-      // Only the creator can update or delete
-      allow update: if isAuthenticated() && request.auth.uid == resource.data.adminId && isValidLesson(request.resource.data);
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.adminId;
-    }
+    // ===============================================================
+    // Rules
+    // ===============================================================
 
-    // Allow reading a specific test document for connection verification
-    match /connection_test/status {
-      allow read: if true;
-    }
-    
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() && isValidUser(request.resource.data);
+      allow update: if (isAdmin() || isOwner(userId)) && isValidUser(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /lessonMaterials/{materialId} {
+      allow read: if isAuthenticated();
+      allow create: if (isTeacher() || isAdmin()) && isValidLesson(request.resource.data);
+      allow update: if (isAdmin() || (isTeacher() && resource.data.teacherId == request.auth.uid)) && isValidLesson(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /projects/{projectId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /posts/{postId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAdmin();
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+      allow delete: if isAdmin();
+    }
+
+    match /messages/{messageId} {
+      allow read: if isAuthenticated() && (resource.data.senderId == request.auth.uid || resource.data.recipientId == request.auth.uid || resource.data.recipientId == 'ALL' || isAdmin());
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.recipientId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']));
+      allow delete: if isAdmin();
+    }
+
+    match /config/supervisor {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /resetRequests/{requestId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
     }
   }
 }
