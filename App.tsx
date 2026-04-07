@@ -272,8 +272,13 @@ const App: React.FC = () => {
             throw signInError;
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to sign in admin for setup:", error);
+        if (error.code === 'auth/operation-not-allowed') {
+          alert("يرجى تفعيل المصادقة بكلمة المرور والبريد الإلكتروني (Email/Password Authentication) من لوحة تحكم Firebase.");
+        } else {
+          alert("فشل تسجيل دخول المشرفة. يرجى التأكد من إعدادات Firebase.");
+        }
         return;
       }
       setIsFirstTimeSetup(true);
