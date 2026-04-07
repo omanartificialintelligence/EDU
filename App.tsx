@@ -6,6 +6,8 @@ import TeacherDashboard from './components/TeacherDashboardV2';
 import SupervisorDashboard from './components/SupervisorDashboard';
 import ChangePasswordForm from './components/ChangePasswordForm';
 import { db, handleFirestoreError, OperationType } from './src/firebase';
+import { motion, AnimatePresence } from 'motion/react';
+import { Shield } from 'lucide-react';
 import { 
   collection, 
   onSnapshot, 
@@ -51,6 +53,7 @@ const App: React.FC = () => {
   });
 
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false);
 
   // Firebase Auth Listener
   useEffect(() => {
@@ -172,7 +175,7 @@ const App: React.FC = () => {
   const handleSendMessage = async (text: string, recipientId: string = 'ALL', attachments: Attachment[] = []) => {
     if (auth.user) {
       const messageData: Message = {
-        id: Date.now().toString(),
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         senderId: auth.user.id,
         senderName: auth.user.name,
         recipientId,
@@ -240,11 +243,25 @@ const App: React.FC = () => {
     }
   }, [supervisorConfig, lessonMaterials, projects, posts]);
 
-  const handleLogin = (user: User) => {
+  const handleLogin = async (user: User) => {
+    if (user.code === 'admin' && user.password === 'admin') {
+      setIsFirstTimeSetup(true);
+      return;
+    }
     if (!user.isActive) {
       alert('عذراً، هذا الحساب غير نشط.');
       return;
     }
+
+    // Ensure Firebase Auth session for custom login
+    if (!firebaseAuth.currentUser) {
+      try {
+        await signInAnonymously(firebaseAuth);
+      } catch (error) {
+        console.warn("Anonymous sign-in failed, but proceeding with local session:", error);
+      }
+    }
+
     setAuth({ user, isAuthenticated: true });
     if (user.role === UserRole.TEACHER && user.mustChangePassword) {
       setShowChangePassword(true);
@@ -383,7 +400,7 @@ const App: React.FC = () => {
       return;
     }
     const newRequest: ResetRequest = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       userId: teacher.id,
       userName: teacher.name,
       requestedAt: new Date().toLocaleString('ar-SA'),
@@ -420,6 +437,78 @@ const App: React.FC = () => {
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
           <p className="text-slate-500 font-bold">جاري الاتصال بالنظام...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (isFirstTimeSetup) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-['Tajawal']" dir="rtl">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-10 border border-slate-100"
+        >
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-4">
+              <Shield className="w-10 h-10" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-900">إعداد المشرفة العامة</h2>
+            <p className="text-slate-500 text-sm font-bold mt-2">يرجى إدخال بيانات المشرفة المسؤولة عن النظام</p>
+          </div>
+
+          <form 
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const name = formData.get('name') as string;
+              const code = formData.get('code') as string;
+              const password = formData.get('password') as string;
+
+              if (!name || !code || !password) return alert('يرجى إكمال جميع الحقول');
+              if (password.length < 8) return alert('يجب أن تكون كلمة المرور 8 أحرف على الأقل');
+
+              const adminUser: User = {
+                id: code,
+                code: code,
+                name: name,
+                password: password,
+                role: UserRole.SUPERVISOR,
+                isActive: true,
+                joinedAt: currentAcademicYear
+              };
+
+              try {
+                await setDoc(doc(db, 'users', code), adminUser);
+                await setDoc(doc(db, 'config', 'supervisor'), {
+                  ...supervisorConfig,
+                  mainPassword: password,
+                  backupPassword: password
+                });
+                setAuth({ user: adminUser, isAuthenticated: true });
+                setIsFirstTimeSetup(false);
+                alert('تم إعداد حساب المشرفة بنجاح');
+              } catch (error) {
+                handleFirestoreError(error, OperationType.WRITE, 'users/admin');
+              }
+            }}
+            className="space-y-6"
+          >
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">اسم المشرفة</label>
+              <input name="name" type="text" required className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" placeholder="الاسم الكامل" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">الرقم الوظيفي (كود الدخول)</label>
+              <input name="code" type="text" required className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" placeholder="مثلاً: 12345" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">كلمة المرور الجديدة</label>
+              <input name="password" type="password" required className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" placeholder="••••••••" />
+            </div>
+            <button type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all">إتمام الإعداد والدخول</button>
+          </form>
+        </motion.div>
       </div>
     );
   }
@@ -501,7 +590,7 @@ const App: React.FC = () => {
             phoneNumber: phone,
             assignments,
             auditLogs: [{
-              id: Date.now().toString(),
+              id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
               userId: id,
               userName: name,
               action: 'تم إنشاء الحساب',

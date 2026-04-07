@@ -193,7 +193,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
     setIsSubmitting(true);
     
     const newMaterial: LessonMaterial = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       teacherId: user.id,
       teacherName: user.name,
       lessonTitle: newLessonTitle,
@@ -237,7 +237,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
     if (!commentText.trim()) return;
     
     const newComment: LessonComment = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       authorId: user.id,
       authorName: user.name,
       authorRole: user.role,
@@ -409,7 +409,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   </div>
                   <div className="max-h-80 overflow-y-auto">
                     {notifications.length > 0 ? (
-                      notifications.map((notification, index) => (
+                      notifications.map((notification) => (
                         <div 
                           key={notification.id} 
                           className={cn(
@@ -859,7 +859,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                             <span className="text-xs font-bold text-slate-500">فريق العمل:</span>
                             <div className="flex -space-x-2 space-x-reverse">
                               {project.assignedTeacherIds.map((teacherId, i) => (
-                                <div key={`${teacherId}-${i}`} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600" title={teacherId === user.id ? 'أنا' : 'زميلة'}>
+                                <div key={`teacher-${project.id}-${teacherId}-${i}`} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600" title={teacherId === user.id ? 'أنا' : 'زميلة'}>
                                   {teacherId === user.id ? 'أنا' : 'ز'}
                                 </div>
                               ))}
@@ -932,7 +932,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                           <div className="flex flex-wrap gap-2">
                             {selectedProject.attachments.map((att, idx) => (
                               <a 
-                                key={att.url + idx}
+                                key={`proj-att-${selectedProject.id}-${idx}`}
                                 href={att.url}
                                 download={att.name}
                                 target="_blank"
@@ -957,7 +957,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                           </h4>
                           <ul className="space-y-3">
                             {selectedProject.tasks.map((task, i) => (
-                              <li key={task + i} className="flex items-start gap-3 text-sm text-slate-600">
+                              <li key={`proj-task-${selectedProject.id}-${i}`} className="flex items-start gap-3 text-sm text-slate-600">
                                 <span className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold mt-0.5 shrink-0">
                                   {i + 1}
                                 </span>
@@ -975,7 +975,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         
                         <div className="grid grid-cols-1 gap-3">
                           {submissionFiles.map((file, idx) => (
-                            <div key={`${file.url}-${idx}`} className="bg-slate-50 rounded-xl border border-slate-100 p-3">
+                            <div key={`sub-file-${idx}`} className="bg-slate-50 rounded-xl border border-slate-100 p-3">
                               <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-3 overflow-hidden">
                                   <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-slate-100 text-slate-400">
@@ -1127,7 +1127,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                       <p className="text-sm text-slate-400">ابدئي المحادثة مع الزميلات والمشرفات</p>
                     </div>
                   ) : (
-                    messages.map((msg, index) => (
+                    messages.map((msg) => (
                       <div 
                         key={msg.id} 
                         className={cn(
@@ -1151,7 +1151,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                           {msg.attachments && msg.attachments.length > 0 && (
                             <div className="mt-2 space-y-1">
                               {msg.attachments.map((att, idx) => (
-                                <div key={att.url + idx} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
+                                <div key={`msg-att-${msg.id}-${idx}`} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
                                   {att.type === 'image' ? <ImageIcon className="w-4 h-4" /> : <FileIcon className="w-4 h-4" />}
                                   <a href={att.url} download={att.name} target="_blank" rel="noopener noreferrer" className="underline text-xs truncate max-w-[150px] block">
                                     {att.name}

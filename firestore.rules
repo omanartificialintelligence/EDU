@@ -44,18 +44,26 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     function isAdmin() {
       return isAuthenticated() &&
-        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SUPERVISOR') ||
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'SUPERVISOR') ||
           (request.auth.token.email == "omanartificialintelligence@gmail.com" && request.auth.token.email_verified == true));
     }
 
     function isTeacher() {
-      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'TEACHER';
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'TEACHER';
     }
 
     function isTempSupervisor() {
-      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'TEMP_SUPERVISOR';
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'TEMP_SUPERVISOR';
+    }
+
+    function isAnySupervisor() {
+      return isAdmin() || isTempSupervisor();
     }
 
     function hasOnlyAllowedFields(fields) {
@@ -82,6 +90,12 @@ service cloud.firestore {
              data.status in ['pending', 'approved', 'rejected'];
     }
 
+    function isValidPost(data) {
+      return data.id is string && data.authorId is string && data.title is string &&
+             data.title.size() > 0 && data.title.size() < 200 &&
+             data.createdAt is string;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -94,7 +108,7 @@ service cloud.firestore {
     }
 
     match /lessonMaterials/{materialId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated(); // Restrict to logged in users
       allow create: if (isTeacher() || isAdmin()) && isValidLesson(request.resource.data);
       allow update: if (isAdmin() || (isTeacher() && resource.data.teacherId == request.auth.uid)) && isValidLesson(request.resource.data);
       allow delete: if isAdmin();
@@ -106,27 +120,24 @@ service cloud.firestore {
     }
 
     match /posts/{postId} {
-      allow read: if isAuthenticated();
-      allow create, update, delete: if isAdmin();
+      allow read: if true; // Keep public for now as requested, but ensure it works
+      allow create: if isAdmin() && isValidPost(request.resource.data);
+      allow update: if isAdmin() && isValidPost(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /notifications/{notificationId} {
-      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isAdmin();
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAnySupervisor());
+      allow create: if isAnySupervisor();
       allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
-      allow delete: if isAdmin();
+      allow delete: if isAnySupervisor();
     }
 
     match /messages/{messageId} {
-      allow read: if isAuthenticated() && (resource.data.senderId == request.auth.uid || resource.data.recipientId == request.auth.uid || resource.data.recipientId == 'ALL' || isAdmin());
+      allow read: if isAuthenticated() && (resource.data.senderId == request.auth.uid || resource.data.recipientId == request.auth.uid || resource.data.recipientId == 'ALL' || isAnySupervisor());
       allow create: if isAuthenticated();
-      allow update: if isAdmin() || (isAuthenticated() && resource.data.recipientId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']));
-      allow delete: if isAdmin();
-    }
-
-    match /lessons/{lessonId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow update: if isAnySupervisor() || (isAuthenticated() && resource.data.recipientId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']));
+      allow delete: if isAnySupervisor();
     }
 
     match /config/supervisor {
@@ -135,9 +146,13 @@ service cloud.firestore {
     }
 
     match /resetRequests/{requestId} {
-      allow read: if isAdmin();
+      allow read: if isAnySupervisor();
       allow create: if isAuthenticated();
-      allow update, delete: if isAdmin();
+      allow update, delete: if isAnySupervisor();
+    }
+
+    match /test/connection {
+      allow read: if true;
     }
   }
 }

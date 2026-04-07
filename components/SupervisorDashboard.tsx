@@ -81,6 +81,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   supervisorConfig, academicYear, semester
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'feed' | 'lessons' | 'teachers' | 'archive' | 'security' | 'messages' | 'projects' | 'temp-supervisors'>('overview');
+  const [securityView, setSecurityView] = useState<'main' | 'change-main' | 'add-emergency'>('main');
+  const [selectedTeacherForMessages, setSelectedTeacherForMessages] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -238,7 +240,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     if (attachmentLessonId === 'new') {
       // Create new lesson with attachments
       const newMaterial: LessonMaterial = {
-        id: Date.now().toString(),
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         teacherId: teacherId,
         teacherName: teacherName,
         lessonTitle: attachmentNewLessonTitle,
@@ -466,7 +468,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     }
 
     onAddProject({
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       name: newProjectName,
       description: newProjectDescription,
       assignedTeacherIds: newProjectTeachers,
@@ -519,7 +521,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
     // Notify Teacher
     onAddNotification({
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       userId: teacherId,
       message: `تم تحديث حالة مشروعك "${project.name}" إلى ${status === 'approved' ? 'مكتمل' : 'يحتاج تعديل'}. ${feedback ? `ملاحظات: ${feedback}` : ''}`,
       isRead: false,
@@ -600,7 +602,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     if (!commentText.trim()) return;
     
     const newComment: LessonComment = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       authorId: user.id,
       authorName: user.name,
       authorRole: user.role,
@@ -640,7 +642,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
       alert('تم تحديث الدرس بنجاح.');
     } else {
       const newMaterial: LessonMaterial = {
-        id: Date.now().toString(),
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         teacherId: user.id,
         teacherName: user.name,
         lessonTitle: newLessonTitle,
@@ -830,7 +832,13 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
           {sidebarItems.filter(i => i.visible).map(item => (
             <button
               key={item.id}
-              onClick={() => { setActiveTab(item.id as any); setIsMobileMenuOpen(false); }}
+              onClick={() => { 
+                setActiveTab(item.id as any); 
+                setIsMobileMenuOpen(false); 
+                if (item.id !== 'messages') {
+                  setSelectedTeacherForMessages(null);
+                }
+              }}
               className={cn(
                 "w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 group",
                 activeTab === item.id 
@@ -1207,7 +1215,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 <motion.div 
                                   initial={{ opacity: 0, scale: 0.9 }}
                                   animate={{ opacity: 1, scale: 1 }}
-                                  key={`${assignment.grade}-${assignment.subject}-${idx}`} 
+                                  key={`new-assignment-${idx}`} 
                                   className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm group hover:border-indigo-200 transition-all"
                                 >
                                   <div className="w-2 h-2 rounded-full bg-indigo-500" />
@@ -1281,7 +1289,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     </div>
                   </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="teachers-grid-container">
-                  {filteredTeachers.map((teacher, index) => (
+                  {filteredTeachers.map((teacher) => (
                     <div key={teacher.id} className="bg-white p-5 rounded-[1.5rem] shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-200 transition-all duration-300 group relative overflow-hidden">
                       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                       
@@ -1313,7 +1321,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             </thead>
                             <tbody>
                               {teacher.assignments.map((assignment, idx) => (
-                                <tr key={`${assignment.grade}-${assignment.subject}-${idx}`} className="border-b border-slate-100 last:border-0">
+                                <tr key={`assignment-${assignment.grade}-${assignment.subject}-${idx}`} className="border-b border-slate-100 last:border-0">
                                   <td className="py-2 text-slate-800 font-bold flex items-center gap-2">
                                     <GraduationCap className="w-3.5 h-3.5 text-emerald-500" />
                                     {assignment.grade}
@@ -1362,33 +1370,49 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
 
                       {(isMainSupervisor || (isTempSupervisor && (user.tempPermissions?.hasFullAccess || user.tempPermissions?.canManageUsers))) && (
-                        <div className="flex gap-2">
-                          <button 
-                            onClick={async () => {
-                                const pass = await onResetPassword(teacher.id);
-                                setResetPassword(pass);
-                                setResetTeacherName(teacher.name);
-                                setResetTeacherPhone(teacher.phoneNumber || '');
-                            }}
-                            className="flex-1 py-2.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors font-bold text-xs flex items-center justify-center gap-2"
-                          >
-                            <Shield className="w-3.5 h-3.5" />
-                            تغيير كلمة المرور
-                          </button>
-                          <button 
-                            onClick={() => setEditingTeacher(teacher)}
-                            className="w-10 h-10 rounded-lg bg-slate-50 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center justify-center"
-                            title="تعديل"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => onSoftDeleteTeacher(teacher.id)}
-                            className="w-10 h-10 rounded-lg bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors flex items-center justify-center"
-                            title="أرشفة"
-                          >
-                            <Archive className="w-4 h-4" />
-                          </button>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={async () => {
+                                  const pass = await onResetPassword(teacher.id);
+                                  setResetPassword(pass);
+                                  setResetTeacherName(teacher.name);
+                                  setResetTeacherPhone(teacher.phoneNumber || '');
+                              }}
+                              className="flex-1 py-2.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors font-bold text-xs flex items-center justify-center gap-2"
+                            >
+                              <Shield className="w-3.5 h-3.5" />
+                              تغيير كلمة المرور
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setSelectedTeacherForMessages(teacher.id);
+                                setActiveTab('messages');
+                              }}
+                              className="flex-1 py-2.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-colors font-bold text-xs flex items-center justify-center gap-2"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                              عرض المراسلات
+                            </button>
+                          </div>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => setEditingTeacher(teacher)}
+                              className="flex-1 h-10 rounded-lg bg-slate-50 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center justify-center gap-2 font-bold text-xs"
+                              title="تعديل"
+                            >
+                              <Edit className="w-4 h-4" />
+                              تعديل
+                            </button>
+                            <button 
+                              onClick={() => onSoftDeleteTeacher(teacher.id)}
+                              className="flex-1 h-10 rounded-lg bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors flex items-center justify-center gap-2 font-bold text-xs"
+                              title="أرشفة"
+                            >
+                              <Archive className="w-4 h-4" />
+                              أرشفة
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1497,7 +1521,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                                   <div className="flex -space-x-2 space-x-reverse">
                                     {uniqueTeachers.slice(0, 5).map((teacher, i) => (
-                                      <div key={`${teacher}-${i}`} className="w-8 h-8 rounded-full bg-white border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm" title={teacher}>
+                                      <div key={`teacher-avatar-${grade}-${subject.name}-${i}`} className="w-8 h-8 rounded-full bg-white border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm" title={teacher}>
                                         {teacher.charAt(0)}
                                       </div>
                                     ))}
@@ -1535,7 +1559,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 <span className="text-[10px] font-bold text-slate-400">المعلمة المسؤولة:</span>
                                 <div className="flex flex-wrap gap-1">
                                   {teachers.filter(t => t.assignments?.some(a => a.subject === viewingSubject && a.grade === activeGradeTab)).map((t, i) => (
-                                    <span key={`${t.id}-${i}`} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[10px] font-black">
+                                    <span key={`responsible-teacher-${t.id}-${i}`} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[10px] font-black">
                                       {t.name}
                                     </span>
                                   ))}
@@ -1831,7 +1855,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         {attachmentFiles.length > 0 && (
                           <div className="space-y-2 mt-4">
                             {attachmentFiles.map((file, idx) => (
-                              <div key={`${file.url}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                              <div key={`att-file-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                                 <div className="flex items-center gap-3">
                                   <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-indigo-600 shadow-sm">
                                     <FileText className="w-4 h-4" />
@@ -1897,7 +1921,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     e.preventDefault();
                     if (!newPostTitle || !newPostContent) return alert('يرجى إدخال العنوان والمحتوى');
                     onAddPost({
-                      id: Date.now().toString(),
+                      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
                       authorId: user.id,
                       authorName: user.name,
                       title: newPostTitle,
@@ -1913,7 +1937,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     teachers.forEach(t => {
                       if (t.isActive) {
                         onAddNotification({
-                          id: Date.now().toString() + Math.random(),
+                          id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
                           userId: t.id,
                           message: `تعميم جديد: ${newPostTitle}`,
                           isRead: false,
@@ -1983,7 +2007,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         {newPostAttachments.length > 0 && (
                           <div className="flex flex-wrap gap-2">
                             {newPostAttachments.map((att, idx) => (
-                              <div key={`${att.name || 'att'}-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+                              <div key={`new-post-att-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
                                 <span className="truncate max-w-[100px]">{att.name}</span>
                                 <button 
                                   type="button"
@@ -2016,7 +2040,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 </div>
 
                 <div className="space-y-6">
-                  {filteredPosts.map((post, index) => (
+                  {filteredPosts.map((post) => (
                     <div key={post.id} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden">
                       {post.isPinned && (
                         <div className="absolute top-0 left-0 w-full h-1.5 bg-indigo-500" />
@@ -2044,7 +2068,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       {post.attachments.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                           {post.attachments.map((att, i) => (
-                            <div key={`${att.url}-${i}`} className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-500 flex items-center gap-2">
+                            <div key={`post-att-${post.id}-${i}`} className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-500 flex items-center gap-2">
                               <FileText className="w-3 h-3" /> {att.name}
                             </div>
                           ))}
@@ -2199,7 +2223,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           m.grade === selectedArchiveGrade && 
                           m.subject === selectedArchiveSubject && 
                           m.semester === selectedArchiveSemester
-                        ).map((lesson, index) => (
+                        ).map((lesson) => (
                           <div key={lesson.id} className="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-white hover:shadow-md transition-all">
                             <div className="flex items-center gap-4">
                               <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-indigo-600 shadow-sm">
@@ -2405,7 +2429,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               const status = submission?.status || 'pending';
                               
                               return (
-                                <div key={`${teacherId}-${idx}`} className={cn(
+                                <div key={`proj-teacher-${project.id}-${teacherId}-${idx}`} className={cn(
                                   "px-3 py-1 rounded-full text-[10px] font-black flex items-center gap-1 border",
                                   status === 'approved' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
                                   status === 'submitted' ? "bg-blue-50 text-blue-700 border-blue-100" :
@@ -2470,7 +2494,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           <h4 className="font-black text-slate-800 mb-3 text-sm">مهام المشروع المطلوبة:</h4>
                           <ul className="space-y-2">
                             {viewingProject.tasks.map((task, i) => (
-                                  <li key={`${task}-${i}`} className="flex items-start gap-2 text-sm text-slate-600">
+                                  <li key={`proj-task-${viewingProject.id}-${i}`} className="flex items-start gap-2 text-sm text-slate-600">
                                     <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold mt-0.5 shrink-0">
                                       {i + 1}
                                     </span>
@@ -2487,7 +2511,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         const status = submission?.status || 'pending';
 
                         return (
-                          <div key={`${teacherId}-${idx}`} className="bg-slate-50 rounded-[24px] border border-slate-100 overflow-hidden">
+                          <div key={`view-proj-teacher-${viewingProject.id}-${teacherId}-${idx}`} className="bg-slate-50 rounded-[24px] border border-slate-100 overflow-hidden">
                             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-black">
@@ -2528,7 +2552,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   <div className="flex flex-wrap gap-3">
                                     {submission.files.map((file, i) => (
                                       <button 
-                                        key={`${file.url}-${i}`}
+                                        key={`sub-file-${i}`}
                                         onClick={() => downloadFile(file.url, file.name)}
                                         className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:text-indigo-600 hover:border-indigo-200 transition-all"
                                       >
@@ -2582,7 +2606,22 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 className="h-[calc(100vh-12rem)] flex flex-col space-y-6"
               >
                 <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-black text-slate-900">مركز التواصل المباشر</h2>
+                  <div className="flex items-center gap-4">
+                    <h2 className="text-2xl font-black text-slate-900">
+                      {selectedTeacherForMessages 
+                        ? `المحادثة مع: ${teachers.find(t => t.id === selectedTeacherForMessages)?.name || 'المعلمة'}`
+                        : 'مركز التواصل المباشر'}
+                    </h2>
+                    {selectedTeacherForMessages && (
+                      <button 
+                        onClick={() => setSelectedTeacherForMessages(null)}
+                        className="px-4 py-2 bg-slate-100 text-slate-500 rounded-xl font-bold text-xs hover:bg-slate-200 transition-all flex items-center gap-2"
+                      >
+                        <X className="w-4 h-4" />
+                        عرض جميع الرسائل
+                      </button>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     <span className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse" />
                     <span className="text-xs font-bold text-slate-500">النظام متصل</span>
@@ -2591,14 +2630,26 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                 <div className="flex-1 bg-white rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col overflow-hidden">
                   <div className="flex-1 p-8 overflow-y-auto space-y-4 bg-slate-50/30">
-                    {messages.length === 0 ? (
+                    {messages.filter(m => {
+                      if (selectedTeacherForMessages) {
+                        return (m.senderId === selectedTeacherForMessages && m.recipientId === user.id) ||
+                               (m.senderId === user.id && m.recipientId === selectedTeacherForMessages);
+                      }
+                      return true;
+                    }).length === 0 ? (
                       <div className="h-full flex flex-col items-center justify-center text-center">
                         <MessageSquare className="w-20 h-20 text-slate-200 mb-6" />
                         <h3 className="text-xl font-bold text-slate-400">لا توجد رسائل حالياً</h3>
                         <p className="text-sm text-slate-400">ابدأ التواصل مع المعلمات في الميدان</p>
                       </div>
                     ) : (
-                      messages.map((msg, index) => (
+                      messages.filter(m => {
+                        if (selectedTeacherForMessages) {
+                          return (m.senderId === selectedTeacherForMessages && m.recipientId === user.id) ||
+                                 (m.senderId === user.id && m.recipientId === selectedTeacherForMessages);
+                        }
+                        return true;
+                      }).map((msg) => (
                         <div 
                           key={msg.id} 
                           className={cn(
@@ -2622,7 +2673,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             {msg.attachments && msg.attachments.length > 0 && (
                               <div className="mt-2 space-y-1">
                                 {msg.attachments.map((att, idx) => (
-                                  <div key={`${att.url}-${idx}`} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
+                                  <div key={`msg-att-${msg.id}-${idx}`} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
                                     {att.type === 'image' ? <ImageIcon className="w-4 h-4" /> : <FileIcon className="w-4 h-4" />}
                                     <a href={att.url} download={att.name} target="_blank" rel="noopener noreferrer" className="underline text-xs truncate max-w-[150px] block">
                                       {att.name}
@@ -2661,7 +2712,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             url: messageAttachment,
                             name: messageAttachmentName
                           }] : [];
-                          onSendMessage(newMessageText, undefined, attachments);
+                          onSendMessage(newMessageText, selectedTeacherForMessages || undefined, attachments);
                           setNewMessageText('');
                           setMessageAttachment(null);
                           setMessageAttachmentName('');
@@ -2699,7 +2750,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         type="text" 
                         value={newMessageText}
                         onChange={(e) => setNewMessageText(e.target.value)}
-                        placeholder="اكتب رسالة للمعلمات..."
+                        placeholder={selectedTeacherForMessages ? "اكتب رسالة خاصة للمعلمة..." : "اكتب رسالة للمعلمات..."}
                         className="flex-1 px-6 py-4 bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white rounded-2xl outline-none transition-all font-bold text-sm"
                       />
                       <button 
@@ -2785,9 +2836,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     <section className="space-y-6">
                       <h4 className="font-black text-slate-800 text-sm border-r-4 border-red-500 pr-4">المشرفين المؤقتين الحاليين</h4>
                       <div className="space-y-4">
-                        {teachers.filter(t => t.role === UserRole.TEMP_SUPERVISOR).map((supervisor, index) => {
+                        {teachers.filter(t => t.role === UserRole.TEMP_SUPERVISOR).map((supervisor) => {
                           return (
-                            <div key={`${supervisor.id}-${index}`} className="flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <div key={supervisor.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-slate-100">
                               <span className="font-bold text-slate-700">{supervisor.name}</span>
                               <button 
                                 onClick={() => onDeleteTempSupervisor(supervisor.id)}
@@ -2817,113 +2868,207 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 className="max-w-4xl mx-auto space-y-8"
               >
                 <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100">
-                  <h3 className="text-2xl font-black text-slate-900 mb-10 flex items-center gap-4">
-                    <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
-                      <Settings className="w-6 h-6" />
-                    </div>
-                    إعدادات النظام والأمان
-                  </h3>
+                  <div className="flex items-center justify-between mb-10">
+                    <h3 className="text-2xl font-black text-slate-900 flex items-center gap-4">
+                      <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
+                        <Settings className="w-6 h-6" />
+                      </div>
+                      إعدادات النظام والأمان
+                    </h3>
+                    {securityView !== 'main' && (
+                      <button 
+                        onClick={() => setSecurityView('main')}
+                        className="px-4 py-2 bg-slate-100 text-slate-500 rounded-xl font-bold text-xs hover:bg-slate-200 transition-all"
+                      >
+                        رجوع للإعدادات
+                      </button>
+                    )}
+                  </div>
                   
-                  <div className="space-y-10">
-                    <section className="space-y-6">
-                      <h4 className="font-black text-slate-800 text-sm border-r-4 border-indigo-500 pr-4">بيانات المشرفة</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">اسم المشرفة</label>
-                          <input type="text" value={editName} onChange={e => setEditName(e.target.value)} className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">المسمى الوظيفي</label>
-                          <input type="text" value={editJobTitle} onChange={e => setEditJobTitle(e.target.value)} className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" />
-                        </div>
-                      </div>
-                    </section>
+                  <AnimatePresence mode="wait">
+                    {securityView === 'main' ? (
+                      <motion.div 
+                        key="security-main"
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        className="space-y-10"
+                      >
+                        <section className="space-y-6">
+                          <h4 className="font-black text-slate-800 text-sm border-r-4 border-indigo-500 pr-4">بيانات المشرفة</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">اسم المشرفة</label>
+                              <input type="text" value={editName} onChange={e => setEditName(e.target.value)} className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">المسمى الوظيفي</label>
+                              <input type="text" value={editJobTitle} onChange={e => setEditJobTitle(e.target.value)} className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" />
+                            </div>
+                          </div>
+                        </section>
 
-                    <section className="space-y-6">
-                      <h4 className="font-black text-slate-800 text-sm border-r-4 border-indigo-500 pr-4">إدارة كلمات المرور</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Main Password */}
-                        <div className="space-y-4 p-6 bg-slate-50/50 rounded-3xl border border-slate-100">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Shield className="w-4 h-4 text-indigo-600" />
-                            <span className="text-xs font-black text-slate-700">كلمة المرور الرئيسية</span>
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">كلمة المرور الجديدة</label>
-                            <input 
-                              type="password" 
-                              value={newMainPass} 
-                              onChange={e => setNewMainPass(e.target.value)} 
-                              placeholder="••••••••" 
-                              className={cn(
-                                "w-full px-6 py-4 rounded-2xl bg-white border-2 border-transparent focus:border-indigo-500 font-bold text-sm outline-none transition-all shadow-sm",
-                                newMainPass.length > 0 && newMainPass.length < 8 && "border-red-300 focus:border-red-500"
-                              )} 
-                            />
-                            {newMainPass.length > 0 && newMainPass.length < 8 && (
-                              <p className="text-[10px] text-red-500 font-bold mr-2">يجب أن تكون 8 أحرف على الأقل</p>
-                            )}
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">تأكيد كلمة المرور</label>
-                            <input 
-                              type="password" 
-                              value={confirmMainPass} 
-                              onChange={e => setConfirmMainPass(e.target.value)} 
-                              placeholder="••••••••" 
-                              className={cn(
-                                "w-full px-6 py-4 rounded-2xl bg-white border-2 border-transparent focus:border-indigo-500 font-bold text-sm outline-none transition-all shadow-sm",
-                                confirmMainPass.length > 0 && confirmMainPass !== newMainPass && "border-red-300 focus:border-red-500"
-                              )} 
-                            />
-                            {confirmMainPass.length > 0 && confirmMainPass !== newMainPass && (
-                              <p className="text-[10px] text-red-500 font-bold mr-2">كلمات المرور غير متطابقة</p>
-                            )}
-                          </div>
-                        </div>
+                        <section className="space-y-6">
+                          <h4 className="font-black text-slate-800 text-sm border-r-4 border-indigo-500 pr-4">إدارة كلمات المرور</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="p-8 bg-indigo-50/50 rounded-[2rem] border border-indigo-100 flex flex-col items-center text-center space-y-4">
+                              <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center text-indigo-600">
+                                <Shield className="w-8 h-8" />
+                              </div>
+                              <div>
+                                <h5 className="font-black text-slate-900">كلمة المرور الرئيسية</h5>
+                                <p className="text-[10px] text-slate-500 font-bold mt-1">تستخدم للدخول اليومي للنظام</p>
+                              </div>
+                              <button 
+                                onClick={() => setSecurityView('change-main')}
+                                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                              >
+                                تغيير كلمة المرور الرئيسية
+                              </button>
+                            </div>
 
-                        {/* Backup Password */}
-                        <div className="space-y-4 p-6 bg-slate-50/50 rounded-3xl border border-slate-100">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Clock className="w-4 h-4 text-amber-600" />
-                            <span className="text-xs font-black text-slate-700">كلمة مرور الطوارئ (الاحتياطية)</span>
+                            <div className="p-8 bg-amber-50/50 rounded-[2rem] border border-amber-100 flex flex-col items-center text-center space-y-4">
+                              <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center text-amber-600">
+                                <Clock className="w-8 h-8" />
+                              </div>
+                              <div>
+                                <h5 className="font-black text-slate-900">كلمة مرور الطوارئ</h5>
+                                <p className="text-[10px] text-slate-500 font-bold mt-1">تستخدم عند نسيان كلمة المرور الرئيسية</p>
+                              </div>
+                              <button 
+                                onClick={() => setSecurityView('add-emergency')}
+                                className="w-full py-4 bg-amber-500 text-white rounded-2xl font-black text-xs hover:bg-amber-600 transition-all shadow-lg shadow-amber-100"
+                              >
+                                {supervisorConfig.backupPassword ? 'تحديث كلمة مرور الطوارئ' : 'إضافة كلمة مرور للطوارئ'}
+                              </button>
+                            </div>
                           </div>
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">كلمة المرور الجديدة</label>
-                            <input 
-                              type="password" 
-                              value={newBackupPass} 
-                              onChange={e => setNewBackupPass(e.target.value)} 
-                              placeholder="••••••••" 
-                              className={cn(
-                                "w-full px-6 py-4 rounded-2xl bg-white border-2 border-transparent focus:border-indigo-500 font-bold text-sm outline-none transition-all shadow-sm",
-                                newBackupPass.length > 0 && newBackupPass.length < 8 && "border-red-300 focus:border-red-500"
-                              )} 
-                            />
-                            {newBackupPass.length > 0 && newBackupPass.length < 8 && (
-                              <p className="text-[10px] text-red-500 font-bold mr-2">يجب أن تكون 8 أحرف على الأقل</p>
-                            )}
+                        </section>
+                      </motion.div>
+                    ) : securityView === 'change-main' ? (
+                      <motion.div 
+                        key="security-change-main"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="space-y-8"
+                      >
+                        <div className="bg-slate-50 p-8 rounded-[2rem] space-y-6">
+                          <h4 className="font-black text-slate-800 text-lg">تغيير كلمة المرور الرئيسية</h4>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">كلمة المرور الجديدة</label>
+                              <input 
+                                type="password" 
+                                value={newMainPass} 
+                                onChange={e => setNewMainPass(e.target.value)} 
+                                placeholder="••••••••" 
+                                className={cn(
+                                  "w-full px-6 py-4 rounded-2xl bg-white border-2 border-transparent focus:border-indigo-500 font-bold text-sm outline-none transition-all shadow-sm",
+                                  newMainPass.length > 0 && newMainPass.length < 8 && "border-red-300 focus:border-red-500"
+                                )} 
+                              />
+                              {newMainPass.length > 0 && newMainPass.length < 8 && (
+                                <p className="text-[10px] text-red-500 font-bold mr-2">يجب أن تكون 8 أحرف على الأقل</p>
+                              )}
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">تأكيد كلمة المرور</label>
+                              <input 
+                                type="password" 
+                                value={confirmMainPass} 
+                                onChange={e => setConfirmMainPass(e.target.value)} 
+                                placeholder="••••••••" 
+                                className={cn(
+                                  "w-full px-6 py-4 rounded-2xl bg-white border-2 border-transparent focus:border-indigo-500 font-bold text-sm outline-none transition-all shadow-sm",
+                                  confirmMainPass.length > 0 && confirmMainPass !== newMainPass && "border-red-300 focus:border-red-500"
+                                )} 
+                              />
+                              {confirmMainPass.length > 0 && confirmMainPass !== newMainPass && (
+                                <p className="text-[10px] text-red-500 font-bold mr-2">كلمات المرور غير متطابقة</p>
+                              )}
+                            </div>
                           </div>
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">تأكيد كلمة المرور</label>
-                            <input 
-                              type="password" 
-                              value={confirmBackupPass} 
-                              onChange={e => setConfirmBackupPass(e.target.value)} 
-                              placeholder="••••••••" 
-                              className={cn(
-                                "w-full px-6 py-4 rounded-2xl bg-white border-2 border-transparent focus:border-indigo-500 font-bold text-sm outline-none transition-all shadow-sm",
-                                confirmBackupPass.length > 0 && confirmBackupPass !== newBackupPass && "border-red-300 focus:border-red-500"
-                              )} 
-                            />
-                            {confirmBackupPass.length > 0 && confirmBackupPass !== newBackupPass && (
-                              <p className="text-[10px] text-red-500 font-bold mr-2">كلمات المرور غير متطابقة</p>
-                            )}
-                          </div>
+                          <button 
+                            onClick={() => {
+                              if (newMainPass.length < 8) return alert('يجب أن تكون كلمة المرور 8 أحرف على الأقل');
+                              if (newMainPass !== confirmMainPass) return alert('كلمات المرور غير متطابقة');
+                              onUpdateSecurity({ ...supervisorConfig, mainPassword: newMainPass });
+                              alert('تم تغيير كلمة المرور بنجاح');
+                              setSecurityView('main');
+                              setNewMainPass('');
+                              setConfirmMainPass('');
+                            }}
+                            className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100"
+                          >
+                            تأكيد تغيير كلمة المرور
+                          </button>
                         </div>
-                      </div>
-                    </section>
+                      </motion.div>
+                    ) : (
+                      <motion.div 
+                        key="security-add-emergency"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="space-y-8"
+                      >
+                        <div className="bg-slate-50 p-8 rounded-[2rem] space-y-6">
+                          <h4 className="font-black text-slate-800 text-lg">إضافة كلمة مرور للطوارئ</h4>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">كلمة مرور الطوارئ الجديدة</label>
+                              <input 
+                                type="password" 
+                                value={newBackupPass} 
+                                onChange={e => setNewBackupPass(e.target.value)} 
+                                placeholder="••••••••" 
+                                className={cn(
+                                  "w-full px-6 py-4 rounded-2xl bg-white border-2 border-transparent focus:border-indigo-500 font-bold text-sm outline-none transition-all shadow-sm",
+                                  newBackupPass.length > 0 && newBackupPass.length < 8 && "border-red-300 focus:border-red-500"
+                                )} 
+                              />
+                              {newBackupPass.length > 0 && newBackupPass.length < 8 && (
+                                <p className="text-[10px] text-red-500 font-bold mr-2">يجب أن تكون 8 أحرف على الأقل</p>
+                              )}
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">تأكيد كلمة المرور</label>
+                              <input 
+                                type="password" 
+                                value={confirmBackupPass} 
+                                onChange={e => setConfirmBackupPass(e.target.value)} 
+                                placeholder="••••••••" 
+                                className={cn(
+                                  "w-full px-6 py-4 rounded-2xl bg-white border-2 border-transparent focus:border-indigo-500 font-bold text-sm outline-none transition-all shadow-sm",
+                                  confirmBackupPass.length > 0 && confirmBackupPass !== newBackupPass && "border-red-300 focus:border-red-500"
+                                )} 
+                              />
+                              {confirmBackupPass.length > 0 && confirmBackupPass !== newBackupPass && (
+                                <p className="text-[10px] text-red-500 font-bold mr-2">كلمات المرور غير متطابقة</p>
+                              )}
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => {
+                              if (newBackupPass.length < 8) return alert('يجب أن تكون كلمة المرور 8 أحرف على الأقل');
+                              if (newBackupPass !== confirmBackupPass) return alert('كلمات المرور غير متطابقة');
+                              onUpdateSecurity({ ...supervisorConfig, backupPassword: newBackupPass });
+                              alert('تم تمكين كلمة مرور الطوارئ بنجاح');
+                              setSecurityView('main');
+                              setNewBackupPass('');
+                              setConfirmBackupPass('');
+                            }}
+                            className="w-full py-5 bg-amber-500 text-white rounded-2xl font-black text-sm hover:bg-amber-600 transition-all shadow-xl shadow-amber-100"
+                          >
+                            تأكيد كلمة مرور الطوارئ
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
+                  <div className="space-y-10 mt-10">
                     <section className="space-y-6">
                       <h4 className="font-black text-slate-800 text-sm border-r-4 border-emerald-500 pr-4">العام الدراسي الحالي</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2997,7 +3142,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 <div className="space-y-2 mt-4">
                   <p className="text-xs font-bold text-slate-500">المرفقات:</p>
                   {newLessonAttachments.map((att, i) => (
-                    <div key={`${att.name}-${i}`} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
+                    <div key={`new-lesson-att-${i}`} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
                       {att.name}
                       <button onClick={() => setNewLessonAttachments(newLessonAttachments.filter((_, idx) => idx !== i))} className="text-red-500">حذف</button>
                     </div>
@@ -3143,7 +3288,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   {newProjectAttachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {newProjectAttachments.map((att, idx) => (
-                        <div key={`${att.name || 'att'}-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+                        <div key={`new-proj-att-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
                           <FileText className="w-3 h-3" />
                           {att.name}
                           <button onClick={() => setNewProjectAttachments(newProjectAttachments.filter((_, i) => i !== idx))} className="hover:text-red-500">
@@ -3210,7 +3355,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   {newProjectTasks.length > 0 && (
                     <div className="space-y-2 mt-2">
                       {newProjectTasks.map((task, idx) => (
-                        <div key={`${task}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <div key={`new-proj-task-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                           <span className="text-sm font-bold text-slate-700">{idx + 1}. {task}</span>
                           <button 
                             onClick={() => setNewProjectTasks(newProjectTasks.filter((_, i) => i !== idx))}
@@ -3226,8 +3371,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 <div className="space-y-2">
                   <label className="text-sm font-black text-slate-700">تعيين المعلمات</label>
                   <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-100">
-                    {teachers.filter(t => t.isActive).map((teacher, index) => (
-                      <label key={`${teacher.id}-${index}`} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-indigo-500 transition-all">
+                    {teachers.filter(t => t.isActive).map((teacher) => (
+                      <label key={teacher.id} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-indigo-500 transition-all">
                         <input 
                           type="checkbox"
                           checked={newProjectTeachers.includes(teacher.id)}
@@ -3372,7 +3517,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                   <div className="flex flex-wrap gap-3 mt-4">
                     {editTeacherAssignments.map((assignment, idx) => (
-                      <div key={idx} className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
+                      <div key={`edit-assignment-${idx}`} className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
                         <span className="font-bold text-xs text-slate-700">{assignment.grade} • {assignment.subject}</span>
                         <button 
                           type="button" 
