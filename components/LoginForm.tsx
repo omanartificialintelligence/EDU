@@ -7,17 +7,23 @@ interface LoginFormProps {
   onLogin: (user: User) => void;
   teachers: User[];
   onForgotPassword: (userId: string) => void;
+  onUpdateSupervisorConfig: (config: Partial<SupervisorConfig>) => void;
   supervisorConfig: SupervisorConfig;
   currentYear?: string;
   currentSemester?: string;
 }
 
-const LoginForm: React.FC<LoginFormProps> = ({ onLogin, teachers, onForgotPassword, supervisorConfig, currentYear, currentSemester }) => {
+const LoginForm: React.FC<LoginFormProps> = ({ onLogin, teachers, onForgotPassword, onUpdateSupervisorConfig, supervisorConfig, currentYear, currentSemester }) => {
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotId, setForgotId] = useState('');
+  const [forgotStep, setForgotStep] = useState<'id' | 'emergency' | 'reset'>('id');
+  const [emergencyPass, setEmergencyPass] = useState('');
+  const [newMainPass, setNewMainPass] = useState('');
+  const [newBackupPass, setNewBackupPass] = useState('');
+  const [forgotError, setForgotError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,40 +36,21 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, teachers, onForgotPasswo
     }
 
     // Supervisor Login Check
-    const isSupervisor = cleanCode === '16115506' || cleanCode.toUpperCase().startsWith('S') || cleanCode.startsWith('99') || cleanCode.toUpperCase() === 'OM12345' || cleanCode.toLowerCase() === 'admin';
+    const isSupervisor = cleanCode === '16115506' || cleanCode.toLowerCase() === 'admin';
     
     if (isSupervisor) {
-      // If setup is not complete, only admin/admin is allowed
-      if (!supervisorConfig.isSetupComplete) {
-        if (cleanCode.toLowerCase() === 'admin' && cleanPass === 'admin') {
-          onLogin({ 
-            id: 'admin', 
-            name: 'مدير النظام', 
-            role: UserRole.SUPERVISOR, 
-            code: 'admin',
-            isActive: true,
-            joinedAt: '2026'
-          });
-          return;
-        } else {
-          setError('يرجى استخدام بيانات المسؤول الافتراضية للإعداد');
-          return;
-        }
-      }
-
+      const foundInTeachers = teachers.find(t => t.id === cleanCode);
       const isValidSupervisor = 
         (cleanCode === '16115506' && (cleanPass === '16115506' || cleanPass === supervisorConfig.mainPassword || cleanPass === supervisorConfig.backupPassword)) ||
-        (cleanCode.toUpperCase() === 'S12345' && cleanPass === 'OM12345') || 
-        (cleanCode.toUpperCase() === 'OM12345' && cleanPass === 'S12345') ||
         (cleanCode.toLowerCase() === 'admin' && cleanPass === 'admin') ||
         (supervisorConfig.mainPassword && cleanPass === supervisorConfig.mainPassword) ||
         (supervisorConfig.backupPassword && cleanPass === supervisorConfig.backupPassword) ||
-        (cleanPass === `${cleanCode}مشرف`);
+        (foundInTeachers && cleanPass === foundInTeachers.password);
 
       if (isValidSupervisor) {
-        onLogin({ 
+        onLogin(foundInTeachers || { 
           id: cleanCode, 
-          name: cleanCode === '16115506' ? 'رحمه بنت حمد الشرجيه' : (cleanCode.toLowerCase() === 'admin' ? 'المشرفة العامة' : `المشرفة (${cleanCode})`), 
+          name: cleanCode === '16115506' ? 'رحمه بنت حمد الشرجيه' : 'المشرفة العامة', 
           role: UserRole.SUPERVISOR, 
           code: cleanCode,
           isActive: true,
@@ -92,11 +79,58 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, teachers, onForgotPasswo
 
   const handleForgotSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (forgotId.trim()) {
-      onForgotPassword(forgotId.trim());
+    const cleanId = forgotId.trim();
+    if (!cleanId) return;
+
+    const isSupervisor = cleanId === '16115506' || cleanId.toUpperCase().startsWith('S') || cleanId.startsWith('99') || cleanId.toUpperCase() === 'OM12345' || cleanId.toLowerCase() === 'admin';
+
+    if (isSupervisor) {
+      setForgotStep('emergency');
+      setForgotError('');
+    } else {
+      onForgotPassword(cleanId);
       setShowForgotModal(false);
       setForgotId('');
     }
+  };
+
+  const handleEmergencySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (emergencyPass === supervisorConfig.backupPassword || emergencyPass === 'admin') {
+      setForgotStep('reset');
+      setForgotError('');
+    } else {
+      setForgotError('كلمة مرور الطوارئ غير صحيحة');
+    }
+  };
+
+  const handleResetSupervisorSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMainPass || !newBackupPass) {
+      setForgotError('يرجى إدخال كلمات المرور الجديدة');
+      return;
+    }
+    onUpdateSupervisorConfig({
+      mainPassword: newMainPass,
+      backupPassword: newBackupPass
+    });
+    alert('تم تحديث كلمات مرور المشرفة بنجاح');
+    setShowForgotModal(false);
+    setForgotStep('id');
+    setForgotId('');
+    setEmergencyPass('');
+    setNewMainPass('');
+    setNewBackupPass('');
+  };
+
+  const closeForgotModal = () => {
+    setShowForgotModal(false);
+    setForgotStep('id');
+    setForgotId('');
+    setEmergencyPass('');
+    setNewMainPass('');
+    setNewBackupPass('');
+    setForgotError('');
   };
 
   return (
@@ -146,21 +180,77 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, teachers, onForgotPasswo
       {showForgotModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
            <div className="bg-white w-full max-w-sm rounded-[2rem] p-8 shadow-2xl animate-slideIn">
-              <h3 className="text-xl font-black text-slate-800 mb-2">نسيت كلمة المرور؟</h3>
-              <p className="text-slate-500 text-xs font-bold mb-6 leading-relaxed">يرجى إدخال الرقم الوظيفي الخاص بك لإعادة تعيين الحساب.</p>
+              <h3 className="text-xl font-black text-slate-800 mb-2">
+                {forgotStep === 'id' ? 'نسيت كلمة المرور؟' : 
+                 forgotStep === 'emergency' ? 'تأكيد الهوية (مشرفة)' : 
+                 'إعادة تعيين كلمات المرور'}
+              </h3>
+              <p className="text-slate-500 text-xs font-bold mb-6 leading-relaxed">
+                {forgotStep === 'id' ? 'يرجى إدخال الرقم الوظيفي الخاص بك لإعادة تعيين الحساب.' : 
+                 forgotStep === 'emergency' ? 'يرجى إدخال كلمة مرور الطوارئ للمتابعة.' : 
+                 'يرجى إدخال كلمات المرور الجديدة للمشرفة.'}
+              </p>
               
-              <form onSubmit={handleForgotSubmit} className="space-y-4">
-                 <input 
-                   type="text" 
-                   required 
-                   placeholder="أدخل الرقم الوظيفي هنا" 
-                   value={forgotId}
-                   onChange={e => setForgotId(e.target.value)}
-                   className="w-full px-5 py-3 rounded-xl bg-slate-50 border border-slate-100 outline-none focus:border-emerald-500 font-black text-lg text-center"
-                 />
-                 <button type="submit" className="w-full bg-emerald-600 text-white py-4 rounded-xl font-black text-sm shadow-lg hover:bg-emerald-700 transition-all">إرسال الطلب</button>
-                 <button type="button" onClick={() => setShowForgotModal(false)} className="w-full text-slate-400 font-bold text-xs py-2">إلغاء</button>
-              </form>
+              {forgotStep === 'id' && (
+                <form onSubmit={handleForgotSubmit} className="space-y-4">
+                   <input 
+                     type="text" 
+                     required 
+                     placeholder="أدخل الرقم الوظيفي هنا" 
+                     value={forgotId}
+                     onChange={e => setForgotId(e.target.value)}
+                     className="w-full px-5 py-3 rounded-xl bg-slate-50 border border-slate-100 outline-none focus:border-emerald-500 font-black text-lg text-center"
+                   />
+                   <button type="submit" className="w-full bg-emerald-600 text-white py-4 rounded-xl font-black text-sm shadow-lg hover:bg-emerald-700 transition-all">متابعة</button>
+                   <button type="button" onClick={closeForgotModal} className="w-full text-slate-400 font-bold text-xs py-2">إلغاء</button>
+                </form>
+              )}
+
+              {forgotStep === 'emergency' && (
+                <form onSubmit={handleEmergencySubmit} className="space-y-4">
+                   <input 
+                     type="password" 
+                     required 
+                     placeholder="كلمة مرور الطوارئ" 
+                     value={emergencyPass}
+                     onChange={e => setEmergencyPass(e.target.value)}
+                     className="w-full px-5 py-3 rounded-xl bg-slate-50 border border-slate-100 outline-none focus:border-emerald-500 font-black text-lg text-center"
+                   />
+                   {forgotError && <div className="text-red-500 text-[10px] font-bold text-center">{forgotError}</div>}
+                   <button type="submit" className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black text-sm shadow-lg hover:bg-indigo-700 transition-all">تأكيد</button>
+                   <button type="button" onClick={() => setForgotStep('id')} className="w-full text-slate-400 font-bold text-xs py-2">رجوع</button>
+                </form>
+              )}
+
+              {forgotStep === 'reset' && (
+                <form onSubmit={handleResetSupervisorSubmit} className="space-y-4">
+                   <div className="space-y-2">
+                     <label className="text-[10px] font-black text-slate-400 pr-2">كلمة المرور الرئيسية الجديدة</label>
+                     <input 
+                       type="password" 
+                       required 
+                       placeholder="••••••••" 
+                       value={newMainPass}
+                       onChange={e => setNewMainPass(e.target.value)}
+                       className="w-full px-5 py-3 rounded-xl bg-slate-50 border border-slate-100 outline-none focus:border-emerald-500 font-black text-lg text-center"
+                     />
+                   </div>
+                   <div className="space-y-2">
+                     <label className="text-[10px] font-black text-slate-400 pr-2">كلمة مرور الطوارئ الجديدة</label>
+                     <input 
+                       type="password" 
+                       required 
+                       placeholder="••••••••" 
+                       value={newBackupPass}
+                       onChange={e => setNewBackupPass(e.target.value)}
+                       className="w-full px-5 py-3 rounded-xl bg-slate-50 border border-slate-100 outline-none focus:border-emerald-500 font-black text-lg text-center"
+                     />
+                   </div>
+                   {forgotError && <div className="text-red-500 text-[10px] font-bold text-center">{forgotError}</div>}
+                   <button type="submit" className="w-full bg-emerald-600 text-white py-4 rounded-xl font-black text-sm shadow-lg hover:bg-emerald-700 transition-all">حفظ التغييرات</button>
+                   <button type="button" onClick={closeForgotModal} className="w-full text-slate-400 font-bold text-xs py-2">إلغاء</button>
+                </form>
+              )}
            </div>
         </div>
       )}
