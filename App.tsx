@@ -56,6 +56,7 @@ const App: React.FC = () => {
 
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false);
+  const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
 
   // Firebase Auth Listener
   useEffect(() => {
@@ -281,7 +282,7 @@ const App: React.FC = () => {
         }
         return;
       }
-      setIsFirstTimeSetup(true);
+      setIsPasswordChangeRequired(true);
       return;
     }
     if (!user.isActive) {
@@ -308,7 +309,9 @@ const App: React.FC = () => {
             }
           } catch (createError: any) {
             console.error("Create user failed:", createError);
-            if (createError.code === 'auth/operation-not-allowed') {
+            if (createError.code === 'auth/email-already-in-use') {
+              console.warn("User already exists, proceeding with login.");
+            } else if (createError.code === 'auth/operation-not-allowed') {
               alert("يرجى تفعيل المصادقة بكلمة المرور والبريد الإلكتروني (Email/Password Authentication) من لوحة تحكم Firebase.");
             } else {
               alert("فشل إنشاء حساب المصادقة. قد لا تعمل بعض الميزات بشكل صحيح.");
@@ -525,6 +528,59 @@ const App: React.FC = () => {
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
           <p className="text-slate-500 font-bold">جاري الاتصال بالنظام...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (isPasswordChangeRequired) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-['Tajawal']" dir="rtl">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-10 border border-slate-100"
+        >
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-black text-slate-900">تغيير كلمة المرور</h2>
+            <p className="text-slate-500 text-sm font-bold mt-2">يرجى تغيير كلمة المرور الافتراضية</p>
+          </div>
+
+          <form 
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const newPassword = formData.get('newPassword') as string;
+              const confirmPassword = formData.get('confirmPassword') as string;
+
+              if (newPassword !== confirmPassword) return alert('كلمات المرور غير متطابقة');
+              if (newPassword.length < 8) return alert('يجب أن تكون كلمة المرور 8 أحرف على الأقل');
+
+              try {
+                await setDoc(doc(db, 'config', 'supervisor'), {
+                  ...supervisorConfig,
+                  mainPassword: newPassword,
+                  backupPassword: newPassword
+                });
+                setIsPasswordChangeRequired(false);
+                setAuth({ user: { id: '16115506', name: 'رحمه بنت حمد الشرجيه', role: UserRole.SUPERVISOR, code: '16115506', password: newPassword, isActive: true, joinedAt: '2026' }, isAuthenticated: true });
+                alert('تم تغيير كلمة المرور بنجاح');
+              } catch (error) {
+                handleFirestoreError(error, OperationType.WRITE, 'config/supervisor');
+              }
+            }}
+            className="space-y-6"
+          >
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">كلمة المرور الجديدة</label>
+              <input name="newPassword" type="password" required className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" placeholder="••••••••" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">تأكيد كلمة المرور</label>
+              <input name="confirmPassword" type="password" required className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" placeholder="••••••••" />
+            </div>
+            <button type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all">تغيير كلمة المرور والدخول</button>
+          </form>
+        </motion.div>
       </div>
     );
   }
