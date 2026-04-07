@@ -55,14 +55,8 @@ const App: React.FC = () => {
   // Firebase Auth Listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
-      if (user) {
-        setIsAuthReady(true);
-      } else {
-        // Automatically sign in anonymously to allow reading public/login data
-        signInAnonymously(firebaseAuth).catch(err => {
-          console.error("Anonymous sign-in failed:", err);
-        });
-      }
+      setIsAuthReady(true);
+      // We don't use anonymous sign-in anymore to avoid 'admin-restricted-operation'
     });
     return () => unsubscribe();
   }, []);
