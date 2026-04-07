@@ -277,6 +277,8 @@ const App: React.FC = () => {
         console.error("Failed to sign in admin for setup:", error);
         if (error.code === 'auth/operation-not-allowed') {
           alert("يرجى تفعيل المصادقة بكلمة المرور والبريد الإلكتروني (Email/Password Authentication) من لوحة تحكم Firebase.");
+        } else if (error.code === 'auth/too-many-requests') {
+          alert("لقد قمت بالكثير من محاولات تسجيل الدخول. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.");
         } else {
           alert("فشل تسجيل دخول المشرفة. يرجى التأكد من إعدادات Firebase.");
         }
@@ -311,6 +313,8 @@ const App: React.FC = () => {
             console.error("Create user failed:", createError);
             if (createError.code === 'auth/email-already-in-use') {
               console.warn("User already exists, proceeding with login.");
+            } else if (createError.code === 'auth/too-many-requests') {
+              alert("لقد قمت بالكثير من محاولات تسجيل الدخول. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.");
             } else if (createError.code === 'auth/operation-not-allowed') {
               alert("يرجى تفعيل المصادقة بكلمة المرور والبريد الإلكتروني (Email/Password Authentication) من لوحة تحكم Firebase.");
             } else {
@@ -318,6 +322,9 @@ const App: React.FC = () => {
             }
             return; // Stop login process
           }
+        } else if (signInError.code === 'auth/too-many-requests') {
+          alert("لقد قمت بالكثير من محاولات تسجيل الدخول. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.");
+          return; // Stop login process
         } else if (signInError.code === 'auth/operation-not-allowed') {
           alert("يرجى تفعيل المصادقة بكلمة المرور والبريد الإلكتروني (Email/Password Authentication) من لوحة تحكم Firebase.");
           return; // Stop login process
