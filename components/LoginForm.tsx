@@ -166,24 +166,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onGoogleLogin, teachers,
           {error && <div className="bg-red-50 text-red-600 text-[10px] sm:text-xs font-black p-3 sm:p-4 rounded-xl sm:rounded-2xl text-center animate-pulse">{error}</div>}
           
           <button type="submit" className="w-full bg-slate-900 text-white py-4 sm:py-5 rounded-xl sm:rounded-2xl font-black text-base sm:text-lg hover:bg-emerald-600 shadow-xl shadow-emerald-100 active:scale-95 transition-all mt-2 sm:mt-4">تسجيل الدخول</button>
-          
-          <div className="relative py-4">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-100"></div>
-            </div>
-            <div className="relative flex justify-center text-[10px] uppercase">
-              <span className="bg-white px-4 text-slate-400 font-bold">أو الدخول عبر</span>
-            </div>
-          </div>
-
-          <button 
-            type="button"
-            onClick={onGoogleLogin}
-            className="w-full bg-white text-slate-700 py-4 rounded-xl sm:rounded-2xl font-black text-sm border-2 border-slate-100 hover:bg-slate-50 shadow-sm flex items-center justify-center gap-3 transition-all active:scale-95"
-          >
-            <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-            الدخول عبر Google (للمشرفة)
-          </button>
         </form>
         
         <div className="text-center pt-2">

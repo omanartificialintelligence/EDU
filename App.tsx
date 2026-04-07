@@ -25,7 +25,9 @@ import {
   signInAnonymously,
   GoogleAuthProvider,
   signInWithPopup,
-  signOut
+  signOut,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword
 } from 'firebase/auth';
 import { auth as firebaseAuth } from './src/firebase';
 
@@ -256,9 +258,27 @@ const App: React.FC = () => {
     // Ensure Firebase Auth session for custom login
     if (!firebaseAuth.currentUser) {
       try {
-        await signInAnonymously(firebaseAuth);
+        if (user.role === UserRole.SUPERVISOR) {
+          const email = `${user.id}@supervisor.com`;
+          const password = user.password || user.id;
+          try {
+            await signInWithEmailAndPassword(firebaseAuth, email, password);
+          } catch (signInError: any) {
+            if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') {
+              try {
+                await createUserWithEmailAndPassword(firebaseAuth, email, password);
+              } catch (createError) {
+                await signInAnonymously(firebaseAuth);
+              }
+            } else {
+              await signInAnonymously(firebaseAuth);
+            }
+          }
+        } else {
+          await signInAnonymously(firebaseAuth);
+        }
       } catch (error) {
-        console.warn("Anonymous sign-in failed, but proceeding with local session:", error);
+        console.warn("Firebase auth failed, falling back to local session:", error);
       }
     }
 
