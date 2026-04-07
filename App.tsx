@@ -187,7 +187,11 @@ const App: React.FC = () => {
         isRead: false
       };
       try {
-        await setDoc(doc(db, 'messages', messageData.id), messageData);
+        const cleanMessage = { ...messageData } as any;
+        Object.keys(cleanMessage).forEach(key => {
+          if (cleanMessage[key] === undefined) delete cleanMessage[key];
+        });
+        await setDoc(doc(db, 'messages', messageData.id), cleanMessage);
       } catch (error) {
         handleFirestoreError(error, OperationType.WRITE, `messages/${messageData.id}`);
       }
@@ -258,19 +262,21 @@ const App: React.FC = () => {
     // Ensure Firebase Auth session for custom login
     if (!firebaseAuth.currentUser) {
       try {
-        if (user.role === UserRole.SUPERVISOR) {
+        if (user.role === UserRole.SUPERVISOR || user.role === UserRole.TEMP_SUPERVISOR) {
           const email = `${user.id}@supervisor.com`;
-          const password = user.password || user.id;
+          const firebasePassword = `SecurePass_${user.id}_2026!`; // Use a strong fixed password for Firebase Auth
           try {
-            await signInWithEmailAndPassword(firebaseAuth, email, password);
+            await signInWithEmailAndPassword(firebaseAuth, email, firebasePassword);
           } catch (signInError: any) {
             if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') {
               try {
-                await createUserWithEmailAndPassword(firebaseAuth, email, password);
+                await createUserWithEmailAndPassword(firebaseAuth, email, firebasePassword);
               } catch (createError) {
+                console.error("Create user failed:", createError);
                 await signInAnonymously(firebaseAuth);
               }
             } else {
+              console.error("Sign in failed:", signInError);
               await signInAnonymously(firebaseAuth);
             }
           }
@@ -297,7 +303,11 @@ const App: React.FC = () => {
 
   const handleAddLessonMaterial = async (material: LessonMaterial) => {
     try {
-      await setDoc(doc(db, 'lessonMaterials', material.id), material);
+      const cleanMaterial = { ...material } as any;
+      Object.keys(cleanMaterial).forEach(key => {
+        if (cleanMaterial[key] === undefined) delete cleanMaterial[key];
+      });
+      await setDoc(doc(db, 'lessonMaterials', material.id), cleanMaterial);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `lessonMaterials/${material.id}`);
     }
@@ -305,7 +315,11 @@ const App: React.FC = () => {
 
   const handleUpdateLessonMaterial = async (updated: LessonMaterial) => {
     try {
-      await setDoc(doc(db, 'lessonMaterials', updated.id), updated);
+      const cleanMaterial = { ...updated } as any;
+      Object.keys(cleanMaterial).forEach(key => {
+        if (cleanMaterial[key] === undefined) delete cleanMaterial[key];
+      });
+      await setDoc(doc(db, 'lessonMaterials', updated.id), cleanMaterial);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `lessonMaterials/${updated.id}`);
     }
@@ -337,7 +351,11 @@ const App: React.FC = () => {
 
   const handleAddNotification = async (notification: Notification) => {
     try {
-      await setDoc(doc(db, 'notifications', notification.id), notification);
+      const cleanNotification = { ...notification } as any;
+      Object.keys(cleanNotification).forEach(key => {
+        if (cleanNotification[key] === undefined) delete cleanNotification[key];
+      });
+      await setDoc(doc(db, 'notifications', notification.id), cleanNotification);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `notifications/${notification.id}`);
     }
@@ -427,7 +445,11 @@ const App: React.FC = () => {
       status: 'pending'
     };
     try {
-      await setDoc(doc(db, 'resetRequests', newRequest.id), newRequest);
+      const cleanRequest = { ...newRequest } as any;
+      Object.keys(cleanRequest).forEach(key => {
+        if (cleanRequest[key] === undefined) delete cleanRequest[key];
+      });
+      await setDoc(doc(db, 'resetRequests', newRequest.id), cleanRequest);
       alert('تم إرسال طلب تصفير كلمة المرور للمشرفة.');
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `resetRequests/${newRequest.id}`);
@@ -569,7 +591,11 @@ const App: React.FC = () => {
         onMarkMessageAsRead={handleMarkMessageAsRead}
         onAddPost={async (p) => {
           try {
-            await setDoc(doc(db, 'posts', p.id), p);
+            const cleanPost = { ...p } as any;
+            Object.keys(cleanPost).forEach(key => {
+              if (cleanPost[key] === undefined) delete cleanPost[key];
+            });
+            await setDoc(doc(db, 'posts', p.id), cleanPost);
           } catch (error) {
             handleFirestoreError(error, OperationType.WRITE, `posts/${p.id}`);
           }
@@ -597,7 +623,7 @@ const App: React.FC = () => {
             return;
           }
           const defaultPass = `OM${id}`;
-          const newTeacher: User = { 
+          const newTeacher: any = { 
             id, 
             code: id, 
             name, 
@@ -606,9 +632,6 @@ const App: React.FC = () => {
             mustChangePassword: true, 
             isActive: true, 
             joinedAt: currentAcademicYear, 
-            email, 
-            phoneNumber: phone,
-            assignments,
             auditLogs: [{
               id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
               userId: id,
@@ -617,8 +640,12 @@ const App: React.FC = () => {
               timestamp: new Date().toISOString()
             }]
           };
+          if (email) newTeacher.email = email;
+          if (phone) newTeacher.phoneNumber = phone;
+          if (assignments && assignments.length > 0) newTeacher.assignments = assignments;
+
           try {
-            await setDoc(doc(db, 'users', id), newTeacher);
+            await setDoc(doc(db, 'users', id), newTeacher as User);
           } catch (error) {
             handleFirestoreError(error, OperationType.WRITE, `users/${id}`);
           }
@@ -628,9 +655,15 @@ const App: React.FC = () => {
         onDeletePermanentlyTeacher={handleDeletePermanentlyTeacher}
         onUpdateTeacher={async (originalId, updatedTeacher) => {
           try {
-            await setDoc(doc(db, 'users', originalId), updatedTeacher);
+            const cleanTeacher = { ...updatedTeacher } as any;
+            Object.keys(cleanTeacher).forEach(key => {
+              if (cleanTeacher[key] === undefined) {
+                delete cleanTeacher[key];
+              }
+            });
+            await setDoc(doc(db, 'users', originalId), cleanTeacher);
             if (auth.user?.id === originalId) {
-              setAuth(prev => ({ ...prev, user: updatedTeacher }));
+              setAuth(prev => ({ ...prev, user: cleanTeacher as User }));
             }
           } catch (error) {
             handleFirestoreError(error, OperationType.UPDATE, `users/${originalId}`);
@@ -639,7 +672,11 @@ const App: React.FC = () => {
         onResetPassword={handleResetPassword}
         onAddProject={async (p) => {
           try {
-            await setDoc(doc(db, 'projects', p.id), p);
+            const cleanProject = { ...p } as any;
+            Object.keys(cleanProject).forEach(key => {
+              if (cleanProject[key] === undefined) delete cleanProject[key];
+            });
+            await setDoc(doc(db, 'projects', p.id), cleanProject);
           } catch (error) {
             handleFirestoreError(error, OperationType.WRITE, `projects/${p.id}`);
           }
@@ -666,7 +703,11 @@ const App: React.FC = () => {
         }}
         onAddTempSupervisor={async (u) => {
           try {
-            await setDoc(doc(db, 'users', u.id), u);
+            const cleanUser = { ...u } as any;
+            Object.keys(cleanUser).forEach(key => {
+              if (cleanUser[key] === undefined) delete cleanUser[key];
+            });
+            await setDoc(doc(db, 'users', u.id), cleanUser);
           } catch (error) {
             handleFirestoreError(error, OperationType.WRITE, `users/${u.id}`);
           }
@@ -740,7 +781,10 @@ const App: React.FC = () => {
           onSendMessage={handleSendMessage}
           onMarkMessageAsRead={handleMarkMessageAsRead}
           onAddMaterial={async (m) => {
-            const material = { ...m, status: 'pending', isModelLesson: false };
+            const material = { ...m, status: 'pending', isModelLesson: false } as any;
+            Object.keys(material).forEach(key => {
+              if (material[key] === undefined) delete material[key];
+            });
             try {
               await setDoc(doc(db, 'lessonMaterials', material.id), material);
             } catch (error) {
