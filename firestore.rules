@@ -40,27 +40,31 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function getUserId() {
+      return ("email" in request.auth.token && request.auth.token.email != null) ? request.auth.token.email.replace("@app.com", "") : request.auth.uid;
+    }
+
     function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+      return isAuthenticated() && getUserId() == userId;
     }
 
     function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return get(/databases/$(database)/documents/users/$(getUserId())).data;
     }
 
     function isAdmin() {
       return isAuthenticated() &&
-        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'SUPERVISOR') ||
-          (request.auth.token.email == "omanartificialintelligence@gmail.com" && request.auth.token.email_verified == true) ||
-          (request.auth.token.email.matches(".*@supervisor\\.com$")));
+        (getUserId() == '16115506' || getUserId() == 'admin' ||
+        ("email" in request.auth.token && request.auth.token.email == "omanartificialintelligence@gmail.com" && "email_verified" in request.auth.token && request.auth.token.email_verified == true) ||
+        (exists(/databases/$(database)/documents/users/$(getUserId())) && get(/databases/$(database)/documents/users/$(getUserId())).data.role == 'SUPERVISOR'));
     }
 
     function isTeacher() {
-      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'TEACHER';
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(getUserId())) && get(/databases/$(database)/documents/users/$(getUserId())).data.role == 'TEACHER';
     }
 
     function isTempSupervisor() {
-      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'TEMP_SUPERVISOR';
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(getUserId())) && get(/databases/$(database)/documents/users/$(getUserId())).data.role == 'TEMP_SUPERVISOR';
     }
 
     function isAnySupervisor() {
@@ -101,43 +105,83 @@ service cloud.firestore {
     // Rules
     // ===============================================================
 
+    function canManageUsers() {
+      return isAdmin() || (
+        isAuthenticated() && exists(/databases/$(database)/documents/users/$(getUserId())) &&
+        get(/databases/$(database)/documents/users/$(getUserId())).data.role == 'TEMP_SUPERVISOR' &&
+        ("tempPermissions" in get(/databases/$(database)/documents/users/$(getUserId())).data) &&
+        (get(/databases/$(database)/documents/users/$(getUserId())).data.tempPermissions.hasFullAccess == true || 
+         get(/databases/$(database)/documents/users/$(getUserId())).data.tempPermissions.canManageUsers == true)
+      );
+    }
+
+    function canManageLessons() {
+      return isAdmin() || (
+        isAuthenticated() && exists(/databases/$(database)/documents/users/$(getUserId())) &&
+        get(/databases/$(database)/documents/users/$(getUserId())).data.role == 'TEMP_SUPERVISOR' &&
+        ("tempPermissions" in get(/databases/$(database)/documents/users/$(getUserId())).data) &&
+        (get(/databases/$(database)/documents/users/$(getUserId())).data.tempPermissions.hasFullAccess == true || 
+         get(/databases/$(database)/documents/users/$(getUserId())).data.tempPermissions.canManageLessons == true)
+      );
+    }
+
+    function canManageProjects() {
+      return isAdmin() || (
+        isAuthenticated() && exists(/databases/$(database)/documents/users/$(getUserId())) &&
+        get(/databases/$(database)/documents/users/$(getUserId())).data.role == 'TEMP_SUPERVISOR' &&
+        ("tempPermissions" in get(/databases/$(database)/documents/users/$(getUserId())).data) &&
+        (get(/databases/$(database)/documents/users/$(getUserId())).data.tempPermissions.hasFullAccess == true || 
+         get(/databases/$(database)/documents/users/$(getUserId())).data.tempPermissions.canManageProjects == true)
+      );
+    }
+
+    function canManagePosts() {
+      return isAdmin() || (
+        isAuthenticated() && exists(/databases/$(database)/documents/users/$(getUserId())) &&
+        get(/databases/$(database)/documents/users/$(getUserId())).data.role == 'TEMP_SUPERVISOR' &&
+        ("tempPermissions" in get(/databases/$(database)/documents/users/$(getUserId())).data) &&
+        (get(/databases/$(database)/documents/users/$(getUserId())).data.tempPermissions.hasFullAccess == true || 
+         get(/databases/$(database)/documents/users/$(getUserId())).data.tempPermissions.canManagePosts == true)
+      );
+    }
+
     match /users/{userId} {
       allow read: if true; // Public read needed for LoginForm local verification
-      allow create: if isAdmin() && isValidUser(request.resource.data);
-      allow update: if (isAdmin() || isOwner(userId)) && isValidUser(request.resource.data);
-      allow delete: if isAdmin();
+      allow create: if canManageUsers() && isValidUser(request.resource.data);
+      allow update: if (canManageUsers() || isOwner(userId)) && isValidUser(request.resource.data);
+      allow delete: if canManageUsers();
     }
 
     match /lessonMaterials/{materialId} {
       allow read: if isAuthenticated(); // Restrict to logged in users
-      allow create: if (isTeacher() || isAdmin()) && isValidLesson(request.resource.data);
-      allow update: if (isAdmin() || (isTeacher() && resource.data.teacherId == request.auth.uid)) && isValidLesson(request.resource.data);
-      allow delete: if isAdmin();
+      allow create: if (isTeacher() || canManageLessons()) && isValidLesson(request.resource.data);
+      allow update: if (canManageLessons() || (isTeacher() && resource.data.teacherId == getUserId())) && isValidLesson(request.resource.data);
+      allow delete: if canManageLessons();
     }
 
     match /projects/{projectId} {
       allow read: if isAuthenticated();
-      allow create, update, delete: if isAdmin();
+      allow create, update, delete: if canManageProjects();
     }
 
     match /posts/{postId} {
       allow read: if true; // Keep public for now as requested, but ensure it works
-      allow create: if isAdmin() && isValidPost(request.resource.data);
-      allow update: if isAdmin() && isValidPost(request.resource.data);
-      allow delete: if isAdmin();
+      allow create: if canManagePosts() && isValidPost(request.resource.data);
+      allow update: if canManagePosts() && isValidPost(request.resource.data);
+      allow delete: if canManagePosts();
     }
 
     match /notifications/{notificationId} {
-      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAnySupervisor());
+      allow read: if isAuthenticated() && (resource.data.userId == getUserId() || isAnySupervisor());
       allow create: if isAnySupervisor();
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+      allow update: if isAuthenticated() && resource.data.userId == getUserId() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
       allow delete: if isAnySupervisor();
     }
 
     match /messages/{messageId} {
-      allow read: if isAuthenticated() && (resource.data.senderId == request.auth.uid || resource.data.recipientId == request.auth.uid || resource.data.recipientId == 'ALL' || isAnySupervisor());
+      allow read: if isAuthenticated() && (resource.data.senderId == getUserId() || resource.data.recipientId == getUserId() || resource.data.recipientId == 'ALL' || isAnySupervisor());
       allow create: if isAuthenticated();
-      allow update: if isAnySupervisor() || (isAuthenticated() && resource.data.recipientId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']));
+      allow update: if isAnySupervisor() || (isAuthenticated() && resource.data.recipientId == getUserId() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']));
       allow delete: if isAnySupervisor();
     }
 

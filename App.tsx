@@ -82,13 +82,13 @@ const App: React.FC = () => {
       unsubs.push(unsubConfig);
 
       const unsubTeachers = onSnapshot(collection(db, 'users'), (snapshot) => {
-        const list = snapshot.docs.map(doc => doc.data() as User);
+        const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
         setTeachers(list);
       }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
       unsubs.push(unsubTeachers);
       
       const unsubPosts = onSnapshot(collection(db, 'posts'), (snapshot) => {
-        const list = snapshot.docs.map(doc => doc.data() as Post);
+        const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Post));
         setPosts(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       }, (error) => handleFirestoreError(error, OperationType.LIST, 'posts'));
       unsubs.push(unsubPosts);
@@ -97,32 +97,32 @@ const App: React.FC = () => {
     // Private listeners (only for authenticated users with roles)
     const setupPrivateListeners = () => {
       const unsubLessons = onSnapshot(collection(db, 'lessonMaterials'), (snapshot) => {
-        const list = snapshot.docs.map(doc => doc.data() as LessonMaterial);
+        const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as LessonMaterial));
         setLessonMaterials(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       }, (error) => handleFirestoreError(error, OperationType.LIST, 'lessonMaterials'));
       unsubs.push(unsubLessons);
 
       const unsubProjects = onSnapshot(collection(db, 'projects'), (snapshot) => {
-        const list = snapshot.docs.map(doc => doc.data() as Project);
+        const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Project));
         setProjects(list);
       }, (error) => handleFirestoreError(error, OperationType.LIST, 'projects'));
       unsubs.push(unsubProjects);
 
       const unsubNotifications = onSnapshot(collection(db, 'notifications'), (snapshot) => {
-        const list = snapshot.docs.map(doc => doc.data() as Notification);
+        const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Notification));
         setNotifications(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       }, (error) => handleFirestoreError(error, OperationType.LIST, 'notifications'));
       unsubs.push(unsubNotifications);
 
       const unsubMessages = onSnapshot(collection(db, 'messages'), (snapshot) => {
-        const list = snapshot.docs.map(doc => doc.data() as Message);
+        const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Message));
         setMessages(list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
       }, (error) => handleFirestoreError(error, OperationType.LIST, 'messages'));
       unsubs.push(unsubMessages);
 
       if (auth.user?.role === UserRole.SUPERVISOR || auth.user?.role === UserRole.TEMP_SUPERVISOR) {
         const unsubReset = onSnapshot(collection(db, 'resetRequests'), (snapshot) => {
-          const list = snapshot.docs.map(doc => doc.data() as ResetRequest);
+          const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as ResetRequest));
           setResetRequests(list);
         }, (error) => handleFirestoreError(error, OperationType.LIST, 'resetRequests'));
         unsubs.push(unsubReset);
@@ -251,6 +251,25 @@ const App: React.FC = () => {
 
   const handleLogin = async (user: User) => {
     if (user.code === 'admin' && user.password === 'admin') {
+      try {
+        const email = `admin@app.com`;
+        const firebasePassword = `SecurePass_admin_2026!`;
+        try {
+          await signInWithEmailAndPassword(firebaseAuth, email, firebasePassword);
+        } catch (signInError: any) {
+          if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') {
+            await createUserWithEmailAndPassword(firebaseAuth, email, firebasePassword);
+          } else if (signInError.code === 'auth/operation-not-allowed') {
+            alert("يرجى تفعيل المصادقة بكلمة المرور والبريد الإلكتروني (Email/Password Authentication) من لوحة تحكم Firebase.");
+            return;
+          } else {
+            throw signInError;
+          }
+        }
+      } catch (error) {
+        console.error("Failed to sign in admin for setup:", error);
+        return;
+      }
       setIsFirstTimeSetup(true);
       return;
     }
@@ -260,32 +279,43 @@ const App: React.FC = () => {
     }
 
     // Ensure Firebase Auth session for custom login
-    if (!firebaseAuth.currentUser) {
+    try {
+      const email = `${user.id}@app.com`;
+      const firebasePassword = `SecurePass_${user.id}_2026!`; // Use a strong fixed password for Firebase Auth
       try {
-        if (user.role === UserRole.SUPERVISOR || user.role === UserRole.TEMP_SUPERVISOR) {
-          const email = `${user.id}@supervisor.com`;
-          const firebasePassword = `SecurePass_${user.id}_2026!`; // Use a strong fixed password for Firebase Auth
+        await signInWithEmailAndPassword(firebaseAuth, email, firebasePassword);
+      } catch (signInError: any) {
+        if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') {
           try {
-            await signInWithEmailAndPassword(firebaseAuth, email, firebasePassword);
-          } catch (signInError: any) {
-            if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') {
+            await createUserWithEmailAndPassword(firebaseAuth, email, firebasePassword);
+            if (user.role === UserRole.SUPERVISOR || user.role === UserRole.TEMP_SUPERVISOR) {
               try {
-                await createUserWithEmailAndPassword(firebaseAuth, email, firebasePassword);
-              } catch (createError) {
-                console.error("Create user failed:", createError);
-                await signInAnonymously(firebaseAuth);
+                await setDoc(doc(db, 'users', user.id), user);
+              } catch (docError) {
+                console.error("Failed to create supervisor doc:", docError);
               }
-            } else {
-              console.error("Sign in failed:", signInError);
-              await signInAnonymously(firebaseAuth);
             }
+          } catch (createError: any) {
+            console.error("Create user failed:", createError);
+            if (createError.code === 'auth/operation-not-allowed') {
+              alert("يرجى تفعيل المصادقة بكلمة المرور والبريد الإلكتروني (Email/Password Authentication) من لوحة تحكم Firebase.");
+            } else {
+              alert("فشل إنشاء حساب المصادقة. قد لا تعمل بعض الميزات بشكل صحيح.");
+            }
+            return; // Stop login process
           }
+        } else if (signInError.code === 'auth/operation-not-allowed') {
+          alert("يرجى تفعيل المصادقة بكلمة المرور والبريد الإلكتروني (Email/Password Authentication) من لوحة تحكم Firebase.");
+          return; // Stop login process
         } else {
-          await signInAnonymously(firebaseAuth);
+          console.error("Sign in failed:", signInError);
+          alert("فشل تسجيل الدخول للمصادقة. قد لا تعمل بعض الميزات بشكل صحيح.");
+          return; // Stop login process
         }
-      } catch (error) {
-        console.warn("Firebase auth failed, falling back to local session:", error);
       }
+    } catch (error) {
+      console.warn("Firebase auth failed:", error);
+      return; // Stop login process
     }
 
     setAuth({ user, isAuthenticated: true });
@@ -296,7 +326,12 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await signOut(firebaseAuth);
+    } catch (error) {
+      console.error("Error signing out of Firebase:", error);
+    }
     setAuth({ user: null, isAuthenticated: false });
     setShowChangePassword(false);
   };
@@ -646,7 +681,9 @@ const App: React.FC = () => {
 
           try {
             await setDoc(doc(db, 'users', id), newTeacher as User);
-          } catch (error) {
+          } catch (error: any) {
+            console.error("Error adding teacher:", error);
+            alert("حدث خطأ أثناء إضافة المعلمة: " + (error.message || String(error)));
             handleFirestoreError(error, OperationType.WRITE, `users/${id}`);
           }
         }}
