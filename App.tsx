@@ -15,8 +15,17 @@ import {
   deleteDoc, 
   query, 
   where, 
-  getDocs
+  getDocs,
+  Unsubscribe
 } from 'firebase/firestore';
+import { 
+  onAuthStateChanged, 
+  signInAnonymously,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut
+} from 'firebase/auth';
+import { auth as firebaseAuth } from './src/firebase';
 
 const APP_TITLE = "منصة الإبداع للمجال الأول";
 
@@ -41,60 +50,130 @@ const App: React.FC = () => {
     archiveYears: ['2024-2025', '2023-2024']
   });
 
+  const [isAuthReady, setIsAuthReady] = useState(false);
+
+  // Firebase Auth Listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
+      if (user) {
+        setIsAuthReady(true);
+      } else {
+        // Automatically sign in anonymously to allow reading public/login data
+        signInAnonymously(firebaseAuth).catch(err => {
+          console.error("Anonymous sign-in failed:", err);
+        });
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
   // Firestore Listeners
   useEffect(() => {
-    const unsubConfig = onSnapshot(doc(db, 'config', 'supervisor'), (docSnap) => {
-      if (docSnap.exists()) {
-        setSupervisorConfig(docSnap.data() as SupervisorConfig);
+    if (!isAuthReady) return;
+
+    let unsubs: Unsubscribe[] = [];
+
+    // Public/Login-required listeners (for everyone including anonymous)
+    const setupPublicListeners = () => {
+      const unsubConfig = onSnapshot(doc(db, 'config', 'supervisor'), (docSnap) => {
+        if (docSnap.exists()) {
+          setSupervisorConfig(docSnap.data() as SupervisorConfig);
+        }
+      }, (error) => handleFirestoreError(error, OperationType.GET, 'config/supervisor'));
+      unsubs.push(unsubConfig);
+
+      const unsubTeachers = onSnapshot(collection(db, 'users'), (snapshot) => {
+        const list = snapshot.docs.map(doc => doc.data() as User);
+        setTeachers(list);
+      }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
+      unsubs.push(unsubTeachers);
+      
+      const unsubPosts = onSnapshot(collection(db, 'posts'), (snapshot) => {
+        const list = snapshot.docs.map(doc => doc.data() as Post);
+        setPosts(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      }, (error) => handleFirestoreError(error, OperationType.LIST, 'posts'));
+      unsubs.push(unsubPosts);
+    };
+
+    // Private listeners (only for authenticated users with roles)
+    const setupPrivateListeners = () => {
+      const unsubLessons = onSnapshot(collection(db, 'lessonMaterials'), (snapshot) => {
+        const list = snapshot.docs.map(doc => doc.data() as LessonMaterial);
+        setLessonMaterials(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      }, (error) => handleFirestoreError(error, OperationType.LIST, 'lessonMaterials'));
+      unsubs.push(unsubLessons);
+
+      const unsubProjects = onSnapshot(collection(db, 'projects'), (snapshot) => {
+        const list = snapshot.docs.map(doc => doc.data() as Project);
+        setProjects(list);
+      }, (error) => handleFirestoreError(error, OperationType.LIST, 'projects'));
+      unsubs.push(unsubProjects);
+
+      const unsubNotifications = onSnapshot(collection(db, 'notifications'), (snapshot) => {
+        const list = snapshot.docs.map(doc => doc.data() as Notification);
+        setNotifications(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      }, (error) => handleFirestoreError(error, OperationType.LIST, 'notifications'));
+      unsubs.push(unsubNotifications);
+
+      const unsubMessages = onSnapshot(collection(db, 'messages'), (snapshot) => {
+        const list = snapshot.docs.map(doc => doc.data() as Message);
+        setMessages(list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
+      }, (error) => handleFirestoreError(error, OperationType.LIST, 'messages'));
+      unsubs.push(unsubMessages);
+
+      if (auth.user?.role === UserRole.SUPERVISOR || auth.user?.role === UserRole.TEMP_SUPERVISOR) {
+        const unsubReset = onSnapshot(collection(db, 'resetRequests'), (snapshot) => {
+          const list = snapshot.docs.map(doc => doc.data() as ResetRequest);
+          setResetRequests(list);
+        }, (error) => handleFirestoreError(error, OperationType.LIST, 'resetRequests'));
+        unsubs.push(unsubReset);
       }
-    }, (error) => handleFirestoreError(error, OperationType.GET, 'config/supervisor'));
+    };
 
-    const unsubTeachers = onSnapshot(collection(db, 'users'), (snapshot) => {
-      const list = snapshot.docs.map(doc => doc.data() as User);
-      setTeachers(list);
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
-
-    const unsubLessons = onSnapshot(collection(db, 'lessonMaterials'), (snapshot) => {
-      const list = snapshot.docs.map(doc => doc.data() as LessonMaterial);
-      setLessonMaterials(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'lessonMaterials'));
-
-    const unsubProjects = onSnapshot(collection(db, 'projects'), (snapshot) => {
-      const list = snapshot.docs.map(doc => doc.data() as Project);
-      setProjects(list);
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'projects'));
-
-    const unsubPosts = onSnapshot(collection(db, 'posts'), (snapshot) => {
-      const list = snapshot.docs.map(doc => doc.data() as Post);
-      setPosts(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'posts'));
-
-    const unsubReset = onSnapshot(collection(db, 'resetRequests'), (snapshot) => {
-      const list = snapshot.docs.map(doc => doc.data() as ResetRequest);
-      setResetRequests(list);
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'resetRequests'));
-
-    const unsubNotifications = onSnapshot(collection(db, 'notifications'), (snapshot) => {
-      const list = snapshot.docs.map(doc => doc.data() as Notification);
-      setNotifications(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'notifications'));
-
-    const unsubMessages = onSnapshot(collection(db, 'messages'), (snapshot) => {
-      const list = snapshot.docs.map(doc => doc.data() as Message);
-      setMessages(list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'messages'));
+    setupPublicListeners();
+    if (auth.isAuthenticated) {
+      setupPrivateListeners();
+    }
 
     return () => {
-      unsubConfig();
-      unsubTeachers();
-      unsubLessons();
-      unsubProjects();
-      unsubPosts();
-      unsubReset();
-      unsubNotifications();
-      unsubMessages();
+      unsubs.forEach(unsub => unsub());
     };
-  }, []);
+  }, [isAuthReady, auth.isAuthenticated, auth.user?.role]);
+
+  const handleGoogleLogin = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(firebaseAuth, provider);
+      // After Google login, the onAuthStateChanged will trigger isAuthReady
+      // We also need to check if this user exists in our 'users' collection
+      // or if they are the hardcoded admin.
+      const user = result.user;
+      if (user.email === "omanartificialintelligence@gmail.com") {
+        const adminUser: User = {
+          id: user.uid,
+          name: user.displayName || 'المشرفة العامة',
+          role: UserRole.SUPERVISOR,
+          code: 'admin',
+          isActive: true,
+          joinedAt: '2026'
+        };
+        setAuth({ user: adminUser, isAuthenticated: true });
+      } else {
+        // Check if they are a registered teacher with this email
+        const q = query(collection(db, 'users'), where('email', '==', user.email));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const teacherData = snap.docs[0].data() as User;
+          setAuth({ user: teacherData, isAuthenticated: true });
+        } else {
+          alert('عذراً، هذا البريد الإلكتروني غير مسجل كمعلمة أو مشرفة.');
+          await signOut(firebaseAuth);
+        }
+      }
+    } catch (error) {
+      console.error("Google login failed:", error);
+    }
+  };
 
   const handleSendMessage = async (text: string, recipientId: string = 'ALL', attachments: Attachment[] = []) => {
     if (auth.user) {
@@ -130,7 +209,9 @@ const App: React.FC = () => {
   const [showChangePassword, setShowChangePassword] = useState(false);
 
   useEffect(() => {
-    // Automated archiving
+    // Automated archiving - Only run if authenticated as Supervisor
+    if (!auth.isAuthenticated || (auth.user?.role !== UserRole.SUPERVISOR && auth.user?.role !== UserRole.TEMP_SUPERVISOR)) return;
+    
     const currentYear = supervisorConfig.academicYear;
     const currentSemester = supervisorConfig.semester;
     
@@ -338,9 +419,21 @@ const App: React.FC = () => {
     }
   };
 
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 font-['Tajawal']">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-slate-500 font-bold">جاري الاتصال بالنظام...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!auth.isAuthenticated) {
     return <LoginForm 
       onLogin={handleLogin} 
+      onGoogleLogin={handleGoogleLogin}
       teachers={teachers} 
       onForgotPassword={handleForgotPasswordRequest}
       onUpdateSupervisorConfig={(config) => setSupervisorConfig(prev => ({ ...prev, ...config }))}
