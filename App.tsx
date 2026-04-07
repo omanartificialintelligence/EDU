@@ -252,13 +252,19 @@ const App: React.FC = () => {
   const handleLogin = async (user: User) => {
     if (user.code === '16115506' && user.password === 'admin') {
       try {
-        const email = `admin@app.com`;
+        const email = `16115506@moe.om`;
         const firebasePassword = `SecurePass_admin_2026!`;
         try {
           await signInWithEmailAndPassword(firebaseAuth, email, firebasePassword);
         } catch (signInError: any) {
           if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') {
-            await createUserWithEmailAndPassword(firebaseAuth, email, firebasePassword);
+            try {
+              await createUserWithEmailAndPassword(firebaseAuth, email, firebasePassword);
+            } catch (createError: any) {
+              if (createError.code !== 'auth/email-already-in-use') {
+                throw createError;
+              }
+            }
           } else if (signInError.code === 'auth/operation-not-allowed') {
             alert("يرجى تفعيل المصادقة بكلمة المرور والبريد الإلكتروني (Email/Password Authentication) من لوحة تحكم Firebase.");
             return;
@@ -280,7 +286,7 @@ const App: React.FC = () => {
 
     // Ensure Firebase Auth session for custom login
     try {
-      const email = `${user.id}@app.com`;
+      const email = `${user.id}@moe.om`;
       const firebasePassword = `SecurePass_${user.id}_2026!`; // Use a strong fixed password for Firebase Auth
       try {
         await signInWithEmailAndPassword(firebaseAuth, email, firebasePassword);
