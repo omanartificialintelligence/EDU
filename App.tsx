@@ -250,7 +250,7 @@ const App: React.FC = () => {
   }, [supervisorConfig, lessonMaterials, projects, posts]);
 
   const handleLogin = async (user: User) => {
-    if (user.code === 'admin' && user.password === 'admin') {
+    if (user.code === '16115506' && user.password === 'admin') {
       try {
         const email = `admin@app.com`;
         const firebasePassword = `SecurePass_admin_2026!`;

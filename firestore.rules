@@ -54,7 +54,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() &&
-        (getUserId() == '16115506' || getUserId() == 'admin' ||
+        (getUserId() == '16115506' ||
         ("email" in request.auth.token && request.auth.token.email == "omanartificialintelligence@gmail.com" && "email_verified" in request.auth.token && request.auth.token.email_verified == true) ||
         (exists(/databases/$(database)/documents/users/$(getUserId())) && get(/databases/$(database)/documents/users/$(getUserId())).data.role == 'SUPERVISOR'));
     }

@@ -37,13 +37,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onGoogleLogin, teachers,
     }
 
     // Supervisor Login Check
-    const isSupervisor = cleanCode === '16115506' || cleanCode.toLowerCase() === 'admin';
+    const isSupervisor = cleanCode === '16115506';
     
     if (isSupervisor) {
       const foundInTeachers = teachers.find(t => t.id === cleanCode);
       const isValidSupervisor = 
-        (cleanCode === '16115506' && (cleanPass === '16115506' || cleanPass === supervisorConfig.mainPassword || cleanPass === supervisorConfig.backupPassword)) ||
-        (cleanCode.toLowerCase() === 'admin' && cleanPass === 'admin') ||
+        (cleanCode === '16115506' && cleanPass === 'admin') ||
         (supervisorConfig.mainPassword && cleanPass === supervisorConfig.mainPassword) ||
         (supervisorConfig.backupPassword && cleanPass === supervisorConfig.backupPassword) ||
         (foundInTeachers && cleanPass === foundInTeachers.password);
@@ -51,9 +50,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onGoogleLogin, teachers,
       if (isValidSupervisor) {
         onLogin(foundInTeachers || { 
           id: cleanCode, 
-          name: cleanCode === '16115506' ? 'رحمه بنت حمد الشرجيه' : 'المشرفة العامة', 
+          name: 'رحمه بنت حمد الشرجيه', 
           role: UserRole.SUPERVISOR, 
           code: cleanCode,
+          password: cleanPass,
           isActive: true,
           joinedAt: '2026'
         });
@@ -83,7 +83,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onGoogleLogin, teachers,
     const cleanId = forgotId.trim();
     if (!cleanId) return;
 
-    const isSupervisor = cleanId === '16115506' || cleanId.toUpperCase().startsWith('S') || cleanId.startsWith('99') || cleanId.toUpperCase() === 'OM12345' || cleanId.toLowerCase() === 'admin';
+    const isSupervisor = cleanId === '16115506' || cleanId.toUpperCase().startsWith('S') || cleanId.startsWith('99') || cleanId.toUpperCase() === 'OM12345';
 
     if (isSupervisor) {
       setForgotStep('emergency');
