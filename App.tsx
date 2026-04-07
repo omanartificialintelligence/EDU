@@ -251,10 +251,10 @@ const App: React.FC = () => {
   }, [supervisorConfig, lessonMaterials, projects, posts]);
 
   const handleLogin = async (user: User) => {
-    if (user.code === '16115506' && user.password === 'admin') {
+    if (user.code === '16115506' && user.password === 'rahmah@moe.om') {
       try {
         const email = `16115506@moe.om`;
-        const firebasePassword = `SecurePass_admin_2026!`;
+        const firebasePassword = `Rahmah_Admin_2026!`; // Using a strong password for Firebase Auth
         try {
           await signInWithEmailAndPassword(firebaseAuth, email, firebasePassword);
         } catch (signInError: any) {
