@@ -254,7 +254,7 @@ const App: React.FC = () => {
     if (user.code === '16115506' && user.password === 'rahmah@moe.om') {
       try {
         const email = `16115506@moe.om`;
-        const firebasePassword = `Rahmah_Admin_2026!`; // Using a strong password for Firebase Auth
+        const firebasePassword = `rahmah@moe.om`; // Using the requested password
         try {
           await signInWithEmailAndPassword(firebaseAuth, email, firebasePassword);
         } catch (signInError: any) {
@@ -315,12 +315,14 @@ const App: React.FC = () => {
               console.warn("User already exists, proceeding with login.");
             } else if (createError.code === 'auth/too-many-requests') {
               alert("لقد قمت بالكثير من محاولات تسجيل الدخول. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.");
+              return; // Stop login process
             } else if (createError.code === 'auth/operation-not-allowed') {
               alert("يرجى تفعيل المصادقة بكلمة المرور والبريد الإلكتروني (Email/Password Authentication) من لوحة تحكم Firebase.");
+              return; // Stop login process
             } else {
               alert("فشل إنشاء حساب المصادقة. قد لا تعمل بعض الميزات بشكل صحيح.");
+              return; // Stop login process
             }
-            return; // Stop login process
           }
         } else if (signInError.code === 'auth/too-many-requests') {
           alert("لقد قمت بالكثير من محاولات تسجيل الدخول. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.");

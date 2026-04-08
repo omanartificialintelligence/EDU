@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { GraduationCap } from 'lucide-react';
 import { UserRole, User, SupervisorConfig } from '../types';
+import { auth } from '../src/firebase';
+import { sendPasswordResetEmail } from 'firebase/auth';
 
 interface LoginFormProps {
   onLogin: (user: User) => void;
@@ -20,7 +22,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onGoogleLogin, teachers,
   const [error, setError] = useState('');
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotId, setForgotId] = useState('');
-  const [forgotStep, setForgotStep] = useState<'id' | 'emergency' | 'reset'>('id');
+  const [forgotStep, setForgotStep] = useState<'id' | 'emergency' | 'reset' | 'email'>('id');
   const [emergencyPass, setEmergencyPass] = useState('');
   const [newMainPass, setNewMainPass] = useState('');
   const [newBackupPass, setNewBackupPass] = useState('');
@@ -32,27 +34,31 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onGoogleLogin, teachers,
     const cleanPass = password.trim();
     
     if (!cleanCode || !cleanPass) {
-      setError('يرجى إدخال الرقم الوظيفي وكلمة المرور');
+      setError('يرجى إدخال الرقم الوظيفي أو البريد الإلكتروني وكلمة المرور');
       return;
     }
 
+    // Determine if input is email or ID
+    const isEmail = cleanCode.includes('@');
+    const employeeId = isEmail ? cleanCode.split('@')[0] : cleanCode;
+
     // Supervisor Login Check
-    const isSupervisor = cleanCode === '16115506';
+    const isSupervisor = employeeId === '16115506';
     
     if (isSupervisor) {
-      const foundInTeachers = teachers.find(t => t.id === cleanCode);
+      const foundInTeachers = teachers.find(t => t.id === employeeId);
       const isValidSupervisor = 
-        (cleanCode === '16115506' && cleanPass === 'admin') ||
+        (employeeId === '16115506' && cleanPass === 'rahmah@moe.om') ||
         (supervisorConfig.mainPassword && cleanPass === supervisorConfig.mainPassword) ||
         (supervisorConfig.backupPassword && cleanPass === supervisorConfig.backupPassword) ||
         (foundInTeachers && cleanPass === foundInTeachers.password);
 
       if (isValidSupervisor) {
         onLogin(foundInTeachers || { 
-          id: cleanCode, 
+          id: employeeId, 
           name: 'رحمه بنت حمد الشرجيه', 
           role: UserRole.SUPERVISOR, 
-          code: cleanCode,
+          code: employeeId,
           password: cleanPass,
           isActive: true,
           joinedAt: '2026'
@@ -65,7 +71,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onGoogleLogin, teachers,
     }
 
     // Teacher & Temp Supervisor Check
-    const foundUser = teachers.find(t => t.id === cleanCode);
+    const foundUser = teachers.find(t => t.id === employeeId);
     if (!foundUser) {
       setError('المستخدم غير مسجل في النظام');
       return;
@@ -89,9 +95,22 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onGoogleLogin, teachers,
       setForgotStep('emergency');
       setForgotError('');
     } else {
-      onForgotPassword(cleanId);
-      setShowForgotModal(false);
-      setForgotId('');
+      // For regular users, ask for email to reset password
+      setForgotStep('email');
+      setForgotError('');
+    }
+  };
+
+  const handleEmailReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = `${forgotId}@moe.om`;
+    try {
+      await sendPasswordResetEmail(auth, email);
+      alert('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.');
+      closeForgotModal();
+    } catch (error) {
+      console.error(error);
+      setForgotError('حدث خطأ أثناء إرسال رابط إعادة تعيين كلمة المرور.');
     }
   };
 
