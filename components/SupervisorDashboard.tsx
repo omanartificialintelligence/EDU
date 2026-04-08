@@ -343,6 +343,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [resetPassword, setResetPassword] = useState<string | null>(null);
   const [resetTeacherName, setResetTeacherName] = useState<string | null>(null);
   const [resetTeacherPhone, setResetTeacherPhone] = useState<string | null>(null);
+  const [resetTeacherId, setResetTeacherId] = useState<string | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   // Security & Config State
@@ -1316,6 +1317,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           setResetPassword(newPass);
                           setResetTeacherName(teacher.name);
                           setResetTeacherPhone(teacher.phoneNumber || '');
+                          setResetTeacherId(teacher.code || teacher.id);
                           setShowPasswordModal(true);
                         }}
                         className="text-indigo-600 hover:text-indigo-800 font-bold text-xs mb-4"
@@ -1391,6 +1393,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   setResetPassword(pass);
                                   setResetTeacherName(teacher.name);
                                   setResetTeacherPhone(teacher.phoneNumber || '');
+                                  setResetTeacherId(teacher.code || teacher.id);
                               }}
                               className="flex-1 py-2.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors font-bold text-xs flex items-center justify-center gap-2"
                             >
@@ -3220,8 +3223,20 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 </button>
                 <button 
                   onClick={() => {
-                    const message = `مرحباً ${resetTeacherName}، تم إعادة تعيين كلمة المرور الخاصة بك في منصة الإبداع. كلمة المرور الجديدة هي: ${resetPassword}`;
-                    window.open(`https://wa.me/${resetTeacherPhone?.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
+                    const message = `السلام عليكم الأستاذة ${resetTeacherName}\n` +
+                                    `تم تحديث بيانات دخولك لمنصة إبداع المجال الأول\n` +
+                                    `الرقم الوظيفي: ${resetTeacherId}\n` +
+                                    `كلمة المرور: ${resetPassword}\n` +
+                                    `رابط المنصة: https://education-489618.web.app`;
+                    
+                    const encodedMessage = encodeURIComponent(message);
+                    let formattedPhone = (resetTeacherPhone || '').replace(/\D/g, '');
+                    if (formattedPhone && !formattedPhone.startsWith('968')) {
+                        formattedPhone = '968' + formattedPhone;
+                    }
+                    
+                    const whatsappUrl = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodedMessage}`;
+                    window.open(whatsappUrl, '_blank');
                   }}
                   className="bg-emerald-600 text-white py-3 rounded-xl font-black text-xs hover:bg-emerald-700 transition-all"
                 >
@@ -3628,61 +3643,73 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 </button>
               </div>
             </motion.div>
-            {/* Password Reset Modal */}
-            <AnimatePresence>
-              {showPasswordModal && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
-                  onClick={() => setShowPasswordModal(false)}
-                >
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    onClick={e => e.stopPropagation()}
-                    className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl p-8"
-                  >
-                    <h3 className="text-xl font-black text-slate-900 mb-2">كلمة المرور الجديدة</h3>
-                    <p className="text-slate-500 font-bold text-xs mb-6">تم إعادة تعيين كلمة مرور المعلمة {resetTeacherName}</p>
-                    
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 text-center">
-                      <span className="text-2xl font-mono font-bold text-indigo-600 tracking-widest">{resetPassword}</span>
-                    </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(resetPassword || '');
-                          alert('تم نسخ كلمة المرور');
-                        }}
-                        className="px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all"
-                      >
-                        نسخ
-                      </button>
-                      <button
-                        onClick={() => {
-                          const message = `مرحباً ${resetTeacherName}، تم إعادة تعيين كلمة مرورك للمنصة. كلمة المرور الجديدة هي: ${resetPassword}`;
-                          const url = `https://wa.me/${resetTeacherPhone?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-                          window.open(url, '_blank');
-                        }}
-                        className="px-4 py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
-                      >
-                        واتساب
-                      </button>
-                    </div>
-                    <button
-                      onClick={() => setShowPasswordModal(false)}
-                      className="w-full mt-4 px-4 py-3 text-slate-400 font-bold text-sm hover:text-slate-600 transition-all"
-                    >
-                      إغلاق
-                    </button>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+      {/* Password Reset Modal */}
+      <AnimatePresence>
+        {showPasswordModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
+            onClick={() => setShowPasswordModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl p-8"
+            >
+              <h3 className="text-xl font-black text-slate-900 mb-2">كلمة المرور الجديدة</h3>
+              <p className="text-slate-500 font-bold text-xs mb-6">تم إعادة تعيين كلمة مرور المعلمة {resetTeacherName}</p>
+              
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 text-center">
+                <span className="text-2xl font-mono font-bold text-indigo-600 tracking-widest">{resetPassword}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(resetPassword || '');
+                    alert('تم نسخ كلمة المرور');
+                  }}
+                  className="px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all"
+                >
+                  نسخ
+                </button>
+                <button
+                  onClick={() => {
+                    const message = `السلام عليكم الأستاذة ${resetTeacherName}\n` +
+                                    `تم تحديث بيانات دخولك لمنصة إبداع المجال الأول\n` +
+                                    `الرقم الوظيفي: ${resetTeacherId}\n` +
+                                    `كلمة المرور: ${resetPassword}\n` +
+                                    `رابط المنصة: https://education-489618.web.app`;
+                    
+                    const encodedMessage = encodeURIComponent(message);
+                    let formattedPhone = (resetTeacherPhone || '').replace(/\D/g, '');
+                    if (formattedPhone && !formattedPhone.startsWith('968')) {
+                        formattedPhone = '968' + formattedPhone;
+                    }
+                    
+                    const whatsappUrl = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodedMessage}`;
+                    window.open(whatsappUrl, '_blank');
+                  }}
+                  className="px-4 py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
+                >
+                  واتساب
+                </button>
+              </div>
+              <button
+                onClick={() => setShowPasswordModal(false)}
+                className="w-full mt-4 px-4 py-3 text-slate-400 font-bold text-sm hover:text-slate-600 transition-all"
+              >
+                إغلاق
+              </button>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
