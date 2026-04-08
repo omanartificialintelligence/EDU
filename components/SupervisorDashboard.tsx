@@ -1891,7 +1891,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         {attachmentFiles.length > 0 && (
                           <div className="space-y-2 mt-4">
                             {attachmentFiles.map((file, idx) => (
-                              <div key={`att-file-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                              <div key={`att-file-${file.name}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                                 <div className="flex items-center gap-3">
                                   <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-indigo-600 shadow-sm">
                                     <FileText className="w-4 h-4" />
@@ -2043,7 +2043,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         {newPostAttachments.length > 0 && (
                           <div className="flex flex-wrap gap-2">
                             {newPostAttachments.map((att, idx) => (
-                              <div key={`new-post-att-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+                              <div key={`new-post-att-${att.name}-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
                                 <span className="truncate max-w-[100px]">{att.name}</span>
                                 <button 
                                   type="button"
