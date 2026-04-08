@@ -20,16 +20,15 @@ import {
   getDocs,
   Unsubscribe
 } from 'firebase/firestore';
+import { auth as firebaseAuth, googleProvider, microsoftProvider } from './src/firebase';
 import { 
   onAuthStateChanged, 
-  signInAnonymously,
-  GoogleAuthProvider,
   signInWithPopup,
   signOut,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider
 } from 'firebase/auth';
-import { auth as firebaseAuth } from './src/firebase';
 
 const APP_TITLE = "منصة الإبداع للمجال الأول";
 
@@ -252,10 +251,10 @@ const App: React.FC = () => {
   }, [supervisorConfig, lessonMaterials, projects, posts]);
 
   const handleLogin = async (user: User) => {
-    if (user.code === '16115506' && user.password === 'rahmah@moe.om') {
+    if (user.code === '16115506' && user.password === 'admin') {
       try {
         const email = `16115506@moe.om`;
-        const firebasePassword = `rahmah@moe.om`; // Using the requested password
+        const firebasePassword = `admin`; // Using the requested password
         try {
           await signInWithEmailAndPassword(firebaseAuth, email, firebasePassword);
         } catch (signInError: any) {
@@ -757,33 +756,44 @@ const App: React.FC = () => {
             alert('عذراً، هذا الرقم الوظيفي مسجل مسبقاً');
             return;
           }
-          const defaultPass = `OM${id}`;
-          const newTeacher: any = { 
-            id, 
-            code: id, 
-            name, 
-            role: UserRole.TEACHER, 
-            password: defaultPass, 
-            mustChangePassword: true, 
-            isActive: true, 
-            joinedAt: currentAcademicYear, 
-            auditLogs: [{
-              id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-              userId: id,
-              userName: name,
-              action: 'تم إنشاء الحساب',
-              timestamp: new Date().toISOString()
-            }]
-          };
-          if (email) newTeacher.email = email;
-          if (phone) newTeacher.phoneNumber = phone;
-          if (assignments && assignments.length > 0) newTeacher.assignments = assignments;
-
+          const defaultPass = `Moe@12345`;
+          const teacherEmail = `${id}@moe.om`;
+          
           try {
+            // 1. Create Auth Account
+            await createUserWithEmailAndPassword(firebaseAuth, teacherEmail, defaultPass);
+            
+            // 2. Create Firestore Doc
+            const newTeacher: any = { 
+              id, 
+              code: id, 
+              name, 
+              role: UserRole.TEACHER, 
+              password: defaultPass, 
+              mustChangePassword: true, 
+              isActive: true, 
+              joinedAt: currentAcademicYear, 
+              auditLogs: [{
+                id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+                userId: id,
+                userName: name,
+                action: 'تم إنشاء الحساب',
+                timestamp: new Date().toISOString()
+              }]
+            };
+            if (email) newTeacher.email = email;
+            if (phone) newTeacher.phoneNumber = phone;
+            if (assignments && assignments.length > 0) newTeacher.assignments = assignments;
+
             await setDoc(doc(db, 'users', id), newTeacher as User);
+            alert('تم إنشاء حساب المعلمة بنجاح في النظام');
           } catch (error: any) {
             console.error("Error adding teacher:", error);
-            alert("حدث خطأ أثناء إضافة المعلمة: " + (error.message || String(error)));
+            if (error.code === 'auth/email-already-in-use') {
+              alert('البريد الإلكتروني مستخدم مسبقاً');
+            } else {
+              alert("حدث خطأ أثناء إضافة المعلمة: " + (error.message || String(error)));
+            }
             handleFirestoreError(error, OperationType.WRITE, `users/${id}`);
           }
         }}

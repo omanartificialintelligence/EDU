@@ -1290,8 +1290,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     </div>
                   </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="teachers-grid-container">
-                  {filteredTeachers.map((teacher) => (
-                    <div key={teacher.id} className="bg-white p-5 rounded-[1.5rem] shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-200 transition-all duration-300 group relative overflow-hidden">
+                  {filteredTeachers.map((teacher, i) => (
+                    <div key={`${teacher.id}-${i}`} className="bg-white p-5 rounded-[1.5rem] shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-200 transition-all duration-300 group relative overflow-hidden">
                       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                       
                       <div className="flex items-start justify-between mb-6">
@@ -2919,6 +2919,12 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               <input type="text" value={editJobTitle} onChange={e => setEditJobTitle(e.target.value)} className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" />
                             </div>
                           </div>
+                          <button 
+                            onClick={handleSaveConfig}
+                            className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                          >
+                            حفظ التغييرات
+                          </button>
                         </section>
 
                         <section className="space-y-6">
