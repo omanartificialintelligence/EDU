@@ -343,6 +343,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [resetPassword, setResetPassword] = useState<string | null>(null);
   const [resetTeacherName, setResetTeacherName] = useState<string | null>(null);
   const [resetTeacherPhone, setResetTeacherPhone] = useState<string | null>(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   // Security & Config State
   const [newBackupPass, setNewBackupPass] = useState(supervisorConfig.backupPassword || '');
@@ -1309,6 +1310,18 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           <UserIcon className="w-4 h-4" />
                         </div>
                       </div>
+                      <button
+                        onClick={async () => {
+                          const newPass = await onResetPassword(teacher.id);
+                          setResetPassword(newPass);
+                          setResetTeacherName(teacher.name);
+                          setResetTeacherPhone(teacher.phoneNumber || '');
+                          setShowPasswordModal(true);
+                        }}
+                        className="text-indigo-600 hover:text-indigo-800 font-bold text-xs mb-4"
+                      >
+                        تغيير كلمة المرور
+                      </button>
 
                       <div className="bg-slate-50 rounded-xl p-3 mb-4 border border-slate-100">
                         {teacher.assignments && teacher.assignments.length > 0 ? (
@@ -3609,6 +3622,61 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 </button>
               </div>
             </motion.div>
+            {/* Password Reset Modal */}
+            <AnimatePresence>
+              {showPasswordModal && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
+                  onClick={() => setShowPasswordModal(false)}
+                >
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    onClick={e => e.stopPropagation()}
+                    className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl p-8"
+                  >
+                    <h3 className="text-xl font-black text-slate-900 mb-2">كلمة المرور الجديدة</h3>
+                    <p className="text-slate-500 font-bold text-xs mb-6">تم إعادة تعيين كلمة مرور المعلمة {resetTeacherName}</p>
+                    
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 text-center">
+                      <span className="text-2xl font-mono font-bold text-indigo-600 tracking-widest">{resetPassword}</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(resetPassword || '');
+                          alert('تم نسخ كلمة المرور');
+                        }}
+                        className="px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all"
+                      >
+                        نسخ
+                      </button>
+                      <button
+                        onClick={() => {
+                          const message = `مرحباً ${resetTeacherName}، تم إعادة تعيين كلمة مرورك للمنصة. كلمة المرور الجديدة هي: ${resetPassword}`;
+                          const url = `https://wa.me/${resetTeacherPhone?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+                          window.open(url, '_blank');
+                        }}
+                        className="px-4 py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
+                      >
+                        واتساب
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => setShowPasswordModal(false)}
+                      className="w-full mt-4 px-4 py-3 text-slate-400 font-bold text-sm hover:text-slate-600 transition-all"
+                    >
+                      إغلاق
+                    </button>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
