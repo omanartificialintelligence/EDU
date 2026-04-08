@@ -3227,7 +3227,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                     `تم تحديث بيانات دخولك لمنصة إبداع المجال الأول\n` +
                                     `الرقم الوظيفي: ${resetTeacherId}\n` +
                                     `كلمة المرور: ${resetPassword}\n` +
-                                    `رابط المنصة: https://education-489618.web.app`;
+                                    `رابط المنصة: https://edu-zeta-eight.vercel.app/?_vercel_share=zsvQDzYhYLZHTy9yNa362lFn37TBsEHz`;
                     
                     const encodedMessage = encodeURIComponent(message);
                     let formattedPhone = (resetTeacherPhone || '').replace(/\D/g, '');
@@ -3687,7 +3687,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                     `تم تحديث بيانات دخولك لمنصة إبداع المجال الأول\n` +
                                     `الرقم الوظيفي: ${resetTeacherId}\n` +
                                     `كلمة المرور: ${resetPassword}\n` +
-                                    `رابط المنصة: https://education-489618.web.app`;
+                                    `رابط المنصة: https://edu-zeta-eight.vercel.app/?_vercel_share=zsvQDzYhYLZHTy9yNa362lFn37TBsEHz`;
                     
                     const encodedMessage = encodeURIComponent(message);
                     let formattedPhone = (resetTeacherPhone || '').replace(/\D/g, '');
