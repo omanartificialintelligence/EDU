@@ -342,30 +342,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   // Password Reset State
   const [resetPassword, setResetPassword] = useState<string | null>(null);
   const [resetTeacherName, setResetTeacherName] = useState<string | null>(null);
-  const [resetTeacherId, setResetTeacherId] = useState<string | null>(null);
   const [resetTeacherPhone, setResetTeacherPhone] = useState<string | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-
-  const sendWhatsAppReset = (teacherName: string, teacherId: string, newPassword: string, phoneNumber?: string | null) => {
-    if (!phoneNumber) {
-      alert('لا يوجد رقم هاتف مسجل لهذه المعلمة.');
-      return;
-    }
-    const message = `مرحباً أ/ ${teacherName} 👋
-تم تحديث كلمة المرور الخاصة بحسابك في منصة الإبداع للمجال الأول 🎓
-
-📋 بيانات الدخول الجديدة:
-👤 الرقم الوظيفي: ${teacherId}
-🔑 كلمة المرور: ${newPassword}
-
-🌐 رابط المنصة: https://edu-zeta-eight.vercel.app/
-
-نتمنى لكِ تجربة تعليمية ممتعة وموفقة! 🚀`;
-
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/${phoneNumber.replace(/\D/g, '')}?text=${encodedMessage}`;
-    window.open(whatsappUrl, '_blank');
-  };
 
   // Security & Config State
   const [newBackupPass, setNewBackupPass] = useState(supervisorConfig.backupPassword || '');
@@ -1337,7 +1315,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           const newPass = await onResetPassword(teacher.id);
                           setResetPassword(newPass);
                           setResetTeacherName(teacher.name);
-                          setResetTeacherId(teacher.code);
                           setResetTeacherPhone(teacher.phoneNumber || '');
                           setShowPasswordModal(true);
                         }}
@@ -1891,7 +1868,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         {attachmentFiles.length > 0 && (
                           <div className="space-y-2 mt-4">
                             {attachmentFiles.map((file, idx) => (
-                              <div key={`att-file-${file.name}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                              <div key={`att-file-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                                 <div className="flex items-center gap-3">
                                   <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-indigo-600 shadow-sm">
                                     <FileText className="w-4 h-4" />
@@ -2043,7 +2020,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         {newPostAttachments.length > 0 && (
                           <div className="flex flex-wrap gap-2">
                             {newPostAttachments.map((att, idx) => (
-                              <div key={`new-post-att-${att.name}-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+                              <div key={`new-post-att-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
                                 <span className="truncate max-w-[100px]">{att.name}</span>
                                 <button 
                                   type="button"
@@ -3687,7 +3664,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       </button>
                       <button
                         onClick={() => {
-                          sendWhatsAppReset(resetTeacherName || '', resetTeacherId || '', resetPassword || '', resetTeacherPhone);
+                          const message = `مرحباً ${resetTeacherName}، تم إعادة تعيين كلمة مرورك للمنصة. كلمة المرور الجديدة هي: ${resetPassword}`;
+                          const url = `https://wa.me/${resetTeacherPhone?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+                          window.open(url, '_blank');
                         }}
                         className="px-4 py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
                       >

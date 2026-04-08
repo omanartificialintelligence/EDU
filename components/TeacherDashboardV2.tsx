@@ -975,7 +975,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         
                         <div className="grid grid-cols-1 gap-3">
                           {submissionFiles.map((file, idx) => (
-                            <div key={`sub-file-${file.name}-${idx}`} className="bg-slate-50 rounded-xl border border-slate-100 p-3">
+                            <div key={`sub-file-${idx}`} className="bg-slate-50 rounded-xl border border-slate-100 p-3">
                               <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-3 overflow-hidden">
                                   <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-slate-100 text-slate-400">
