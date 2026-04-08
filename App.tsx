@@ -774,7 +774,44 @@ const App: React.FC = () => {
                 delete cleanTeacher[key];
               }
             });
-            await setDoc(doc(db, 'users', originalId), cleanTeacher);
+
+            if (originalId !== updatedTeacher.id) {
+              if (teachers.some(t => t.id === updatedTeacher.id)) {
+                alert('عذراً، الرقم الوظيفي الجديد مسجل مسبقاً لمستخدم آخر');
+                return;
+              }
+              // Create new doc with new ID
+              await setDoc(doc(db, 'users', updatedTeacher.id), cleanTeacher);
+              // Delete old doc
+              await deleteDoc(doc(db, 'users', originalId));
+
+              // Update lessonMaterials
+              const lessonsToUpdate = lessonMaterials.filter(m => m.teacherId === originalId);
+              for (const lesson of lessonsToUpdate) {
+                await updateDoc(doc(db, 'lessonMaterials', lesson.id), { 
+                  teacherId: updatedTeacher.id, 
+                  teacherName: updatedTeacher.name 
+                });
+              }
+
+              // Update projects
+              const projectsToUpdate = projects.filter(p => p.assignedTeacherIds.includes(originalId));
+              for (const project of projectsToUpdate) {
+                const updatedIds = project.assignedTeacherIds.map(id => id === originalId ? updatedTeacher.id : id);
+                await updateDoc(doc(db, 'projects', project.id), { assignedTeacherIds: updatedIds });
+              }
+            } else {
+              await setDoc(doc(db, 'users', originalId), cleanTeacher);
+              // Update name in lessons if changed
+              const oldTeacher = teachers.find(t => t.id === originalId);
+              if (oldTeacher && oldTeacher.name !== updatedTeacher.name) {
+                const lessonsToUpdate = lessonMaterials.filter(m => m.teacherId === originalId);
+                for (const lesson of lessonsToUpdate) {
+                  await updateDoc(doc(db, 'lessonMaterials', lesson.id), { teacherName: updatedTeacher.name });
+                }
+              }
+            }
+
             if (auth.user?.id === originalId) {
               setAuth(prev => ({ ...prev, user: cleanTeacher as User }));
             }

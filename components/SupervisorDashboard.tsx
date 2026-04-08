@@ -119,9 +119,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
       name: editTeacherName,
       id: editTeacherId,
       code: editTeacherId,
+      phoneNumber: editTeacherPhone,
+      assignments: editTeacherAssignments
     };
-    if (editTeacherPhone) updatedTeacher.phoneNumber = editTeacherPhone;
-    if (editTeacherAssignments && editTeacherAssignments.length > 0) updatedTeacher.assignments = editTeacherAssignments;
 
     onUpdateTeacher(editingTeacher.id, updatedTeacher as User);
     setEditingTeacher(null);
