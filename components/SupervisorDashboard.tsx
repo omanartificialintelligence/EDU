@@ -342,8 +342,30 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   // Password Reset State
   const [resetPassword, setResetPassword] = useState<string | null>(null);
   const [resetTeacherName, setResetTeacherName] = useState<string | null>(null);
+  const [resetTeacherId, setResetTeacherId] = useState<string | null>(null);
   const [resetTeacherPhone, setResetTeacherPhone] = useState<string | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+
+  const sendWhatsAppReset = (teacherName: string, teacherId: string, newPassword: string, phoneNumber?: string | null) => {
+    if (!phoneNumber) {
+      alert('لا يوجد رقم هاتف مسجل لهذه المعلمة.');
+      return;
+    }
+    const message = `مرحباً أ/ ${teacherName} 👋
+تم تحديث كلمة المرور الخاصة بحسابك في منصة الإبداع للمجال الأول 🎓
+
+📋 بيانات الدخول الجديدة:
+👤 الرقم الوظيفي: ${teacherId}
+🔑 كلمة المرور: ${newPassword}
+
+🌐 رابط المنصة: https://edu-zeta-eight.vercel.app/
+
+نتمنى لكِ تجربة تعليمية ممتعة وموفقة! 🚀`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${phoneNumber.replace(/\D/g, '')}?text=${encodedMessage}`;
+    window.open(whatsappUrl, '_blank');
+  };
 
   // Security & Config State
   const [newBackupPass, setNewBackupPass] = useState(supervisorConfig.backupPassword || '');
@@ -1315,6 +1337,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           const newPass = await onResetPassword(teacher.id);
                           setResetPassword(newPass);
                           setResetTeacherName(teacher.name);
+                          setResetTeacherId(teacher.code);
                           setResetTeacherPhone(teacher.phoneNumber || '');
                           setShowPasswordModal(true);
                         }}
@@ -3664,9 +3687,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       </button>
                       <button
                         onClick={() => {
-                          const message = `مرحباً ${resetTeacherName}، تم إعادة تعيين كلمة مرورك للمنصة. كلمة المرور الجديدة هي: ${resetPassword}`;
-                          const url = `https://wa.me/${resetTeacherPhone?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-                          window.open(url, '_blank');
+                          sendWhatsAppReset(resetTeacherName || '', resetTeacherId || '', resetPassword || '', resetTeacherPhone);
                         }}
                         className="px-4 py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
                       >
