@@ -263,7 +263,14 @@ const App: React.FC = () => {
             try {
               await createUserWithEmailAndPassword(firebaseAuth, email, firebasePassword);
             } catch (createError: any) {
-              if (createError.code !== 'auth/email-already-in-use') {
+              if (createError.code === 'auth/email-already-in-use') {
+                // If email already in use, try to sign in one more time with the fixed password
+                try {
+                  await signInWithEmailAndPassword(firebaseAuth, email, firebasePassword);
+                } catch (retrySignInError) {
+                  throw createError; // Re-throw if sign in also fails
+                }
+              } else {
                 throw createError;
               }
             }
@@ -325,8 +332,13 @@ const App: React.FC = () => {
             } catch (createError: any) {
               console.error("Create user failed:", createError);
               if (createError.code === 'auth/email-already-in-use') {
-                alert("تعذر تسجيل الدخول للمصادقة. يرجى التواصل مع الدعم الفني لإعادة تعيين حسابك.");
-                return; // Stop login process
+                // If email already in use, try to sign in one more time with the fixed password
+                try {
+                  await signInWithEmailAndPassword(firebaseAuth, email, firebasePassword);
+                } catch (retrySignInError) {
+                  alert("تعذر تسجيل الدخول للمصادقة. يرجى التواصل مع الدعم الفني لإعادة تعيين حسابك.");
+                  return; // Stop login process
+                }
               } else if (createError.code === 'auth/too-many-requests') {
                 alert("لقد قمت بالكثير من محاولات تسجيل الدخول. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.");
                 return; // Stop login process
