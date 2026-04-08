@@ -2837,13 +2837,38 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           </label>
                           <label className="flex items-center gap-3 cursor-pointer">
                             <input type="checkbox" checked={tempPermDownload} onChange={e => setTempPermDownload(e.target.checked)} className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                            <span className="text-sm font-bold text-slate-700">الوصول للموقع لتحميله (تنزيل المرفقات)</span>
+                            <span className="text-sm font-bold text-slate-700">تنزيل المرفقات</span>
                           </label>
                           <label className="flex items-center gap-3 cursor-pointer">
                             <input type="checkbox" checked={tempPermFull} onChange={e => setTempPermFull(e.target.checked)} className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                            <span className="text-sm font-bold text-slate-700">التأكد من أن جميع الميزات تعمل بأفضل شكل (صلاحيات كاملة)</span>
+                            <span className="text-sm font-bold text-slate-700">صلاحيات كاملة</span>
                           </label>
                         </div>
+                        
+                        {!tempPermFull && (
+                          <div className="mt-6 border-t border-slate-200 pt-6">
+                            <h6 className="font-bold text-slate-700 text-xs mb-3">المواد المسموح بمتابعتها (اتركه فارغاً للسماح بالكل)</h6>
+                            <div className="flex flex-wrap gap-2">
+                              {AVAILABLE_SUBJECTS.map(subject => (
+                                <label key={subject} className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={tempPermSubjects.includes(subject)}
+                                    onChange={e => {
+                                      if (e.target.checked) {
+                                        setTempPermSubjects([...tempPermSubjects, subject]);
+                                      } else {
+                                        setTempPermSubjects(tempPermSubjects.filter(s => s !== subject));
+                                      }
+                                    }}
+                                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                  />
+                                  <span className="text-xs font-bold text-slate-600">{subject}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <button onClick={handleAddNewTempSupervisor} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all">إضافة المشرف المؤقت</button>
@@ -2854,14 +2879,53 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       <div className="space-y-4">
                         {teachers.filter(t => t.role === UserRole.TEMP_SUPERVISOR).map((supervisor) => {
                           return (
-                            <div key={supervisor.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-slate-100">
-                              <span className="font-bold text-slate-700">{supervisor.name}</span>
-                              <button 
-                                onClick={() => onDeleteTempSupervisor(supervisor.id)}
-                                className="text-red-500 hover:text-red-700 font-bold text-xs"
-                              >
-                                حذف
-                              </button>
+                            <div key={supervisor.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-slate-50 rounded-xl border border-slate-100 gap-4">
+                              <div>
+                                <span className="font-bold text-slate-700 block">{supervisor.name}</span>
+                                <span className="text-xs text-slate-500 font-mono mt-1 block">الرقم الوظيفي: {supervisor.code}</span>
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                  {supervisor.tempPermissions?.hasFullAccess ? (
+                                    <span className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-[10px] font-bold">صلاحيات كاملة</span>
+                                  ) : (
+                                    <>
+                                      {supervisor.tempPermissions?.canViewTeachers && <span className="px-2 py-1 bg-slate-200 text-slate-600 rounded text-[10px] font-bold">الاطلاع على المعلمات</span>}
+                                      {supervisor.tempPermissions?.canComment && <span className="px-2 py-1 bg-slate-200 text-slate-600 rounded text-[10px] font-bold">إضافة تعليقات</span>}
+                                      {supervisor.tempPermissions?.canApproveProjects && <span className="px-2 py-1 bg-slate-200 text-slate-600 rounded text-[10px] font-bold">اعتماد المشاريع</span>}
+                                      {supervisor.tempPermissions?.canManageUsers && <span className="px-2 py-1 bg-slate-200 text-slate-600 rounded text-[10px] font-bold">إدارة المستخدمين</span>}
+                                      {supervisor.tempPermissions?.canDownloadAttachments && <span className="px-2 py-1 bg-slate-200 text-slate-600 rounded text-[10px] font-bold">تنزيل المرفقات</span>}
+                                    </>
+                                  )}
+                                </div>
+                                {!supervisor.tempPermissions?.hasFullAccess && supervisor.tempPermissions?.allowedSubjects && supervisor.tempPermissions.allowedSubjects.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    <span className="text-[10px] text-slate-500">المواد:</span>
+                                    {supervisor.tempPermissions.allowedSubjects.map(s => (
+                                      <span key={s} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">{s}</span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex gap-2 w-full sm:w-auto">
+                                <button 
+                                  onClick={async () => {
+                                    const pass = await onResetPassword(supervisor.id);
+                                    setResetPassword(pass);
+                                    setResetTeacherName(supervisor.name);
+                                    setResetTeacherPhone(supervisor.phoneNumber || '');
+                                    setResetTeacherId(supervisor.code || supervisor.id);
+                                    setShowPasswordModal(true);
+                                  }}
+                                  className="flex-1 sm:flex-none px-3 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-lg font-bold text-xs transition-colors"
+                                >
+                                  كلمة المرور
+                                </button>
+                                <button 
+                                  onClick={() => onDeleteTempSupervisor(supervisor.id)}
+                                  className="flex-1 sm:flex-none px-3 py-2 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-lg font-bold text-xs transition-colors"
+                                >
+                                  حذف
+                                </button>
+                              </div>
                             </div>
                           );
                         })}
