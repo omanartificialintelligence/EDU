@@ -330,7 +330,6 @@ const App: React.FC = () => {
                 }
               }
             } catch (createError: any) {
-              console.error("Create user failed:", createError);
               if (createError.code === 'auth/email-already-in-use') {
                 // If email already in use, try to sign in one more time with the fixed password
                 try {
