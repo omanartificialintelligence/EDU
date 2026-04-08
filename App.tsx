@@ -61,6 +61,7 @@ const App: React.FC = () => {
   // Firebase Auth Listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
+      console.log("Auth state changed, user:", user);
       setIsAuthReady(true);
       // We don't use anonymous sign-in anymore to avoid 'admin-restricted-operation'
     });
@@ -300,28 +301,42 @@ const App: React.FC = () => {
         await signInWithEmailAndPassword(firebaseAuth, email, firebasePassword);
       } catch (signInError: any) {
         if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') {
+          // Try with the user's actual password in case it was created with that previously
           try {
-            await createUserWithEmailAndPassword(firebaseAuth, email, firebasePassword);
-            if (user.role === UserRole.SUPERVISOR || user.role === UserRole.TEMP_SUPERVISOR) {
-              try {
-                await setDoc(doc(db, 'users', user.id), user);
-              } catch (docError) {
-                console.error("Failed to create supervisor doc:", docError);
-              }
+            await signInWithEmailAndPassword(firebaseAuth, email, user.password);
+            // If successful, we should probably update it to the fixed password, but we need to be signed in to do that.
+            // Since we are now signed in, we can update it.
+            const currentUser = firebaseAuth.currentUser;
+            if (currentUser) {
+              const { updatePassword } = await import('firebase/auth');
+              await updatePassword(currentUser, firebasePassword).catch(console.error);
             }
-          } catch (createError: any) {
-            console.error("Create user failed:", createError);
-            if (createError.code === 'auth/email-already-in-use') {
-              console.warn("User already exists, proceeding with login.");
-            } else if (createError.code === 'auth/too-many-requests') {
-              alert("لقد قمت بالكثير من محاولات تسجيل الدخول. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.");
-              return; // Stop login process
-            } else if (createError.code === 'auth/operation-not-allowed') {
-              alert("يرجى تفعيل المصادقة بكلمة المرور والبريد الإلكتروني (Email/Password Authentication) من لوحة تحكم Firebase.");
-              return; // Stop login process
-            } else {
-              alert("فشل إنشاء حساب المصادقة. قد لا تعمل بعض الميزات بشكل صحيح.");
-              return; // Stop login process
+          } catch (fallbackSignInError: any) {
+            // If both fail, try to create
+            try {
+              await createUserWithEmailAndPassword(firebaseAuth, email, firebasePassword);
+              if (user.role === UserRole.SUPERVISOR || user.role === UserRole.TEMP_SUPERVISOR) {
+                try {
+                  await setDoc(doc(db, 'users', user.id), user);
+                } catch (docError) {
+                  console.error("Failed to create supervisor doc:", docError);
+                }
+              }
+            } catch (createError: any) {
+              console.error("Create user failed:", createError);
+              if (createError.code === 'auth/email-already-in-use') {
+                alert("تعذر تسجيل الدخول للمصادقة. يرجى التواصل مع الدعم الفني لإعادة تعيين حسابك.");
+                return; // Stop login process
+              } else if (createError.code === 'auth/too-many-requests') {
+                alert("لقد قمت بالكثير من محاولات تسجيل الدخول. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.");
+                return; // Stop login process
+              } else if (createError.code === 'auth/operation-not-allowed') {
+                alert("يرجى تفعيل المصادقة بكلمة المرور والبريد الإلكتروني (Email/Password Authentication) من لوحة تحكم Firebase.");
+                return; // Stop login process
+              } else {
+                alert("فشل إنشاء حساب المصادقة. قد لا تعمل بعض الميزات بشكل صحيح.");
+                return; // Stop login process
+              }
             }
           }
         } else if (signInError.code === 'auth/too-many-requests') {
