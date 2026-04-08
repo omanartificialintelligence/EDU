@@ -692,7 +692,6 @@ const App: React.FC = () => {
   if (!auth.isAuthenticated) {
     return <LoginForm 
       onLogin={handleLogin} 
-      onGoogleLogin={handleGoogleLogin}
       teachers={teachers} 
       onForgotPassword={handleForgotPasswordRequest}
       onUpdateSupervisorConfig={(config) => setSupervisorConfig(prev => ({ ...prev, ...config }))}

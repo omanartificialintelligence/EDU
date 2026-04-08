@@ -7,7 +7,6 @@ import { sendPasswordResetEmail, GoogleAuthProvider, OAuthProvider, signInWithPo
 
 interface LoginFormProps {
   onLogin: (user: User) => void;
-  onGoogleLogin: () => void;
   teachers: User[];
   onForgotPassword: (userId: string) => void;
   onUpdateSupervisorConfig: (config: Partial<SupervisorConfig>) => void;
@@ -16,7 +15,7 @@ interface LoginFormProps {
   currentSemester?: string;
 }
 
-const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onGoogleLogin, teachers, onForgotPassword, onUpdateSupervisorConfig, supervisorConfig, currentYear, currentSemester }) => {
+const LoginForm: React.FC<LoginFormProps> = ({ onLogin, teachers, onForgotPassword, onUpdateSupervisorConfig, supervisorConfig, currentYear, currentSemester }) => {
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -186,10 +185,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onGoogleLogin, teachers,
           
           <button type="submit" className="w-full bg-slate-900 text-white py-4 sm:py-5 rounded-xl sm:rounded-2xl font-black text-base sm:text-lg hover:bg-emerald-600 shadow-xl shadow-emerald-100 active:scale-95 transition-all mt-2 sm:mt-4">تسجيل الدخول</button>
         </form>
-        
-        <div className="grid grid-cols-1 gap-4 pt-4">
-          <button onClick={onGoogleLogin} className="w-full bg-white border border-slate-200 text-slate-700 py-3 rounded-xl font-bold text-xs hover:bg-slate-50 transition-all">دخول بـ Google</button>
-        </div>
         
         <div className="text-center pt-2">
            <button 

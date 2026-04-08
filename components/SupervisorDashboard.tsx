@@ -1161,7 +1161,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   onChange={(e) => setCurrentAssignmentGrade(e.target.value)} 
                                   className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-transparent shadow-sm focus:border-indigo-500 font-bold text-sm outline-none appearance-none cursor-pointer"
                                 >
-                                  {AVAILABLE_GRADES.map((g, i) => <option key={g} value={g}>{g}</option>)}
+                                  {AVAILABLE_GRADES.map((g, i) => <option key={`${g}-${i}`} value={g}>{g}</option>)}
                                 </select>
                                 <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                                   <Filter className="w-4 h-4" />
@@ -1185,7 +1185,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                     !user.tempPermissions?.allowedSubjects || 
                                     user.tempPermissions.allowedSubjects.length === 0 || 
                                     user.tempPermissions.allowedSubjects.includes(s)
-                                  ).map((s, i) => <option key={s} value={s}>{s}</option>)}
+                                  ).map((s, i) => <option key={`${s}-${i}`} value={s}>{s}</option>)}
                                 </select>
                                 <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                                   <Filter className="w-4 h-4" />
@@ -1799,7 +1799,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             onChange={e => setAttachmentGrade(e.target.value)}
                             className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
                           >
-                            {AVAILABLE_GRADES.map((g, i) => <option key={g} value={g}>{g}</option>)}
+                            {AVAILABLE_GRADES.map((g, i) => <option key={`${g}-${i}`} value={g}>{g}</option>)}
                           </select>
                         </div>
                         <div className="space-y-2">
@@ -3147,7 +3147,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               <div className="space-y-4">
                 <input type="text" placeholder="عنوان الدرس" value={newLessonTitle} onChange={e => setNewLessonTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" />
                 <select value={newLessonGrade} onChange={e => setNewLessonGrade(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm">
-                  {AVAILABLE_GRADES.map((g, i) => <option key={g} value={g}>{g}</option>)}
+                  {AVAILABLE_GRADES.map((g, i) => <option key={`${g}-${i}`} value={g}>{g}</option>)}
                 </select>
                 <select value={newLessonSemester} onChange={e => setNewLessonSemester(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm">
                   <option value="الفصل الأول">الفصل الأول</option>
