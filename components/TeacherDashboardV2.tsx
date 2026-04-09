@@ -59,6 +59,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   const [newLessonTitle, setNewLessonTitle] = useState('');
   const [newLessonType, setNewLessonType] = useState<string | null>(null);
   const [newLessonUrl, setNewLessonUrl] = useState('');
+  const [newLessonAttachments, setNewLessonAttachments] = useState<Attachment[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -161,6 +162,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
     { id: 'doc', label: 'ملف وورد', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-100', border: 'border-blue-300' },
     { id: 'video', label: 'فيديو', icon: Video, color: 'text-red-600', bg: 'bg-red-100', border: 'border-red-300' },
     { id: 'image', label: 'صورة', icon: ImageIcon, color: 'text-emerald-600', bg: 'bg-emerald-100', border: 'border-emerald-300' },
+    { id: 'audio', label: 'صوت', icon: Music, color: 'text-purple-600', bg: 'bg-purple-100', border: 'border-purple-300' },
     { id: 'link', label: 'رابط', icon: LinkIcon, color: 'text-indigo-600', bg: 'bg-indigo-100', border: 'border-indigo-300' },
   ];
 
@@ -176,18 +178,38 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
     setNewLessonTitle('');
     setNewLessonType(null);
     setNewLessonUrl('');
+    setNewLessonAttachments([]);
     setIsUploadModalOpen(true);
   };
 
+  const handleAddAttachment = () => {
+    if (newLessonType !== 'text' && !newLessonUrl) return;
+    
+    if (newLessonType !== 'text') {
+      setNewLessonAttachments(prev => [...prev, {
+        type: newLessonType === 'link' ? 'link' : (newLessonType === 'image' ? 'image' : (newLessonType === 'video' ? 'video' : (newLessonType === 'audio' ? 'audio' : 'file'))),
+        url: newLessonUrl,
+        name: newLessonTitle || `مرفق ${prev.length + 1}`
+      }]);
+    }
+    
+    setNewLessonType(null);
+    setNewLessonUrl('');
+  };
+
+  const handleRemoveAttachment = (index: number) => {
+    setNewLessonAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleAddLesson = () => {
-    if (!newLessonTitle || !newLessonType || !selectedSubject) {
+    if (!newLessonTitle || !selectedSubject) {
       alert('يرجى إكمال جميع الحقول المطلوبة');
       return;
     }
 
-    if (newLessonType !== 'text' && !newLessonUrl) {
-       alert('يرجى إضافة الرابط');
-       return;
+    if (newLessonAttachments.length === 0) {
+      alert('يرجى إضافة مرفق واحد على الأقل');
+      return;
     }
 
     setIsSubmitting(true);
@@ -197,12 +219,8 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
       teacherId: user.id,
       teacherName: user.name,
       lessonTitle: newLessonTitle,
-      description: newLessonType === 'text' ? `درس: ${newLessonTitle}` : `مرفق ${newLessonType} لمادة ${selectedSubject}`,
-      attachments: newLessonType === 'text' ? [] : [{
-        type: newLessonType === 'link' ? 'link' : 'file',
-        url: newLessonUrl,
-        name: newLessonTitle
-      }],
+      description: `درس: ${newLessonTitle}`,
+      attachments: newLessonAttachments,
       comments: [],
       createdAt: new Date().toISOString(),
       academicYear: currentYear,
@@ -211,7 +229,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
       subject: selectedSubject,
       status: 'pending',
       isModelLesson: false,
-      tags: [selectedSubject, selectedGrade, newLessonType]
+      tags: [selectedSubject, selectedGrade]
     };
 
     onAddMaterial(newMaterial);
@@ -669,18 +687,23 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                                   </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 w-full md:w-auto">
-                                <button 
-                                  onClick={() => {
-                                    const attachment = material.attachments[0];
-                                    if (attachment) {
-                                      downloadFile(attachment.url, `${material.lessonTitle}.${attachment.type === 'link' ? 'html' : 'bin'}`);
-                                    }
-                                  }}
-                                  className="flex-1 md:flex-none px-4 py-2 bg-slate-50 text-slate-700 rounded-xl hover:bg-blue-50 hover:text-blue-700 transition-all font-bold text-xs flex items-center justify-center gap-2 border border-slate-200"
-                                >
-                                  <Icon className="w-4 h-4" /> {fileInfo.label === 'رابط' ? 'فتح' : 'تحميل'}
-                                </button>
+                            <div className="flex items-center gap-2 w-full md:w-auto flex-wrap justify-end">
+                                {material.attachments.map((attachment, idx) => (
+                                  <button 
+                                    key={idx}
+                                    onClick={() => {
+                                      downloadFile(attachment.url, `${attachment.name || material.lessonTitle}.${attachment.type === 'link' ? 'html' : 'bin'}`);
+                                    }}
+                                    className="flex-1 md:flex-none px-4 py-2 bg-slate-50 text-slate-700 rounded-xl hover:bg-blue-50 hover:text-blue-700 transition-all font-bold text-xs flex items-center justify-center gap-2 border border-slate-200"
+                                  >
+                                    {attachment.type === 'link' ? <LinkIcon className="w-4 h-4" /> : 
+                                     attachment.type === 'image' ? <ImageIcon className="w-4 h-4" /> :
+                                     attachment.type === 'video' ? <Video className="w-4 h-4" /> :
+                                     attachment.type === 'audio' ? <Music className="w-4 h-4" /> :
+                                     <FileText className="w-4 h-4" />}
+                                    {attachment.type === 'link' ? 'فتح' : 'تحميل'} {attachment.name || `مرفق ${idx + 1}`}
+                                  </button>
+                                ))}
                               <button 
                                 onClick={() => setExpandedLessonId(expandedLessonId === material.id ? null : material.id)}
                                 className={cn(
@@ -1289,7 +1312,32 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
 
                 {!newLessonType ? (
                   <div className="space-y-4">
-                    <label className="text-sm font-black text-slate-700 block">اختر نوع المحتوى</label>
+                    {newLessonAttachments.length > 0 && (
+                      <div className="space-y-3 mb-6">
+                        <label className="text-sm font-black text-slate-700 block">المرفقات المضافة</label>
+                        <div className="space-y-2">
+                          {newLessonAttachments.map((att, idx) => (
+                            <div key={`new-att-${idx}`} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center">
+                                  {att.type === 'link' ? <LinkIcon className="w-5 h-5 text-indigo-500" /> : 
+                                   att.type === 'image' ? <ImageIcon className="w-5 h-5 text-emerald-500" /> :
+                                   att.type === 'video' ? <Video className="w-5 h-5 text-red-500" /> :
+                                   att.type === 'audio' ? <Music className="w-5 h-5 text-purple-500" /> :
+                                   <FileText className="w-5 h-5 text-blue-500" />}
+                                </div>
+                                <span className="text-sm font-bold text-slate-700">{att.name}</span>
+                              </div>
+                              <button onClick={() => handleRemoveAttachment(idx)} className="p-2 text-slate-400 hover:text-red-500 transition-colors">
+                                <X className="w-5 h-5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <label className="text-sm font-black text-slate-700 block">إضافة مرفق جديد</label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {uploadOptions.map((type) => (
                         <button
@@ -1312,14 +1360,14 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2 p-6 bg-white rounded-2xl border border-slate-200">
                     <div className="flex items-center justify-between">
                       <label className="text-sm font-black text-slate-700">إضافة {uploadOptions.find(o => o.id === newLessonType)?.label}</label>
                       <button 
                         onClick={() => { setNewLessonType(null); setNewLessonUrl(''); }}
                         className="text-xs font-bold text-blue-600 hover:underline"
                       >
-                        تغيير النوع
+                        إلغاء
                       </button>
                     </div>
                     
@@ -1337,21 +1385,25 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         onChange={handleFileSelect}
                         className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-sm"
                       />
-                    ) : (
-                      <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 text-center">
-                        <p className="text-slate-500 font-bold text-sm">سيتم إنشاء الدرس بدون مرفقات.</p>
-                      </div>
-                    )}
+                    ) : null}
 
                     <button 
-                      onClick={handleAddLesson}
-                      disabled={isSubmitting || !newLessonTitle || (newLessonType !== 'text' && !newLessonUrl)}
-                      className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+                      onClick={handleAddAttachment}
+                      disabled={!newLessonUrl}
+                      className="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isSubmitting ? 'جاري النشر...' : 'نشر الدرس الآن'}
+                      تأكيد إضافة المرفق
                     </button>
                   </div>
                 )}
+
+                <button 
+                  onClick={handleAddLesson}
+                  disabled={isSubmitting || !newLessonTitle || newLessonAttachments.length === 0}
+                  className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+                >
+                  {isSubmitting ? 'جاري النشر...' : 'نشر الدرس الآن'}
+                </button>
               </div>
 
               <div className="px-8 py-6 bg-blue-50/50 border-t border-blue-100 flex items-start gap-3">

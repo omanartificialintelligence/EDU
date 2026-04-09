@@ -1625,22 +1625,22 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                     </div>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-2 w-full md:w-auto">
-                                  <button 
-                                    onClick={() => {
-                                      const attachment = material.attachments[0];
-                                      if (attachment) {
+                                <div className="flex items-center gap-2 w-full md:w-auto flex-wrap justify-end">
+                                  {material.attachments.map((attachment, idx) => (
+                                    <button 
+                                      key={idx}
+                                      onClick={() => {
                                         if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
                                           setPreviewAttachment(attachment);
                                         } else {
                                           downloadFile(attachment.url, attachment.name || `${material.lessonTitle}.bin`);
                                         }
-                                      }
-                                    }}
-                                    className="flex-1 md:flex-none px-4 py-2 bg-slate-50 text-slate-700 rounded-xl hover:bg-blue-50 hover:text-blue-700 transition-all font-bold text-xs flex items-center justify-center gap-2 border border-slate-200"
-                                  >
-                                    <Eye className="w-4 h-4" /> معاينة
-                                  </button>
+                                      }}
+                                      className="flex-1 md:flex-none px-4 py-2 bg-slate-50 text-slate-700 rounded-xl hover:bg-blue-50 hover:text-blue-700 transition-all font-bold text-xs flex items-center justify-center gap-2 border border-slate-200"
+                                    >
+                                      <Eye className="w-4 h-4" /> معاينة {attachment.name || `مرفق ${idx + 1}`}
+                                    </button>
+                                  ))}
                                   {isMainSupervisor && (
                                     <button 
                                       onClick={() => {
@@ -2275,13 +2275,17 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 <p className="text-[10px] text-slate-400 font-bold">{lesson.teacherName} • {new Date(lesson.createdAt).toLocaleDateString('ar-OM')}</p>
                               </div>
                             </div>
-                            <div className="flex gap-2">
-                              <button 
-                                onClick={() => downloadFile(lesson.attachments[0]?.url, lesson.lessonTitle)}
-                                className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm"
-                              >
-                                <Download className="w-4 h-4" />
-                              </button>
+                            <div className="flex gap-2 flex-wrap justify-end">
+                              {lesson.attachments.map((attachment, idx) => (
+                                <button 
+                                  key={idx}
+                                  onClick={() => downloadFile(attachment.url, attachment.name || lesson.lessonTitle)}
+                                  className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm"
+                                  title={`تحميل ${attachment.name || `مرفق ${idx + 1}`}`}
+                                >
+                                  <Download className="w-4 h-4" />
+                                </button>
+                              ))}
                               
                               <button 
                                 onClick={() => {
