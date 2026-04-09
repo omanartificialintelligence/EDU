@@ -743,7 +743,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   }, [teachers, isTempSupervisor, user.tempPermissions, searchQuery]);
 
   const filteredProjects = useMemo(() => {
-    let list = projects.filter(p => p.academicYear === academicYear && p.semester === semester);
+    let list = projects.filter(p => p.academicYear === academicYear && p.semester === semester && !p.isArchived);
     if (isTempSupervisor) {
       const allowedTeacherIds = filteredTeachers.map(t => t.id);
       // Show project if ANY of the assigned teachers are visible to the supervisor
@@ -753,11 +753,11 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   }, [projects, academicYear, semester, isTempSupervisor, filteredTeachers]);
 
   const filteredPosts = useMemo(() => {
-    return posts.filter(p => p.academicYear === academicYear && p.semester === semester);
+    return posts.filter(p => p.academicYear === academicYear && p.semester === semester && !p.isArchived);
   }, [posts, academicYear, semester]);
 
   const filteredLessons = useMemo(() => {
-    let list = lessonMaterials.filter(m => m.isActive !== false && m.academicYear === academicYear && m.semester === semester);
+    let list = lessonMaterials.filter(m => m.isActive !== false && m.academicYear === academicYear && m.semester === semester && !m.isArchived);
     
     if (isTempSupervisor && !user.tempPermissions?.hasFullAccess && user.tempPermissions?.allowedSubjects) {
       const allowed = user.tempPermissions.allowedSubjects;
@@ -1646,10 +1646,10 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                       onClick={() => {
                                           onUpdateLessonMaterial({
                                               ...material,
-                                              academicYear: 'Archive 2026',
+                                              isArchived: true,
                                               isActive: false
                                           });
-                                          alert('تم نقل الملف إلى أرشيف 2026');
+                                          alert('تم نقل الملف إلى الأرشيف');
                                       }}
                                       className="px-4 py-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 transition-all font-bold text-xs flex items-center justify-center gap-2 border border-amber-100"
                                     >
@@ -2185,21 +2185,46 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               </div>
 
                               {selectedArchiveSubject === subject.name && (
-                                <div className="mt-6 flex gap-3 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-                                  {['الفصل الدراسي الأول'].map((sem) => (
-                                    <button
-                                      key={sem}
-                                      onClick={() => setSelectedArchiveSemester(sem)}
-                                      className={cn(
-                                        "flex-1 py-3 rounded-xl text-xs font-black transition-all border-2",
-                                        selectedArchiveSemester === sem 
-                                          ? "bg-white text-indigo-600 border-indigo-200 shadow-sm" 
-                                          : "bg-white/50 text-slate-500 border-transparent hover:border-slate-200"
-                                      )}
-                                    >
-                                      {sem}
-                                    </button>
-                                  ))}
+                                <div className="mt-6 flex flex-wrap gap-3 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                                  {['الفصل الأول', 'الفصل الثاني', 'الفصل الدراسي الأول', 'الفصل الدراسي الثاني'].map((sem) => {
+                                    // Only show semesters that actually have materials in the archive for this selection
+                                    const hasMaterials = lessonMaterials.some(m => 
+                                      m.academicYear === selectedArchiveYear && 
+                                      m.grade === selectedArchiveGrade && 
+                                      m.subject === subject.name && 
+                                      m.semester === sem
+                                    );
+                                    
+                                    if (!hasMaterials && selectedArchiveSemester !== sem) return null;
+
+                                    return (
+                                      <button
+                                        key={sem}
+                                        onClick={() => setSelectedArchiveSemester(sem)}
+                                        className={cn(
+                                          "flex-1 min-w-[120px] py-3 rounded-xl text-xs font-black transition-all border-2",
+                                          selectedArchiveSemester === sem 
+                                            ? "bg-white text-indigo-600 border-indigo-200 shadow-sm" 
+                                            : "bg-white/50 text-slate-500 border-transparent hover:border-slate-200"
+                                        )}
+                                      >
+                                        {sem}
+                                      </button>
+                                    );
+                                  })}
+                                  {/* Show a message if no materials are found for any semester */}
+                                  {!['الفصل الأول', 'الفصل الثاني', 'الفصل الدراسي الأول', 'الفصل الدراسي الثاني'].some(sem => 
+                                    lessonMaterials.some(m => 
+                                      m.academicYear === selectedArchiveYear && 
+                                      m.grade === selectedArchiveGrade && 
+                                      m.subject === subject.name && 
+                                      m.semester === sem
+                                    )
+                                  ) && (
+                                    <div className="w-full text-center py-4 text-xs font-bold text-slate-400 bg-slate-50 rounded-xl">
+                                      لا توجد دروس مؤرشفة لهذه المادة
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>

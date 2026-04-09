@@ -520,6 +520,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                     // Filter materials for this subject and grade
                     const subjectMaterials = lessonMaterials.filter(m => 
                       m.academicYear === currentYear &&
+                      !m.isArchived &&
                       (m.tags?.includes(subject.name) || m.lessonTitle.includes(subject.name)) && 
                       (m.tags?.includes(selectedGrade) || m.grade === selectedGrade)
                     );
@@ -633,6 +634,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                     {lessonMaterials
                       .filter(m => 
                         m.academicYear === currentYear &&
+                        !m.isArchived &&
                         (m.tags?.includes(viewingSubject) || m.lessonTitle.includes(viewingSubject)) && 
                         (m.tags?.includes(selectedGrade) || m.grade === selectedGrade)
                       )
@@ -753,6 +755,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                       
                       {lessonMaterials.filter(m => 
                         m.academicYear === currentYear &&
+                        !m.isArchived &&
                         (m.tags?.includes(viewingSubject) || m.lessonTitle.includes(viewingSubject)) && 
                         (m.tags?.includes(selectedGrade) || m.grade === selectedGrade)
                       ).length === 0 && (
