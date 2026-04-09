@@ -59,10 +59,43 @@ const App: React.FC = () => {
 
   // Firebase Auth Listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
+    const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
       console.log("Auth state changed, user:", user);
+      
+      if (user) {
+        // إذا كان المستخدم مسجلاً، قم بجلب بياناته من Firestore
+        if (user.email === "omanartificialintelligence@gmail.com") {
+          const adminUser: User = {
+            id: user.uid,
+            name: user.displayName || 'المشرفة العامة',
+            role: UserRole.SUPERVISOR,
+            code: 'admin',
+            isActive: true,
+            joinedAt: '2026'
+          };
+          setAuth({ user: adminUser, isAuthenticated: true });
+        } else {
+          try {
+            const q = query(collection(db, 'users'), where('email', '==', user.email));
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+              const teacherData = snap.docs[0].data() as User;
+              setAuth({ user: teacherData, isAuthenticated: true });
+            } else {
+              console.warn('User not found in database');
+              setAuth({ user: null, isAuthenticated: false });
+              await signOut(firebaseAuth); // تسجيل الخروج إذا لم يكن المستخدم مسجلاً
+            }
+          } catch (error) {
+            console.error("Error fetching user data:", error);
+            setAuth({ user: null, isAuthenticated: false });
+            await signOut(firebaseAuth); // تسجيل الخروج في حالة الخطأ
+          }
+        }
+      } else {
+        setAuth({ user: null, isAuthenticated: false });
+      }
       setIsAuthReady(true);
-      // We don't use anonymous sign-in anymore to avoid 'admin-restricted-operation'
     });
     return () => unsubscribe();
   }, []);
@@ -143,35 +176,11 @@ const App: React.FC = () => {
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      const result = await signInWithPopup(firebaseAuth, provider);
-      // After Google login, the onAuthStateChanged will trigger isAuthReady
-      // We also need to check if this user exists in our 'users' collection
-      // or if they are the hardcoded admin.
-      const user = result.user;
-      if (user.email === "omanartificialintelligence@gmail.com") {
-        const adminUser: User = {
-          id: user.uid,
-          name: user.displayName || 'المشرفة العامة',
-          role: UserRole.SUPERVISOR,
-          code: 'admin',
-          isActive: true,
-          joinedAt: '2026'
-        };
-        setAuth({ user: adminUser, isAuthenticated: true });
-      } else {
-        // Check if they are a registered teacher with this email
-        const q = query(collection(db, 'users'), where('email', '==', user.email));
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          const teacherData = snap.docs[0].data() as User;
-          setAuth({ user: teacherData, isAuthenticated: true });
-        } else {
-          alert('عذراً، هذا البريد الإلكتروني غير مسجل كمعلمة أو مشرفة.');
-          await signOut(firebaseAuth);
-        }
-      }
+      await signInWithPopup(firebaseAuth, provider);
+      // حالة المصادقة سيتم تحديثها تلقائياً بواسطة onAuthStateChanged
     } catch (error) {
       console.error("Google login failed:", error);
+      alert('حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى.');
     }
   };
 

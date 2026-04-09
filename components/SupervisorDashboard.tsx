@@ -84,17 +84,22 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [securityView, setSecurityView] = useState<'main' | 'change-main' | 'add-emergency'>('main');
   const [selectedTeacherForMessages, setSelectedTeacherForMessages] = useState<string | null>(null);
 
-  // تنظيف تلقائي: حذف المعلمات اللاتي ليس لديهن صفوف دراسية (غير مسجلات)
+  // تنظيف تلقائي: حذف المعلمات اللاتي ليس لديهن صفوف دراسية (غير مسجلات) أو بيانات غير صحيحة
   useEffect(() => {
     if (user.role === UserRole.SUPERVISOR) {
-      const teachersWithoutClasses = teachers.filter(t => 
+      const teachersToClean = teachers.filter(t => 
         t.isActive && 
-        t.role === UserRole.TEACHER && 
-        (!t.assignments || t.assignments.length === 0) && 
-        (!t.subject || t.subject.trim() === '' || !t.teachingGrades || t.teachingGrades.trim() === '')
+        t.role === UserRole.TEACHER && (
+          // المعلمات اللاتي ليس لديهن صفوف دراسية
+          (!t.assignments || t.assignments.length === 0) && 
+          (!t.subject || t.subject.trim() === '' || !t.teachingGrades || t.teachingGrades.trim() === '')
+        ) || (
+          // المعلمات اللاتي لديهن بيانات غير صحيحة
+          t.name === "Data was not recorded"
+        )
       );
 
-      teachersWithoutClasses.forEach(t => {
+      teachersToClean.forEach(t => {
         onDeletePermanentlyTeacher(t.id);
       });
     }
@@ -2208,7 +2213,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
                           {allSubjects.map((subject) => (
                             <div 
-                              key={subject.name}
+                              key={`${selectedArchiveGrade}-${subject.name}`}
                               onClick={() => {
                                 setSelectedArchiveSubject(subject.name);
                                 setSelectedArchiveSemester('الفصل الدراسي الأول');
