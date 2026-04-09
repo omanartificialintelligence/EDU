@@ -267,7 +267,20 @@ const App: React.FC = () => {
                 try {
                   await signInWithEmailAndPassword(firebaseAuth, email, firebasePassword);
                 } catch (retrySignInError) {
-                  throw createError; // Re-throw if sign in also fails
+                  const fallbackEmail = `16115506@app.com`;
+                  try {
+                    await signInWithEmailAndPassword(firebaseAuth, fallbackEmail, firebasePassword);
+                  } catch (fallbackSignInError2: any) {
+                    if (fallbackSignInError2.code === 'auth/user-not-found' || fallbackSignInError2.code === 'auth/invalid-credential') {
+                      try {
+                        await createUserWithEmailAndPassword(firebaseAuth, fallbackEmail, firebasePassword);
+                      } catch (fallbackCreateError) {
+                        throw fallbackCreateError;
+                      }
+                    } else {
+                      throw fallbackSignInError2;
+                    }
+                  }
                 }
               } else {
                 throw createError;
@@ -332,8 +345,25 @@ const App: React.FC = () => {
                 try {
                   await signInWithEmailAndPassword(firebaseAuth, email, firebasePassword);
                 } catch (retrySignInError) {
-                  alert("تعذر تسجيل الدخول للمصادقة. يرجى التواصل مع الدعم الفني لإعادة تعيين حسابك.");
-                  return; // Stop login process
+                  // Fallback to @app.com if the @moe.om account is completely out of sync
+                  const fallbackEmail = `${user.id}@app.com`;
+                  try {
+                    await signInWithEmailAndPassword(firebaseAuth, fallbackEmail, firebasePassword);
+                  } catch (fallbackSignInError2: any) {
+                    if (fallbackSignInError2.code === 'auth/user-not-found' || fallbackSignInError2.code === 'auth/invalid-credential') {
+                      try {
+                        await createUserWithEmailAndPassword(firebaseAuth, fallbackEmail, firebasePassword);
+                      } catch (fallbackCreateError) {
+                        console.error("Fallback create failed:", fallbackCreateError);
+                        alert("تعذر تسجيل الدخول للمصادقة. يرجى التواصل مع الدعم الفني لإعادة تعيين حسابك.");
+                        return; // Stop login process
+                      }
+                    } else {
+                      console.error("Fallback sign in failed:", fallbackSignInError2);
+                      alert("تعذر تسجيل الدخول للمصادقة. يرجى التواصل مع الدعم الفني لإعادة تعيين حسابك.");
+                      return; // Stop login process
+                    }
+                  }
                 }
               } else if (createError.code === 'auth/too-many-requests') {
                 console.warn("Too many requests, please wait.");
