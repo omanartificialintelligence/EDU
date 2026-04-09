@@ -83,6 +83,22 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [activeTab, setActiveTab] = useState<'overview' | 'feed' | 'lessons' | 'teachers' | 'archive' | 'security' | 'messages' | 'projects' | 'temp-supervisors'>('overview');
   const [securityView, setSecurityView] = useState<'main' | 'change-main' | 'add-emergency'>('main');
   const [selectedTeacherForMessages, setSelectedTeacherForMessages] = useState<string | null>(null);
+
+  // تنظيف تلقائي: حذف المعلمات اللاتي ليس لديهن صفوف دراسية (غير مسجلات)
+  useEffect(() => {
+    if (user.role === UserRole.SUPERVISOR) {
+      const teachersWithoutClasses = teachers.filter(t => 
+        t.isActive && 
+        t.role === UserRole.TEACHER && 
+        (!t.assignments || t.assignments.length === 0) && 
+        (!t.subject || t.subject.trim() === '' || !t.teachingGrades || t.teachingGrades.trim() === '')
+      );
+
+      teachersWithoutClasses.forEach(t => {
+        onDeletePermanentlyTeacher(t.id);
+      });
+    }
+  }, [teachers, user.role, onDeletePermanentlyTeacher]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -725,6 +741,13 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   // Filtering Logic
   const filteredTeachers = useMemo(() => {
     let list = teachers.filter(t => t.isActive && t.role === UserRole.TEACHER);
+    
+    // تأكد أن المعلمات الموجودات هن فقط المسؤولات عن الصفوف
+    list = list.filter(t => 
+      (t.assignments && t.assignments.length > 0) || 
+      (t.subject && t.subject.trim() !== '' && t.teachingGrades && t.teachingGrades.trim() !== '')
+    );
+
     if (isTempSupervisor && !user.tempPermissions?.hasFullAccess && user.tempPermissions?.allowedSubjects) {
       const allowed = user.tempPermissions.allowedSubjects;
       if (allowed.length > 0) {
@@ -809,31 +832,40 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
       {/* Sidebar */}
       <aside className={cn(
-        "w-72 bg-[#0f172a] text-white flex flex-col fixed lg:sticky top-0 h-screen shadow-2xl z-[110] transition-transform duration-300 lg:translate-x-0",
+        "w-[280px] sm:w-80 lg:w-72 bg-[#0f172a] text-white flex flex-col fixed lg:sticky top-0 h-screen shadow-2xl z-[110] transition-transform duration-500 ease-in-out right-0 lg:right-auto",
         isMobileMenuOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
       )}>
-        <div className="p-8 flex items-center justify-between border-b border-slate-800">
+        <div className="p-6 sm:p-8 flex items-center justify-between border-b border-slate-800/50">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <motion.div 
+              whileHover={{ rotate: 180 }}
+              transition={{ duration: 0.5 }}
+              className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20"
+            >
               <Award className="text-white w-7 h-7" />
-            </div>
+            </motion.div>
             <div>
-              <h1 className="font-black text-xl tracking-tight">منصة الإبداع</h1>
-              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">لوحة الإدارة العليا</p>
+              <h1 className="font-black text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-l from-white to-slate-400">منصة الإبداع</h1>
+              <p className="text-indigo-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">لوحة الإدارة العليا</p>
             </div>
           </div>
           <button 
             onClick={() => setIsMobileMenuOpen(false)}
-            className="lg:hidden p-2 text-slate-400 hover:text-slate-200"
+            className="lg:hidden p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all"
           >
             <XCircle className="w-6 h-6" />
           </button>
         </div>
 
-        <nav className="flex-1 p-6 space-y-2 overflow-y-auto custom-scrollbar">
-          {sidebarItems.filter(i => i.visible).map(item => (
-            <button
+        <nav className="flex-1 p-4 sm:p-6 space-y-2 overflow-y-auto custom-scrollbar">
+          {sidebarItems.filter(i => i.visible).map((item, idx) => (
+            <motion.button
               key={item.id}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: idx * 0.05 }}
+              whileHover={{ scale: 1.02, x: -4 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => { 
                 setActiveTab(item.id as any); 
                 setIsMobileMenuOpen(false); 
@@ -842,38 +874,40 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 }
               }}
               className={cn(
-                "w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 group",
+                "w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-colors duration-300 group",
                 activeTab === item.id 
-                  ? "bg-indigo-600 text-white shadow-xl shadow-indigo-600/20" 
-                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20" 
+                  : "text-slate-400 hover:bg-slate-800/80 hover:text-white"
               )}
             >
-              <item.icon className={cn("w-5 h-5 transition-transform group-hover:scale-110", activeTab === item.id ? "text-white" : "text-slate-500")} />
+              <item.icon className={cn("w-5 h-5 transition-transform duration-300 group-hover:scale-110", activeTab === item.id ? "text-white" : "text-slate-500 group-hover:text-indigo-400")} />
               <span className="font-bold text-sm">{item.label}</span>
               {activeTab === item.id && (
                 <motion.div layoutId="activeTab" className="mr-auto w-1.5 h-1.5 bg-white rounded-full" />
               )}
-            </button>
+            </motion.button>
           ))}
         </nav>
 
-        <div className="p-6 border-t border-slate-800">
-          <div className="bg-slate-800/50 p-4 rounded-2xl flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center font-black text-white">
+        <div className="p-4 sm:p-6 border-t border-slate-800/50 bg-slate-900/50">
+          <div className="bg-slate-800/80 p-4 rounded-2xl flex items-center gap-3 mb-4 border border-slate-700/50 hover:border-slate-600 transition-colors">
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center font-black text-white shadow-inner">
               {user.name.charAt(0)}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-black truncate">{user.name}</p>
-              <p className="text-[10px] text-slate-500 font-bold truncate">{user.role === UserRole.SUPERVISOR ? 'مشرفة رئيسية' : 'مشرفة مؤقتة'}</p>
+              <p className="text-sm font-black truncate text-slate-200">{user.name}</p>
+              <p className="text-[10px] text-indigo-400 font-bold truncate">{user.role === UserRole.SUPERVISOR ? 'مشرفة رئيسية' : 'مشرفة مؤقتة'}</p>
             </div>
           </div>
-          <button 
+          <motion.button 
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={onLogout}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-red-500/10 text-red-500 font-black text-xs hover:bg-red-500 hover:text-white transition-all"
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-red-500/10 text-red-500 font-black text-sm hover:bg-red-500 hover:text-white transition-all border border-red-500/20 hover:border-transparent hover:shadow-lg hover:shadow-red-500/20"
           >
             <LogOut className="w-4 h-4" />
             تسجيل الخروج
-          </button>
+          </motion.button>
         </div>
       </aside>
 
@@ -920,9 +954,14 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
             <AnimatePresence>
               {isNotificationsOpen && (
                 <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
+                  variants={{
+                    hidden: { opacity: 0, y: 10 },
+                    visible: { opacity: 1, y: 0, transition: { staggerChildren: 0.05 } },
+                    exit: { opacity: 0, y: 10, transition: { staggerChildren: 0.05, staggerDirection: -1 } }
+                  }}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
                   className="absolute top-20 left-4 sm:left-8 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden"
                 >
                   <div className="p-4 border-b border-slate-100 flex justify-between items-center">
@@ -934,8 +973,13 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   <div className="max-h-80 overflow-y-auto">
                     {notifications.length > 0 ? (
                       notifications.map((notification, index) => (
-                        <div 
+                        <motion.div 
                           key={notification.id} 
+                          variants={{
+                            hidden: { opacity: 0, y: 10 },
+                            visible: { opacity: 1, y: 0 },
+                            exit: { opacity: 0, y: -10 }
+                          }}
                           className={cn(
                             "p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer",
                             !notification.isRead ? "bg-indigo-50/50" : ""
@@ -958,7 +1002,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               </span>
                             </div>
                           </div>
-                        </div>
+                        </motion.div>
                       ))
                     ) : (
                       <div className="p-8 text-center text-slate-400 text-xs font-bold">
