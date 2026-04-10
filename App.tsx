@@ -18,6 +18,7 @@ import {
   query, 
   where, 
   getDocs,
+  getDoc,
   Unsubscribe
 } from 'firebase/firestore';
 import { auth as firebaseAuth, googleProvider, microsoftProvider } from './src/firebase';
@@ -76,20 +77,45 @@ const App: React.FC = () => {
           setAuth({ user: adminUser, isAuthenticated: true });
         } else {
           try {
+            let userData: User | null = null;
+            
+            // 1. محاولة البحث بالبريد الإلكتروني
             const q = query(collection(db, 'users'), where('email', '==', user.email));
             const snap = await getDocs(q);
+            
             if (!snap.empty) {
-              const teacherData = snap.docs[0].data() as User;
-              setAuth({ user: teacherData, isAuthenticated: true });
+              userData = { ...snap.docs[0].data() as User, id: snap.docs[0].id };
             } else {
-              console.warn('User not found in database');
+              // 2. محاولة البحث بالمعرف (ID) إذا كان البريد الإلكتروني يتبع النمط ID@moe.om أو ID@app.com
+              const email = user.email || '';
+              const emailParts = email.split('@');
+              if (emailParts.length === 2 && (emailParts[1] === 'moe.om' || emailParts[1] === 'app.com')) {
+                const userId = emailParts[0];
+                const userDoc = await getDoc(doc(db, 'users', userId));
+                if (userDoc.exists()) {
+                  userData = { ...userDoc.data() as User, id: userDoc.id };
+                }
+              }
+            }
+
+            if (userData) {
+              if (userData.isActive) {
+                setAuth({ user: userData, isAuthenticated: true });
+              } else {
+                console.warn('User account is inactive');
+                setAuth({ user: null, isAuthenticated: false });
+                await signOut(firebaseAuth);
+                alert('عذراً، هذا الحساب غير نشط.');
+              }
+            } else {
+              console.warn('User not found in database for email:', user.email);
               setAuth({ user: null, isAuthenticated: false });
-              await signOut(firebaseAuth); // تسجيل الخروج إذا لم يكن المستخدم مسجلاً
+              await signOut(firebaseAuth);
             }
           } catch (error) {
             console.error("Error fetching user data:", error);
             setAuth({ user: null, isAuthenticated: false });
-            await signOut(firebaseAuth); // تسجيل الخروج في حالة الخطأ
+            await signOut(firebaseAuth);
           }
         }
       } else {
@@ -819,7 +845,7 @@ const App: React.FC = () => {
                 timestamp: new Date().toISOString()
               }]
             };
-            if (email) newTeacher.email = email;
+            newTeacher.email = email || teacherEmail;
             if (phone) newTeacher.phoneNumber = phone;
             if (assignments && assignments.length > 0) newTeacher.assignments = assignments;
 
