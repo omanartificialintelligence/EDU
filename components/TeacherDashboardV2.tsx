@@ -54,6 +54,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   const [messageAttachmentType, setMessageAttachmentType] = useState<'image' | 'file'>('file');
   const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
+  const [lessonNotes, setLessonNotes] = useState<Record<string, string>>({});
   
   // New Lesson State
   const [newLessonTitle, setNewLessonTitle] = useState('');
@@ -747,6 +748,29 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                                         <p className="text-xs font-bold text-slate-400">لا توجد تعليقات بعد</p>
                                       </div>
                                     )}
+                                  </div>
+
+                                  <div className="pt-4 border-t border-slate-200">
+                                    <label className="text-xs font-black text-slate-700 block mb-2">ملاحظات للمشرفة:</label>
+                                    <div className="flex gap-2">
+                                      <textarea 
+                                        value={lessonNotes[material.id] || material.teacherNotes || ''}
+                                        onChange={(e) => setLessonNotes(prev => ({ ...prev, [material.id]: e.target.value }))}
+                                        placeholder="اكتبي ملاحظاتك للمشرفة بخصوص هذا الدرس..."
+                                        className="flex-1 px-4 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-xs font-bold"
+                                        rows={3}
+                                      />
+                                      <button 
+                                        onClick={() => {
+                                          const notes = lessonNotes[material.id] || material.teacherNotes || '';
+                                          onUpdateMaterial({ ...material, teacherNotes: notes });
+                                        }}
+                                        className="px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/10 flex items-center gap-2 text-xs font-bold self-end"
+                                      >
+                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                        حفظ
+                                      </button>
+                                    </div>
                                   </div>
 
                                   <div className="pt-4 border-t border-slate-200">

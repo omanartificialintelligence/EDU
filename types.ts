@@ -80,6 +80,7 @@ export interface LessonMaterial {
   isActive?: boolean;
   isModelLesson: boolean;
   supervisorNotes?: string;
+  teacherNotes?: string; // ملاحظات المعلمة للمشرفة
   isStarred?: boolean;
   publishDate?: string; // ISO date string for scheduling
   tags?: string[];

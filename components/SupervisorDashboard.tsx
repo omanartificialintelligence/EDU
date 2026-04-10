@@ -1731,6 +1731,14 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   >
                                     <div className="p-6 space-y-4">
                                       <div className="space-y-3">
+                                        {material.teacherNotes && (
+                                          <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 shadow-sm mb-4">
+                                            <div className="flex justify-between items-center mb-2">
+                                              <span className="text-xs font-black text-indigo-900">ملاحظات المعلمة:</span>
+                                            </div>
+                                            <p className="text-sm text-indigo-800 font-medium leading-relaxed">{material.teacherNotes}</p>
+                                          </div>
+                                        )}
                                         {material.comments && material.comments.length > 0 ? (
                                           material.comments.map((comment, index) => (
                                             <div key={comment.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
