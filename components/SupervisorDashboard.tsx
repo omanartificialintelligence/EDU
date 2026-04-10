@@ -1660,11 +1660,11 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           <h2 className="text-xl sm:text-2xl font-black text-slate-900">{viewingSubject}</h2>
                           <div className="flex flex-col gap-1 mt-1">
                             <p className="text-xs sm:text-sm font-bold text-slate-500">{activeGradeTab}</p>
-                            {teachers.filter(t => t.assignments?.some(a => a.subject === viewingSubject && a.grade === activeGradeTab)).length > 0 && (
+                            {filteredTeachers.filter(t => t.assignments?.some(a => a.subject === viewingSubject && a.grade === activeGradeTab)).length > 0 && (
                               <div className="flex items-center gap-2 mt-1">
                                 <span className="text-[10px] font-bold text-slate-400">المعلمة المسؤولة:</span>
                                 <div className="flex flex-wrap gap-1">
-                                  {teachers.filter(t => t.assignments?.some(a => a.subject === viewingSubject && a.grade === activeGradeTab)).map((t, i) => (
+                                  {filteredTeachers.filter(t => t.assignments?.some(a => a.subject === viewingSubject && a.grade === activeGradeTab)).map((t, i) => (
                                     <span key={`responsible-teacher-${t.id}-${i}`} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[10px] font-black">
                                       {t.name}
                                     </span>
