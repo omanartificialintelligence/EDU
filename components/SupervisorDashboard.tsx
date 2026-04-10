@@ -1922,8 +1922,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
                         >
                           <option value="">اختر المعلمة...</option>
-                          {[user, ...filteredTeachers].map((t) => (
-                            <option key={`teacher-option-${t.id}`} value={t.id}>{t.name}</option>
+                          {[user, ...filteredTeachers.filter(t => t.id !== user.id)].map((t, idx) => (
+                            <option key={`teacher-option-${t.id}-${idx}`} value={t.id}>{t.name}</option>
                           ))}
                         </select>
                       </div>
@@ -2400,12 +2400,12 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           m.grade === selectedArchiveGrade && 
                           m.subject === selectedArchiveSubject && 
                           m.semester === selectedArchiveSemester
-                        ).map((lesson) => {
+                        ).map((lesson, idx) => {
                           const fileInfo = getFileIcon(lesson);
                           const Icon = fileInfo.icon;
                           
                           return (
-                            <div key={lesson.id} className="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-white hover:shadow-md transition-all">
+                            <div key={`archive-lesson-${lesson.id}-${idx}`} className="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-white hover:shadow-md transition-all">
                               <div className="flex items-center gap-4">
                                 <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shadow-sm", fileInfo.bg, fileInfo.color)}>
                                   <Icon className="w-6 h-6" />
@@ -2475,8 +2475,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           {projects.filter(p => p.academicYear === selectedArchiveYear).length > 0 ? (
-                            projects.filter(p => p.academicYear === selectedArchiveYear).map(project => (
-                              <div key={project.id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
+                            projects.filter(p => p.academicYear === selectedArchiveYear).map((project, idx) => (
+                              <div key={`archive-project-${project.id}-${idx}`} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
                                 <div className="flex justify-between items-start mb-4">
                                   <div>
                                     <h4 className="font-bold text-lg text-slate-900">{project.name}</h4>
@@ -2525,8 +2525,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         </h3>
                         <div className="grid grid-cols-1 gap-4">
                           {posts.filter(p => p.academicYear === selectedArchiveYear).length > 0 ? (
-                            posts.filter(p => p.academicYear === selectedArchiveYear).map(post => (
-                              <div key={post.id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex justify-between items-start">
+                            posts.filter(p => p.academicYear === selectedArchiveYear).map((post, idx) => (
+                              <div key={`archive-post-${post.id}-${idx}`} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex justify-between items-start">
                                 <div>
                                   <h4 className="font-bold text-slate-900 mb-1">{post.title}</h4>
                                   <p className="text-xs text-slate-500 mb-2">{new Date(post.createdAt).toLocaleDateString('ar-OM')}</p>
@@ -3639,8 +3639,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 <div className="space-y-2">
                   <label className="text-sm font-black text-slate-700">تعيين المعلمات</label>
                   <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-100">
-                    {[user, ...filteredTeachers].map((teacher) => (
-                      <label key={`teacher-select-${teacher.id}`} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-indigo-500 transition-all">
+                    {[user, ...filteredTeachers.filter(t => t.id !== user.id)].map((teacher, idx) => (
+                      <label key={`teacher-select-${teacher.id}-${idx}`} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-indigo-500 transition-all">
                         <input 
                           type="checkbox"
                           checked={newProjectTeachers.includes(teacher.id)}
