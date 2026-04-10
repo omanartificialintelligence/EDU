@@ -2400,17 +2400,21 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           m.grade === selectedArchiveGrade && 
                           m.subject === selectedArchiveSubject && 
                           m.semester === selectedArchiveSemester
-                        ).map((lesson) => (
-                          <div key={lesson.id} className="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-white hover:shadow-md transition-all">
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-indigo-600 shadow-sm">
-                                <Palette className="w-6 h-6" />
+                        ).map((lesson) => {
+                          const fileInfo = getFileIcon(lesson);
+                          const Icon = fileInfo.icon;
+                          
+                          return (
+                            <div key={lesson.id} className="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-white hover:shadow-md transition-all">
+                              <div className="flex items-center gap-4">
+                                <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shadow-sm", fileInfo.bg, fileInfo.color)}>
+                                  <Icon className="w-6 h-6" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-black text-slate-900">{lesson.lessonTitle}</p>
+                                  <p className="text-[10px] text-slate-400 font-bold">{lesson.teacherName} • {new Date(lesson.createdAt).toLocaleDateString('ar-OM')}</p>
+                                </div>
                               </div>
-                              <div>
-                                <p className="text-sm font-black text-slate-900">{lesson.lessonTitle}</p>
-                                <p className="text-[10px] text-slate-400 font-bold">{lesson.teacherName} • {new Date(lesson.createdAt).toLocaleDateString('ar-OM')}</p>
-                              </div>
-                            </div>
                             <div className="flex gap-2 flex-wrap justify-end">
                               {lesson.attachments.map((attachment, idx) => (
                                 <button 
@@ -2445,7 +2449,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               )}
                             </div>
                           </div>
-                        ))}
+                        );
+                      })}
                         {lessonMaterials.filter(m => 
                           m.academicYear === selectedArchiveYear && 
                           m.grade === selectedArchiveGrade && 
