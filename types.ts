@@ -50,6 +50,7 @@ export interface SupervisorConfig {
   academicYear?: string; // السنة الدراسية (نص)
   semester?: string; // الفصل الدراسي (نص)
   appLogoUrl?: string;
+  schoolName?: string; // اسم المدرسة
   archiveYears?: string[];
 }
 

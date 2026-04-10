@@ -4,6 +4,7 @@ import {
   User, Project, Post, ProjectSubmission, Attachment, ResetRequest, 
   LessonMaterial, LessonComment, UserRole, SupervisorConfig, Notification, AuditLog, Message 
 } from '../types';
+import SettingsPage from './SettingsPage';
 import { 
   LayoutDashboard, Users, Rocket, Palette, Archive, Bell, 
   LogOut, Search, Plus, Filter, CheckCircle, XCircle, X,
@@ -80,7 +81,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   onLogout,
   supervisorConfig, academicYear, semester
 }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'feed' | 'lessons' | 'teachers' | 'archive' | 'security' | 'messages' | 'projects' | 'temp-supervisors'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'feed' | 'lessons' | 'teachers' | 'archive' | 'security' | 'messages' | 'projects' | 'temp-supervisors' | 'settings'>('overview');
   const [securityView, setSecurityView] = useState<'main' | 'change-main' | 'add-emergency'>('main');
   const [selectedTeacherForMessages, setSelectedTeacherForMessages] = useState<string | null>(null);
 
@@ -817,7 +818,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     { id: 'projects', label: 'المشاريع', icon: Rocket, visible: true },
     { id: 'messages', label: 'الرسائل', icon: MessageSquare, visible: true },
     { id: 'temp-supervisors', label: 'المشرفين المؤقتين', icon: Shield, visible: isMainSupervisor },
-    { id: 'security', label: 'الأمن والإعدادات', icon: Settings, visible: isMainSupervisor },
+    { id: 'settings', label: 'إعدادات النظام', icon: Settings, visible: isMainSupervisor },
+    { id: 'security', label: 'الأمن والإعدادات', icon: Shield, visible: isMainSupervisor },
   ];
 
   return (
