@@ -81,9 +81,9 @@ const TeacherPanel: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <AnimatePresence mode="popLayout">
-            {lessons.map((lesson) => (
+            {lessons.map((lesson, index) => (
               <motion.div
-                key={lesson.id}
+                key={`${lesson.id}-${index}`} 
                 layout
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}

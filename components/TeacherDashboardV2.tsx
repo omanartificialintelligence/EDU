@@ -428,9 +428,9 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   </div>
                   <div className="max-h-80 overflow-y-auto">
                     {notifications.length > 0 ? (
-                      notifications.map((notification) => (
+                      notifications.map((notification, index) => (
                         <div 
-                          key={notification.id} 
+                          key={`${notification.id}-${index}`} 
                           className={cn(
                             "p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer",
                             !notification.isRead ? "bg-indigo-50/50" : ""
@@ -491,8 +491,8 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   
                   <div className="flex-1 overflow-y-auto pr-2 space-y-4 max-h-[200px] scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
                     {posts.filter(p => !p.isArchived).length > 0 ? (
-                      posts.filter(p => !p.isArchived).slice(0, 3).map(post => (
-                        <div key={post.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-amber-200 hover:bg-amber-50/30 transition-all group">
+                      posts.filter(p => !p.isArchived).slice(0, 3).map((post, index) => (
+                        <div key={`${post.id}-${index}`} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-amber-200 hover:bg-amber-50/30 transition-all group">
                           <div className="flex justify-between items-start mb-2">
                             <h4 className="font-bold text-sm text-slate-800 group-hover:text-amber-700 transition-colors">{post.title}</h4>
                             <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-100">
@@ -555,7 +555,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
 
                     return (
                       <div 
-                        key={subject.name} 
+                        key={`${subject.name}-${i}`} 
                         className={cn(
                           "relative p-8 rounded-[24px] border-2 transition-all duration-300 overflow-hidden group hover:shadow-xl",
                           subject.bg, subject.border
@@ -662,7 +662,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         const Icon = fileInfo.icon;
                         
                         return (
-                          <div key={material.id} className="bg-white rounded-[20px] shadow-sm border border-slate-200 overflow-hidden group hover:shadow-md transition-all">
+                          <div key={`${material.id}-${index}`} className="bg-white rounded-[20px] shadow-sm border border-slate-200 overflow-hidden group hover:shadow-md transition-all">
                             <div className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                               <div className="flex items-center gap-4">
                                 <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border relative", fileInfo.bg, fileInfo.color, "border-slate-100")}>
@@ -733,7 +733,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                                   <div className="space-y-3">
                                     {material.comments && material.comments.length > 0 ? (
                                       material.comments.map((comment, index) => (
-                                        <div key={comment.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                        <div key={`${comment.id}-${index}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                                           <div className="flex justify-between items-center mb-2">
                                             <span className="text-xs font-black text-slate-900">{comment.authorName}</span>
                                             <span className="text-[10px] font-bold text-slate-400">
@@ -862,7 +862,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   
                   return (
                     <motion.div 
-                      key={project.id} 
+                      key={`${project.id}-${index}`} 
                       initial={{ opacity: 0, y: 50 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
@@ -1177,9 +1177,9 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                       <p className="text-sm text-slate-400">ابدئي المحادثة مع الزميلات والمشرفات</p>
                     </div>
                   ) : (
-                    messages.map((msg) => (
+                    messages.map((msg, index) => (
                       <div 
-                        key={msg.id} 
+                        key={`${msg.id}-${index}`} 
                         className={cn(
                           "flex flex-col max-w-[80%]",
                           msg.senderId === user.id ? "mr-auto items-end" : "ml-auto items-start"

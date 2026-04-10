@@ -981,7 +981,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     {notifications.length > 0 ? (
                       notifications.map((notification, index) => (
                         <motion.div 
-                          key={notification.id} 
+                          key={`${notification.id}-${index}`} 
                           variants={{
                             hidden: { opacity: 0, y: 10 },
                             visible: { opacity: 1, y: 0 },
@@ -1040,7 +1040,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     { label: 'الدروس المرفوعة', value: lessonMaterials.length, icon: Palette, color: 'amber' },
                     { label: 'التعاميم المنشورة', value: posts.length, icon: MessageSquare, color: 'rose' },
                   ].map((stat, i) => (
-                    <div key={stat.label} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center gap-6 group hover:shadow-xl hover:shadow-indigo-500/5 transition-all">
+                    <div key={`${stat.label}-${i}`} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center gap-6 group hover:shadow-xl hover:shadow-indigo-500/5 transition-all">
                       <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shadow-inner", `bg-${stat.color}-50 text-${stat.color}-600`)}>
                         <stat.icon className="w-7 h-7" />
                       </div>
@@ -1101,7 +1101,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         { label: 'تسجيل معلمة', icon: Users, color: 'amber', action: () => setActiveTab('teachers') },
                       ].map((btn, i) => (
                         <button 
-                          key={btn.label} 
+                          key={`${btn.label}-${i}`} 
                           onClick={btn.action}
                           className={cn(
                             "p-6 rounded-3xl border border-slate-100 flex flex-col items-center gap-4 transition-all hover:shadow-lg hover:-translate-y-1",
@@ -1650,7 +1650,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           const Icon = fileInfo.icon;
                           
                           return (
-                            <div key={material.id} className="bg-white rounded-[20px] shadow-sm border border-slate-200 overflow-hidden group hover:shadow-md transition-all">
+                            <div key={`${material.id}-${index}`} className="bg-white rounded-[20px] shadow-sm border border-slate-200 overflow-hidden group hover:shadow-md transition-all">
                               <div className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                 <div className="flex items-center gap-4">
                                   <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border relative", fileInfo.bg, fileInfo.color, "border-slate-100")}>
@@ -1743,7 +1743,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                         )}
                                         {material.comments && material.comments.length > 0 ? (
                                           material.comments.map((comment, index) => (
-                                            <div key={comment.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                            <div key={`${comment.id}-${index}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                                               <div className="flex justify-between items-center mb-2">
                                                 <span className="text-xs font-black text-slate-900">{comment.authorName}</span>
                                                 <span className="text-[10px] font-bold text-slate-400">
@@ -2115,8 +2115,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 </div>
 
                 <div className="space-y-6">
-                  {filteredPosts.map((post) => (
-                    <div key={post.id} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden">
+                  {filteredPosts.map((post, index) => (
+                    <div key={`${post.id}-${index}`} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden">
                       {post.isPinned && (
                         <div className="absolute top-0 left-0 w-full h-1.5 bg-indigo-500" />
                       )}
@@ -2498,7 +2498,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 <div className="flex flex-col gap-6 max-h-[70vh] overflow-y-auto snap-y snap-mandatory pr-2 custom-scrollbar focus:outline-none" tabIndex={0}>
                   {filteredProjects.map((project, index) => (
                     <motion.div 
-                      key={project.id}
+                      key={`${project.id}-${index}`}
                       initial={{ opacity: 0, y: 50 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
@@ -2753,9 +2753,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                  (m.senderId === user.id && m.recipientId === selectedTeacherForMessages);
                         }
                         return true;
-                      }).map((msg) => (
+                      }).map((msg, index) => (
                         <div 
-                          key={msg.id} 
+                          key={`${msg.id}-${index}`} 
                           className={cn(
                             "flex flex-col max-w-[75%]",
                             msg.senderId === user.id ? "mr-auto items-end" : "ml-auto items-start"
