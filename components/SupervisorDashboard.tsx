@@ -278,6 +278,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
         grade: attachmentGrade,
         subject: attachmentSubject,
         status: 'approved',
+        isActive: true,
         isModelLesson: false,
         tags: [attachmentSubject, attachmentGrade]
       };
@@ -1580,7 +1581,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             const subjectMaterials = lessonMaterials.filter(m => 
                               (m.tags?.includes(subject.name) || m.lessonTitle.includes(subject.name) || m.subject === subject.name) && 
                               (m.tags?.includes(grade) || m.grade === grade) &&
-                              m.academicYear === academicYear && m.semester === semester && !m.isArchived
+                              m.academicYear === academicYear && m.semester === semester && !m.isArchived && m.isActive !== false
                             );
                             
                             // Get unique teachers
@@ -1681,6 +1682,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       {lessonMaterials
                         .filter(m => 
                           m.academicYear === academicYear && m.semester === semester &&
+                          !m.isArchived && m.isActive !== false &&
                           (m.tags?.includes(viewingSubject!) || m.lessonTitle.includes(viewingSubject!) || m.subject === viewingSubject) && 
                           (m.tags?.includes(activeGradeTab) || m.grade === activeGradeTab)
                         )
@@ -1927,6 +1929,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           onChange={e => setAttachmentSemester(e.target.value)}
                           className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
                         >
+                          <option value="الفصل الدراسي الأول">الفصل الدراسي الأول</option>
+                          <option value="الفصل الدراسي الثاني">الفصل الدراسي الثاني</option>
                           <option value="الفصل الأول">الفصل الأول</option>
                           <option value="الفصل الثاني">الفصل الثاني</option>
                         </select>
