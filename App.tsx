@@ -242,6 +242,28 @@ const App: React.FC = () => {
     }
   };
 
+  const handleCleanupOrphanedLessons = async () => {
+    const teacherIds = new Set(teachers.map(t => t.id));
+    const orphanedLessons = lessonMaterials.filter(m => !teacherIds.has(m.teacherId));
+    
+    if (orphanedLessons.length === 0) {
+      alert('لا توجد دروس يتيمة لحذفها.');
+      return;
+    }
+
+    if (window.confirm(`هل أنت متأكد من حذف ${orphanedLessons.length} درساً لمعلمات غير مسجلات؟`)) {
+      try {
+        for (const lesson of orphanedLessons) {
+          await deleteDoc(doc(db, 'lessonMaterials', lesson.id));
+        }
+        alert(`تم حذف ${orphanedLessons.length} درساً بنجاح.`);
+      } catch (error) {
+        console.error("Error cleaning up orphaned lessons:", error);
+        alert('حدث خطأ أثناء عملية التنظيف.');
+      }
+    }
+  };
+
   const currentAcademicYear = supervisorConfig.academicYear || "2025-2026";
   const currentSemester = supervisorConfig.semester || "الفصل الأول";
 
@@ -975,6 +997,7 @@ const App: React.FC = () => {
         onDeletePermanentlyLesson={handleDeletePermanentlyLesson}
         onDeletePermanentlyPost={handleDeletePermanentlyPost}
         onAddNotification={handleAddNotification}
+        onCleanupOrphanedLessons={handleCleanupOrphanedLessons}
         notifications={notifications.filter(n => n.userId === auth.user?.id)}
         onMarkNotificationAsRead={handleMarkNotificationAsRead}
         onLogout={handleLogout}

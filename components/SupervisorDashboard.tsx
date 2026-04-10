@@ -60,6 +60,7 @@ interface SupervisorDashboardProps {
   onDeletePermanentlyTeacher: (id: string) => void;
   onDeletePermanentlyProject: (id: string) => void;
   onDeletePermanentlyPost: (id: string) => void;
+  onCleanupOrphanedLessons: () => void;
   onAddNotification: (notification: Notification) => void;
   notifications: Notification[];
   onMarkNotificationAsRead: (id: string) => void;
@@ -76,7 +77,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   onAddTeacher, onSoftDeleteTeacher, onRestoreTeacher, onUpdateTeacher, onResetPassword,
   onAddProject, onDeleteProject, onUpdateProjectSubmission,
   onAddTempSupervisor, onDeleteTempSupervisor, onUpdateSecurity, onUpdateLessonMaterial, onAddLessonMaterial,
-  onSoftDeleteLesson, onRestoreLesson, onDeletePermanentlyLesson, onDeletePermanentlyTeacher, onDeletePermanentlyProject, onDeletePermanentlyPost, onAddNotification,
+  onSoftDeleteLesson, onRestoreLesson, onDeletePermanentlyLesson, onDeletePermanentlyTeacher, onDeletePermanentlyProject, onDeletePermanentlyPost, 
+  onCleanupOrphanedLessons,
+  onAddNotification,
   notifications, onMarkNotificationAsRead,
   onLogout,
   supervisorConfig, academicYear, semester
@@ -728,24 +731,35 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     return { icon: FileText, color: 'text-slate-400', bg: 'bg-slate-50', label: 'ملف' };
   };
 
+  const getAttachmentIcon = (attachment: Attachment) => {
+    const fileName = attachment.name.toLowerCase();
+    const type = attachment.type;
+
+    if (type === 'link') return { icon: LinkIcon, color: 'text-blue-500' };
+    if (fileName.endsWith('.pdf')) return { icon: FileText, color: 'text-red-600' };
+    if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) return { icon: FileText, color: 'text-blue-600' };
+    if (fileName.endsWith('.ppt') || fileName.endsWith('.pptx')) return { icon: FileIcon, color: 'text-orange-500' };
+    if (fileName.endsWith('.mp4') || fileName.endsWith('.mov') || fileName.endsWith('.avi')) return { icon: Video, color: 'text-red-500' };
+    if (fileName.endsWith('.mp3') || fileName.endsWith('.wav')) return { icon: Music, color: 'text-emerald-500' };
+    if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png') || fileName.endsWith('.gif')) return { icon: ImageIcon, color: 'text-purple-500' };
+    
+    return { icon: FileIcon, color: 'text-slate-400' };
+  };
+
   // New Post State
   const [newPostTitle, setNewPostTitle] = useState('');
   const [newPostContent, setNewPostContent] = useState('');
   const [newPostIsPinned, setNewPostIsPinned] = useState(false);
   const [newPostAttachments, setNewPostAttachments] = useState<Attachment[]>([]);
 
-  // Stats for Charts
-  const statsData = useMemo(() => [
-    { name: 'المعلمات', value: teachers.filter(t => t.role === UserRole.TEACHER).length, color: '#4f46e5' },
-    { name: 'الدروس', value: lessonMaterials.length, color: '#10b981' },
-    { name: 'التعاميم', value: posts.length, color: '#ef4444' },
-  ], [teachers, lessonMaterials, posts]);
-
   const isMainSupervisor = user.role === UserRole.SUPERVISOR;
   const isTempSupervisor = user.role === UserRole.TEMP_SUPERVISOR;
 
   // Filtering Logic
   const filteredTeachers = useMemo(() => {
+    if (isTempSupervisor && user.tempPermissions?.canViewTeachers === false) {
+      return [];
+    }
     let list = teachers.filter(t => t.isActive && t.role === UserRole.TEACHER);
     
     // تأكد أن المعلمات الموجودات هن فقط المسؤولات عن الصفوف
@@ -808,6 +822,13 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     
     return list;
   }, [lessonMaterials, filteredTeachers, isMainSupervisor, isTempSupervisor, user.tempPermissions, activeGradeTab, activeSubjectTab]);
+
+  // Stats for Charts
+  const statsData = useMemo(() => [
+    { name: 'المعلمات', value: filteredTeachers.length, color: '#4f46e5' },
+    { name: 'الدروس', value: filteredLessons.length, color: '#10b981' },
+    { name: 'التعاميم', value: filteredPosts.length, color: '#ef4444' },
+  ], [filteredTeachers, filteredLessons, filteredPosts]);
 
   const sidebarItems = [
     { id: 'overview', label: 'الرئيسية', icon: LayoutDashboard, visible: true },
@@ -1140,6 +1161,24 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         </div>
                       </div>
 
+                      {isMainSupervisor && (
+                        <div className="mb-8 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Trash2 className="w-5 h-5 text-amber-600" />
+                            <div>
+                              <p className="text-sm font-black text-amber-900">تنظيف البيانات اليتيمة</p>
+                              <p className="text-[10px] font-bold text-amber-600">حذف الدروس المرتبطة بمعلمات غير مسجلات في النظام</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={onCleanupOrphanedLessons}
+                            className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-xs font-black transition-all active:scale-95 shadow-sm"
+                          >
+                            بدء التنظيف
+                          </button>
+                        </div>
+                      )}
+
                       <form onSubmit={(e) => { 
                         e.preventDefault(); 
                         if (!newTeacherName || !newTeacherId) return alert('الرجاء إدخال الاسم والرقم الوظيفي');
@@ -1268,7 +1307,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 <motion.div 
                                   initial={{ opacity: 0, scale: 0.9 }}
                                   animate={{ opacity: 1, scale: 1 }}
-                                  key={`new-assignment-${idx}`} 
+                                  key={`new-assignment-${assignment.grade}-${assignment.subject}-${idx}`} 
                                   className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm group hover:border-indigo-200 transition-all"
                                 >
                                   <div className="w-2 h-2 rounded-full bg-indigo-500" />
@@ -1530,7 +1569,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 {!viewingSubject ? (
                   <div className="space-y-12">
                     {AVAILABLE_GRADES.map((grade, i) => (
-                      <div key={grade} className="space-y-4">
+                      <div key={`grade-section-${grade}-${i}`} className="space-y-4">
                         <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
                           <div className="w-2 h-8 bg-indigo-600 rounded-full" />
                           {grade}
@@ -1677,21 +1716,26 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2 w-full md:w-auto flex-wrap justify-end">
-                                  {material.attachments.map((attachment, idx) => (
-                                    <button 
-                                      key={idx}
-                                      onClick={() => {
-                                        if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
-                                          setPreviewAttachment(attachment);
-                                        } else {
-                                          downloadFile(attachment.url, attachment.name || `${material.lessonTitle}.bin`);
-                                        }
-                                      }}
-                                      className="flex-1 md:flex-none px-4 py-2 bg-slate-50 text-slate-700 rounded-xl hover:bg-blue-50 hover:text-blue-700 transition-all font-bold text-xs flex items-center justify-center gap-2 border border-slate-200"
-                                    >
-                                      <Eye className="w-4 h-4" /> معاينة {attachment.name || `مرفق ${idx + 1}`}
-                                    </button>
-                                  ))}
+                                  {material.attachments.map((attachment, idx) => {
+                                    const attachInfo = getAttachmentIcon(attachment);
+                                    const AttachIcon = attachInfo.icon;
+                                    return (
+                                      <button 
+                                        key={`${attachment.url || attachment.name || idx}-${idx}`}
+                                        onClick={() => {
+                                          if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
+                                            setPreviewAttachment(attachment);
+                                          } else {
+                                            downloadFile(attachment.url, attachment.name || `${material.lessonTitle}.bin`);
+                                          }
+                                        }}
+                                        className="flex-1 md:flex-none px-4 py-2 bg-slate-50 text-slate-700 rounded-xl hover:bg-blue-50 hover:text-blue-700 transition-all font-bold text-xs flex items-center justify-center gap-2 border border-slate-200"
+                                      >
+                                        <AttachIcon className={cn("w-4 h-4", attachInfo.color)} />
+                                        {attachment.name || `مرفق ${idx + 1}`}
+                                      </button>
+                                    );
+                                  })}
                                   {isMainSupervisor && (
                                     <button 
                                       onClick={() => {
@@ -1848,7 +1892,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         >
                           <option value="">اختر المعلمة...</option>
                           {teachers.filter(t => t.isActive).map((t) => (
-                            <option key={t.id} value={t.id}>{t.name}</option>
+                            <option key={`teacher-option-${t.id}`} value={t.id}>{t.name}</option>
                           ))}
                         </select>
                       </div>
@@ -1930,7 +1974,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         {attachmentFiles.length > 0 && (
                           <div className="space-y-2 mt-4">
                             {attachmentFiles.map((file, idx) => (
-                              <div key={`att-file-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                              <div key={`att-file-${file.name}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                                 <div className="flex items-center gap-3">
                                   <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-indigo-600 shadow-sm">
                                     <FileText className="w-4 h-4" />
@@ -2082,7 +2126,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         {newPostAttachments.length > 0 && (
                           <div className="flex flex-wrap gap-2">
                             {newPostAttachments.map((att, idx) => (
-                              <div key={`new-post-att-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+                              <div key={`new-post-att-${att.name}-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
                                 <span className="truncate max-w-[100px]">{att.name}</span>
                                 <button 
                                   type="button"
@@ -2170,9 +2214,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       <p className="text-slate-500 font-bold text-sm">تصفح سجلات السنوات السابقة والدروس المؤرشفة</p>
                     </div>
                     <div className="flex flex-col gap-2">
-                      {availableArchiveYears.map(year => (
+                      {availableArchiveYears.map((year, idx) => (
                         <button 
-                          key={year}
+                          key={`archive-year-${year}-${idx}`}
                           onClick={() => {
                             setSelectedArchiveYear(year);
                             setSelectedArchiveSemester(getSemesterForYear(year));
@@ -2201,9 +2245,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
                       {/* Grade Tabs */}
                       <div className="flex flex-wrap gap-2 p-1.5 bg-slate-50 rounded-2xl">
-                        {AVAILABLE_GRADES.map((grade) => (
+                        {AVAILABLE_GRADES.map((grade, idx) => (
                           <button
-                            key={grade}
+                            key={`archive-grade-${grade}-${idx}`}
                             onClick={() => {
                               setSelectedArchiveGrade(grade);
                               setSelectedArchiveSubject(null);
@@ -2245,7 +2289,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                               {selectedArchiveSubject === subject.name && (
                                 <div className="mt-6 flex flex-wrap gap-3 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-                                  {['الفصل الأول', 'الفصل الثاني', 'الفصل الدراسي الأول', 'الفصل الدراسي الثاني'].map((sem) => {
+                                  {['الفصل الأول', 'الفصل الثاني', 'الفصل الدراسي الأول', 'الفصل الدراسي الثاني'].map((sem, idx) => {
                                     // Only show semesters that actually have materials in the archive for this selection
                                     const hasMaterials = lessonMaterials.some(m => 
                                       m.academicYear === selectedArchiveYear && 
@@ -2258,7 +2302,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                                     return (
                                       <button
-                                        key={sem}
+                                        key={`archive-sem-${sem}-${idx}`}
                                         onClick={() => setSelectedArchiveSemester(sem)}
                                         className={cn(
                                           "flex-1 min-w-[120px] py-3 rounded-xl text-xs font-black transition-all border-2",
@@ -2337,7 +2381,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             <div className="flex gap-2 flex-wrap justify-end">
                               {lesson.attachments.map((attachment, idx) => (
                                 <button 
-                                  key={idx}
+                                  key={`${attachment.url || attachment.name || idx}-${idx}`}
                                   onClick={() => downloadFile(attachment.url, attachment.name || lesson.lessonTitle)}
                                   className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm"
                                   title={`تحميل ${attachment.name || `مرفق ${idx + 1}`}`}
@@ -2656,7 +2700,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   <div className="flex flex-wrap gap-3">
                                     {submission.files.map((file, i) => (
                                       <button 
-                                        key={`sub-file-${i}`}
+                                        key={`sub-file-${file.name}-${i}`}
                                         onClick={() => downloadFile(file.url, file.name)}
                                         className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:text-indigo-600 hover:border-indigo-200 transition-all"
                                       >
@@ -2777,7 +2821,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             {msg.attachments && msg.attachments.length > 0 && (
                               <div className="mt-2 space-y-1">
                                 {msg.attachments.map((att, idx) => (
-                                  <div key={`msg-att-${msg.id}-${idx}`} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
+                                  <div key={`msg-att-${msg.id}-${att.name}-${idx}`} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
                                     {att.type === 'image' ? <ImageIcon className="w-4 h-4" /> : <FileIcon className="w-4 h-4" />}
                                     <a href={att.url} download={att.name} target="_blank" rel="noopener noreferrer" className="underline text-xs truncate max-w-[150px] block">
                                       {att.name}
@@ -2937,8 +2981,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           <div className="mt-6 border-t border-slate-200 pt-6">
                             <h6 className="font-bold text-slate-700 text-xs mb-3">المواد المسموح بمتابعتها (اتركه فارغاً للسماح بالكل)</h6>
                             <div className="flex flex-wrap gap-2">
-                              {AVAILABLE_SUBJECTS.map(subject => (
-                                <label key={subject} className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
+                              {AVAILABLE_SUBJECTS.map((subject, idx) => (
+                                <label key={`subject-filter-${subject}-${idx}`} className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
                                   <input 
                                     type="checkbox" 
                                     checked={tempPermSubjects.includes(subject)}
@@ -2967,7 +3011,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       <div className="space-y-4">
                         {teachers.filter(t => t.role === UserRole.TEMP_SUPERVISOR).map((supervisor) => {
                           return (
-                            <div key={supervisor.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-slate-50 rounded-xl border border-slate-100 gap-4">
+                            <div key={`supervisor-${supervisor.id}`} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-slate-50 rounded-xl border border-slate-100 gap-4">
                               <div>
                                 <span className="font-bold text-slate-700 block">{supervisor.name}</span>
                                 <span className="text-xs text-slate-500 font-mono mt-1 block">الرقم الوظيفي: {supervisor.code}</span>
@@ -2987,8 +3031,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 {!supervisor.tempPermissions?.hasFullAccess && supervisor.tempPermissions?.allowedSubjects && supervisor.tempPermissions.allowedSubjects.length > 0 && (
                                   <div className="flex flex-wrap gap-1 mt-1">
                                     <span className="text-[10px] text-slate-500">المواد:</span>
-                                    {supervisor.tempPermissions.allowedSubjects.map(s => (
-                                      <span key={s} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">{s}</span>
+                                    {supervisor.tempPermissions.allowedSubjects.map((s, index) => (
+                                      <span key={`${s}-${index}`} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">{s}</span>
                                     ))}
                                   </div>
                                 )}
@@ -3316,7 +3360,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 <div className="space-y-2 mt-4">
                   <p className="text-xs font-bold text-slate-500">المرفقات:</p>
                   {newLessonAttachments.map((att, i) => (
-                    <div key={`new-lesson-att-${i}`} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
+                    <div key={`new-lesson-att-${att.name}-${i}`} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
                       {att.name}
                       <button onClick={() => setNewLessonAttachments(newLessonAttachments.filter((_, idx) => idx !== i))} className="text-red-500">حذف</button>
                     </div>
@@ -3474,7 +3518,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   {newProjectAttachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {newProjectAttachments.map((att, idx) => (
-                        <div key={`new-proj-att-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+                        <div key={`new-proj-att-${att.name}-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
                           <FileText className="w-3 h-3" />
                           {att.name}
                           <button onClick={() => setNewProjectAttachments(newProjectAttachments.filter((_, i) => i !== idx))} className="hover:text-red-500">
@@ -3541,7 +3585,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   {newProjectTasks.length > 0 && (
                     <div className="space-y-2 mt-2">
                       {newProjectTasks.map((task, idx) => (
-                        <div key={`new-proj-task-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <div key={`new-proj-task-${task}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                           <span className="text-sm font-bold text-slate-700">{idx + 1}. {task}</span>
                           <button 
                             onClick={() => setNewProjectTasks(newProjectTasks.filter((_, i) => i !== idx))}
@@ -3558,7 +3602,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   <label className="text-sm font-black text-slate-700">تعيين المعلمات</label>
                   <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-100">
                     {teachers.filter(t => t.isActive).map((teacher) => (
-                      <label key={teacher.id} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-indigo-500 transition-all">
+                      <label key={`teacher-select-${teacher.id}`} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-indigo-500 transition-all">
                         <input 
                           type="checkbox"
                           checked={newProjectTeachers.includes(teacher.id)}
@@ -3703,7 +3747,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                   <div className="flex flex-wrap gap-3 mt-4">
                     {editTeacherAssignments.map((assignment, idx) => (
-                      <div key={`edit-assignment-${idx}`} className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
+                      <div key={`edit-assignment-${assignment.grade}-${assignment.subject}-${idx}`} className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
                         <span className="font-bold text-xs text-slate-700">{assignment.grade} • {assignment.subject}</span>
                         <button 
                           type="button" 
