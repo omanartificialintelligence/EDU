@@ -463,6 +463,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [commentText, setCommentText] = useState('');
   
   const [previewAttachment, setPreviewAttachment] = useState<{url: string, type: string, name: string} | null>(null);
+  const [viewingLesson, setViewingLesson] = useState<LessonMaterial | null>(null);
 
   const allSubjects = [
     { 
@@ -745,18 +746,18 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   };
 
   const getAttachmentIcon = (attachment: Attachment) => {
-    const fileName = attachment.name.toLowerCase();
+    const fileName = (attachment.name || '').toLowerCase();
     const type = attachment.type;
 
-    if (type === 'link') return { icon: LinkIcon, color: 'text-blue-500' };
-    if (fileName.endsWith('.pdf')) return { icon: FileText, color: 'text-red-600' };
-    if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) return { icon: FileText, color: 'text-blue-600' };
-    if (fileName.endsWith('.ppt') || fileName.endsWith('.pptx')) return { icon: FileIcon, color: 'text-orange-500' };
-    if (fileName.endsWith('.mp4') || fileName.endsWith('.mov') || fileName.endsWith('.avi')) return { icon: Video, color: 'text-red-500' };
-    if (fileName.endsWith('.mp3') || fileName.endsWith('.wav')) return { icon: Music, color: 'text-emerald-500' };
-    if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png') || fileName.endsWith('.gif')) return { icon: ImageIcon, color: 'text-purple-500' };
+    if (type === 'link') return { icon: LinkIcon, color: 'text-blue-500', bg: 'bg-blue-50' };
+    if (fileName.endsWith('.pdf')) return { icon: FileText, color: 'text-red-600', bg: 'bg-red-50' };
+    if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) return { icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' };
+    if (fileName.endsWith('.ppt') || fileName.endsWith('.pptx')) return { icon: FileIcon, color: 'text-orange-500', bg: 'bg-orange-50' };
+    if (fileName.endsWith('.mp4') || fileName.endsWith('.mov') || fileName.endsWith('.avi')) return { icon: Video, color: 'text-red-500', bg: 'bg-red-50' };
+    if (fileName.endsWith('.mp3') || fileName.endsWith('.wav')) return { icon: Music, color: 'text-emerald-500', bg: 'bg-emerald-50' };
+    if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png') || fileName.endsWith('.gif')) return { icon: ImageIcon, color: 'text-purple-500', bg: 'bg-purple-50' };
     
-    return { icon: FileIcon, color: 'text-slate-400' };
+    return { icon: FileIcon, color: 'text-slate-400', bg: 'bg-slate-50' };
   };
 
   // New Post State
@@ -1716,6 +1717,13 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   </div>
                                   <div className="flex gap-1">
                                     <button 
+                                      onClick={() => setViewingLesson(material)}
+                                      className="p-2 hover:bg-indigo-50 text-indigo-600 rounded-xl transition-colors"
+                                      title="معاينة"
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                    </button>
+                                    <button 
                                       onClick={() => setEditingLesson(material)}
                                       className="p-2 hover:bg-blue-50 text-blue-600 rounded-xl transition-colors"
                                       title="تعديل"
@@ -2416,6 +2424,13 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 </div>
                               </div>
                             <div className="flex gap-2 flex-wrap justify-end">
+                              <button 
+                                onClick={() => setViewingLesson(lesson)}
+                                className="p-2 hover:bg-indigo-50 text-indigo-600 rounded-xl transition-colors"
+                                title="معاينة"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
                               {lesson.attachments.map((attachment, idx) => (
                                 <button 
                                   key={`${attachment.url || attachment.name || idx}-${idx}`}
@@ -3816,6 +3831,139 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Lesson Preview Modal */}
+      <AnimatePresence>
+        {viewingLesson && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
+            onClick={() => setViewingLesson(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
+                <div className="flex items-center gap-4">
+                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center", getFileIcon(viewingLesson).bg, getFileIcon(viewingLesson).color)}>
+                    {React.createElement(getFileIcon(viewingLesson).icon, { className: "w-6 h-6" })}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900">{viewingLesson.lessonTitle}</h3>
+                    <p className="text-xs font-bold text-slate-400">{viewingLesson.grade} • {viewingLesson.subject}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setViewingLesson(null)} 
+                  className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                <div className="space-y-8">
+                  {/* Teacher Info */}
+                  <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="w-12 h-12 rounded-full bg-white border-2 border-indigo-100 flex items-center justify-center text-lg font-black text-indigo-600 shadow-sm">
+                      {viewingLesson.teacherName.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-slate-900">{viewingLesson.teacherName}</p>
+                      <p className="text-[10px] font-bold text-slate-400">تاريخ النشر: {new Date(viewingLesson.createdAt).toLocaleDateString('ar-OM')}</p>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  {viewingLesson.description && (
+                    <div className="space-y-3">
+                      <h4 className="font-black text-slate-800 flex items-center gap-2">
+                        <div className="w-1.5 h-6 bg-indigo-500 rounded-full" />
+                        وصف الدرس
+                      </h4>
+                      <p className="text-slate-600 font-bold text-sm leading-relaxed bg-slate-50/50 p-4 rounded-2xl border border-slate-50">
+                        {viewingLesson.description}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Attachments */}
+                  <div className="space-y-4">
+                    <h4 className="font-black text-slate-800 flex items-center gap-2">
+                      <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
+                      المرفقات والمصادر ({viewingLesson.attachments.length})
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {viewingLesson.attachments.map((attachment, idx) => {
+                        const attachInfo = getAttachmentIcon(attachment);
+                        const AttachIcon = attachInfo.icon;
+                        return (
+                          <button 
+                            key={`preview-att-${idx}`}
+                            onClick={() => {
+                              if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
+                                setPreviewAttachment(attachment);
+                              } else {
+                                downloadFile(attachment.url, attachment.name || `مرفق-${idx + 1}`);
+                              }
+                            }}
+                            className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 hover:border-indigo-200 hover:shadow-md transition-all group text-right"
+                          >
+                            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", attachInfo.bg, attachInfo.color)}>
+                              <AttachIcon className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-black text-slate-900 truncate">{attachment.name || `مرفق ${idx + 1}`}</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">{attachment.type}</p>
+                            </div>
+                            <Download className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition-colors" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Comments Section */}
+                  {viewingLesson.comments && viewingLesson.comments.length > 0 && (
+                    <div className="space-y-4">
+                      <h4 className="font-black text-slate-800 flex items-center gap-2">
+                        <div className="w-1.5 h-6 bg-amber-500 rounded-full" />
+                        التعليقات والملاحظات
+                      </h4>
+                      <div className="space-y-3">
+                        {viewingLesson.comments.map((comment, idx) => (
+                          <div key={`preview-comment-${idx}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-xs font-black text-amber-700">{comment.authorName}</span>
+                              <span className="text-[10px] font-bold text-slate-400">{new Date(comment.createdAt).toLocaleDateString('ar-OM')}</span>
+                            </div>
+                            <p className="text-xs font-bold text-slate-600">{comment.text}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-8 border-t border-slate-100 bg-slate-50/50 flex justify-end">
+                <button 
+                  onClick={() => setViewingLesson(null)}
+                  className="px-8 py-3 bg-white text-slate-600 rounded-xl font-black text-sm border border-slate-200 hover:bg-slate-50 transition-all"
+                >
+                  إغلاق المعاينة
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
