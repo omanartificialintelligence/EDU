@@ -1158,7 +1158,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     {notifications.length > 0 ? (
                       notifications.map((notification, index) => (
                         <motion.div 
-                          key={notification.id} 
+                          key={`notif-${notification.id}-${index}`} 
                           variants={{
                             hidden: { opacity: 0, y: 10 },
                             visible: { opacity: 1, y: 0 },
@@ -1973,7 +1973,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           const Icon = fileInfo.icon;
                           
                           return (
-                            <div key={material.id} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
+                            <div key={`material-${material.id}-${index}`} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
                               <div className="p-6 flex-1">
                                 <div className="flex justify-between items-start mb-4">
                                   <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border relative", fileInfo.bg, fileInfo.color, "border-slate-50")}>
@@ -2927,7 +2927,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 <div className="flex flex-col gap-6 max-h-[70vh] overflow-y-auto snap-y snap-mandatory pr-2 custom-scrollbar focus:outline-none" tabIndex={0}>
                   {filteredProjects.map((project, index) => (
                     <motion.div 
-                      key={project.id}
+                      key={`project-${project.id}-${index}`}
                       initial={{ opacity: 0, y: 50 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
