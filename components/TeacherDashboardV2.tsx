@@ -492,7 +492,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                     {notifications.length > 0 ? (
                       notifications.map((notification, index) => (
                         <div 
-                          key={notification.id} 
+                          key={`notif-${notification.id}`} 
                           className={cn(
                             "p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer",
                             !notification.isRead ? "bg-indigo-50/50" : ""
@@ -555,7 +555,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                     {posts.filter(p => !p.isArchived).length > 0 ? (
                       posts.filter(p => !p.isArchived).slice(0, 3).map((post, index) => (
                         <div 
-                          key={post.id} 
+                          key={`post-${post.id}`} 
                           onClick={() => setViewingPost(post)}
                           className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-amber-200 hover:bg-amber-50/30 transition-all group cursor-pointer"
                         >
@@ -584,7 +584,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
               <div className="flex overflow-x-auto pb-2 sm:pb-0 items-center gap-2 sm:gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm w-full sm:w-fit scrollbar-hide">
                 {grades.map((grade, i) => (
                   <button
-                    key={`grade-select-${grade}-${i}`}
+                    key={`grade-select-${grade}`}
                     onClick={() => { setSelectedGrade(grade); setViewingSubject(null); }}
                     className={cn(
                       "px-4 sm:px-8 py-2.5 sm:py-3 rounded-[12px] text-xs sm:text-sm font-bold transition-all duration-200 whitespace-nowrap",
@@ -622,7 +622,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
 
                     return (
                       <div 
-                        key={`${subject.name}-${i}`} 
+                        key={`subject-select-${subject.name}`} 
                         className={cn(
                           "relative p-8 rounded-[24px] border-2 transition-all duration-300 overflow-hidden group hover:shadow-xl",
                           subject.bg, subject.border
@@ -729,7 +729,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         const Icon = fileInfo.icon;
                         
                         return (
-                          <div key={material.id} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
+                          <div key={`material-${material.id}`} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
                             <div className="p-6 flex-1">
                               <div className="flex justify-between items-start mb-4">
                                 <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border relative", fileInfo.bg, fileInfo.color, "border-slate-50")}>
@@ -827,7 +827,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                                     <div className="space-y-3">
                                       {material.comments && material.comments.length > 0 ? (
                                         material.comments.map((comment, index) => (
-                                          <div key={comment.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                          <div key={`material-comment-${comment.id}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                                             <div className="flex justify-between items-center mb-2">
                                               <span className="text-xs font-black text-slate-900">{comment.authorName}</span>
                                               <span className="text-[10px] font-bold text-slate-400">
@@ -956,7 +956,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   
                   return (
                     <motion.div 
-                      key={project.id}
+                      key={`project-${project.id}`}
                       initial={{ opacity: 0, y: 50 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
@@ -1003,7 +1003,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                             <span className="text-xs font-bold text-slate-500">فريق العمل:</span>
                             <div className="flex -space-x-2 space-x-reverse">
                               {project.assignedTeacherIds.map((teacherId, i) => (
-                                <div key={`teacher-${project.id}-${teacherId}-${i}`} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600" title={teacherId === user.id ? 'أنا' : 'زميلة'}>
+                                <div key={`teacher-${project.id}-${teacherId}`} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600" title={teacherId === user.id ? 'أنا' : 'زميلة'}>
                                   {teacherId === user.id ? 'أنا' : 'ز'}
                                 </div>
                               ))}
@@ -1258,7 +1258,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                 {lessonMaterials.filter(m => m.teacherId === user.id).map((lesson, index) => {
                   const { icon: Icon, color, bg } = getAttachmentIcon({ name: lesson.lessonTitle, type: 'file' } as Attachment);
                   return (
-                    <div key={lesson.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+                    <div key={`lesson-${lesson.id}`} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
                       <div className="flex items-start justify-between mb-4">
                         <div className={cn("p-3 rounded-xl", bg, color)}>
                           <BookOpen className="w-6 h-6" />
@@ -1325,7 +1325,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   ) : (
                     messages.map((msg, index) => (
                       <div 
-                        key={msg.id}
+                        key={`msg-${msg.id}`}
                         className={cn(
                           "flex flex-col max-w-[80%]",
                           msg.senderId === user.id ? "mr-auto items-end" : "ml-auto items-start"
@@ -1720,7 +1720,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         const AttachIcon = attachInfo.icon;
                         return (
                           <button 
-                            key={`preview-att-${idx}`}
+                            key={`preview-att-${attachment.url}-${idx}`}
                             onClick={() => {
                               if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
                                 setPreviewAttachment(attachment);
@@ -1753,7 +1753,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                       </h4>
                       <div className="space-y-3">
                         {viewingLesson.comments.map((comment) => (
-                          <div key={comment.id} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
+                          <div key={`lesson-comment-${comment.id}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
                             <div className="flex justify-between items-center mb-2">
                               <span className="text-xs font-black text-amber-700">{comment.authorName}</span>
                               <span className="text-[10px] font-bold text-slate-400">{new Date(comment.createdAt).toLocaleDateString('ar-OM')}</span>

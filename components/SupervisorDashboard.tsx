@@ -52,8 +52,8 @@ interface SupervisorDashboardProps {
   onAddTempSupervisor: (user: User) => void;
   onDeleteTempSupervisor: (id: string) => void;
   onUpdateSecurity: (config: SupervisorConfig) => void;
-  onUpdateLessonMaterial: (material: LessonMaterial) => void;
-  onAddLessonMaterial: (material: LessonMaterial) => void;
+  onUpdateLessonMaterial: (material: LessonMaterial) => Promise<void>;
+  onAddLessonMaterial: (material: LessonMaterial) => Promise<void>;
   onSoftDeleteLesson: (id: string) => void;
   onRestoreLesson: (id: string) => void;
   onDeletePermanentlyLesson: (id: string) => void;
@@ -463,9 +463,16 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
   const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
+  const [currentSupervisorNotes, setCurrentSupervisorNotes] = useState('');
   
   const [previewAttachment, setPreviewAttachment] = useState<{url: string, type: string, name: string} | null>(null);
   const [viewingLesson, setViewingLesson] = useState<LessonMaterial | null>(null);
+
+  useEffect(() => {
+    if (viewingLesson) {
+      setCurrentSupervisorNotes(viewingLesson.supervisorNotes || '');
+    }
+  }, [viewingLesson]);
 
   const [dashboardWidgets, setDashboardWidgets] = useState<string[]>(['stats', 'charts', 'quickActions', 'recentActivity']);
   const [isCustomizingDashboard, setIsCustomizingDashboard] = useState(false);
@@ -673,7 +680,18 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     setCommentText('');
   };
 
-  const handleAddLesson = () => {
+  const handleSaveSupervisorNotes = async () => {
+    if (!viewingLesson) return;
+    const updatedLesson = {
+      ...viewingLesson,
+      supervisorNotes: currentSupervisorNotes
+    };
+    await onUpdateLessonMaterial(updatedLesson);
+    setViewingLesson(updatedLesson);
+    alert('تم حفظ الملاحظات بنجاح');
+  };
+
+  const handleAddLesson = async () => {
     if (!newLessonTitle || !newLessonDescription) {
       alert('يرجى إكمال جميع الحقول');
       return;
@@ -681,47 +699,52 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
     setIsSubmitting(true);
     
-    if (editingLesson) {
-      const updatedMaterial: LessonMaterial = {
-        ...editingLesson,
-        lessonTitle: newLessonTitle,
-        description: newLessonDescription,
-        attachments: newLessonAttachments,
-        grade: newLessonGrade,
-        semester: newLessonSemester,
-        subject: newLessonSubject,
-        tags: [newLessonSubject, newLessonGrade]
-      };
-      onUpdateLessonMaterial(updatedMaterial);
-      alert('تم تحديث الدرس بنجاح.');
-    } else {
-      const newMaterial: LessonMaterial = {
-        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        teacherId: user.id,
-        teacherName: user.name,
-        lessonTitle: newLessonTitle,
-        description: newLessonDescription,
-        attachments: newLessonAttachments,
-        comments: [],
-        createdAt: new Date().toISOString(),
-        academicYear: academicYear,
-        semester: newLessonSemester,
-        grade: newLessonGrade,
-        subject: newLessonSubject,
-        status: 'approved',
-        isModelLesson: false,
-        tags: [newLessonSubject, newLessonGrade]
-      };
-      onAddLessonMaterial(newMaterial);
-      alert('تمت إضافة الدرس بنجاح.');
+    try {
+      if (editingLesson) {
+        const updatedMaterial: LessonMaterial = {
+          ...editingLesson,
+          lessonTitle: newLessonTitle,
+          description: newLessonDescription,
+          attachments: newLessonAttachments,
+          grade: newLessonGrade,
+          semester: newLessonSemester,
+          subject: newLessonSubject,
+          tags: [newLessonSubject, newLessonGrade]
+        };
+        await onUpdateLessonMaterial(updatedMaterial);
+        alert('تم تحديث الدرس بنجاح.');
+      } else {
+        const newMaterial: LessonMaterial = {
+          id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          teacherId: user.id,
+          teacherName: user.name,
+          lessonTitle: newLessonTitle,
+          description: newLessonDescription,
+          attachments: newLessonAttachments,
+          comments: [],
+          createdAt: new Date().toISOString(),
+          academicYear: academicYear,
+          semester: newLessonSemester,
+          grade: newLessonGrade,
+          subject: newLessonSubject,
+          status: 'approved',
+          isModelLesson: false,
+          tags: [newLessonSubject, newLessonGrade]
+        };
+        await onAddLessonMaterial(newMaterial);
+        alert('تمت إضافة الدرس بنجاح.');
+      }
+      setIsAddLessonModalOpen(false);
+      setEditingLesson(null);
+      setNewLessonTitle('');
+      setNewLessonDescription('');
+      setNewLessonAttachments([]);
+    } catch (error) {
+      console.error("Error saving lesson:", error);
+      alert('حدث خطأ أثناء حفظ الدرس. يرجى المحاولة مرة أخرى.');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
-    setIsAddLessonModalOpen(false);
-    setEditingLesson(null);
-    setNewLessonTitle('');
-    setNewLessonDescription('');
-    setNewLessonAttachments([]);
   };
 
   const getFileIcon = (material: LessonMaterial) => {
@@ -1191,7 +1214,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               { label: 'الدروس المرفوعة', value: lessonMaterials.length, icon: Palette, color: 'amber' },
                               { label: 'التعاميم المنشورة', value: posts.length, icon: MessageSquare, color: 'rose' },
                             ].map((stat, i) => (
-                              <div key={`${stat.label}-${i}`} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center gap-6 group hover:shadow-xl hover:shadow-indigo-500/5 transition-all">
+                              <div key={`stat-${stat.label.replace(/\s+/g, '-')}`} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center gap-6 group hover:shadow-xl hover:shadow-indigo-500/5 transition-all">
                                 <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shadow-inner", `bg-${stat.color}-50 text-${stat.color}-600`)}>
                                   <stat.icon className="w-7 h-7" />
                                 </div>
@@ -1548,7 +1571,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="teachers-grid-container">
                   {filteredTeachers.map((teacher, i) => (
-                    <div key={`${teacher.id}-${i}`} className="bg-white p-5 rounded-[1.5rem] shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-200 transition-all duration-300 group relative overflow-hidden">
+                    <div key={teacher.id} className="bg-white p-5 rounded-[1.5rem] shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-200 transition-all duration-300 group relative overflow-hidden">
                       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                       
                       <div className="flex items-start justify-between mb-6">
@@ -1742,7 +1765,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 {!viewingSubject ? (
                   <div className="space-y-12">
                     {AVAILABLE_GRADES.map((grade, i) => (
-                      <div key={`grade-section-${grade}-${i}`} className="space-y-4">
+                      <div key={`grade-section-${grade}`} className="space-y-4">
                         <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
                           <div className="w-2 h-8 bg-indigo-600 rounded-full" />
                           {grade}
@@ -1984,7 +2007,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                         )}
                                         {material.comments && material.comments.length > 0 ? (
                                           material.comments.map((comment, index) => (
-                                            <div key={comment.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                            <div key={`material-comment-${comment.id}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                                               <div className="flex justify-between items-center mb-2">
                                                 <span className="text-xs font-black text-slate-900">{comment.authorName}</span>
                                                 <span className="text-[10px] font-bold text-slate-400">
@@ -2854,7 +2877,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           <h4 className="font-black text-slate-800 mb-3 text-sm">مهام المشروع المطلوبة:</h4>
                           <ul className="space-y-2">
                             {viewingProject.tasks.map((task, i) => (
-                                  <li key={`proj-task-${viewingProject.id}-${i}`} className="flex items-start gap-2 text-sm text-slate-600">
+                                  <li key={`proj-task-${viewingProject.id}-${task}`} className="flex items-start gap-2 text-sm text-slate-600">
                                     <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold mt-0.5 shrink-0">
                                       {i + 1}
                                     </span>
@@ -4066,7 +4089,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         const AttachIcon = attachInfo.icon;
                         return (
                           <button 
-                            key={`preview-att-${idx}`}
+                            key={`preview-att-${attachment.url}-${idx}`}
                             onClick={() => {
                               if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
                                 setPreviewAttachment(attachment);
@@ -4099,7 +4122,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       </h4>
                       <div className="space-y-3">
                         {viewingLesson.comments.map((comment) => (
-                          <div key={comment.id} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
+                          <div key={`lesson-comment-${comment.id}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
                             <div className="flex justify-between items-center mb-2">
                               <span className="text-xs font-black text-amber-700">{comment.authorName}</span>
                               <span className="text-[10px] font-bold text-slate-400">{new Date(comment.createdAt).toLocaleDateString('ar-OM')}</span>
@@ -4110,6 +4133,26 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       </div>
                     </div>
                   )}
+
+                  {/* Supervisor Notes Section */}
+                  <div className="space-y-4">
+                    <h4 className="font-black text-slate-800 flex items-center gap-2">
+                      <div className="w-1.5 h-6 bg-indigo-500 rounded-full" />
+                      ملاحظات المشرف
+                    </h4>
+                    <textarea
+                      value={currentSupervisorNotes}
+                      onChange={(e) => setCurrentSupervisorNotes(e.target.value)}
+                      className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 text-sm font-bold text-slate-700 min-h-[100px]"
+                      placeholder="أضف ملاحظاتك هنا..."
+                    />
+                    <button
+                      onClick={handleSaveSupervisorNotes}
+                      className="w-full py-3 bg-indigo-600 text-white rounded-xl font-black text-sm hover:bg-indigo-700 transition-all"
+                    >
+                      حفظ الملاحظات
+                    </button>
+                  </div>
                 </div>
               </div>
 
