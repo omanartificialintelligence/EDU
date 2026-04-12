@@ -67,6 +67,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   const [editingLesson, setEditingLesson] = useState<LessonMaterial | null>(null);
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
   const [viewingLesson, setViewingLesson] = useState<LessonMaterial | null>(null);
+  const [viewingPost, setViewingPost] = useState<Post | null>(null);
 
   useEffect(() => {
     if (editingLesson) {
@@ -553,7 +554,11 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   <div className="flex-1 overflow-y-auto pr-2 space-y-4 max-h-[200px] scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
                     {posts.filter(p => !p.isArchived).length > 0 ? (
                       posts.filter(p => !p.isArchived).slice(0, 3).map((post, index) => (
-                        <div key={`${post.id}-${index}`} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-amber-200 hover:bg-amber-50/30 transition-all group">
+                        <div 
+                          key={post.id} 
+                          onClick={() => setViewingPost(post)}
+                          className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-amber-200 hover:bg-amber-50/30 transition-all group cursor-pointer"
+                        >
                           <div className="flex justify-between items-start mb-2">
                             <h4 className="font-bold text-sm text-slate-800 group-hover:text-amber-700 transition-colors">{post.title}</h4>
                             <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-100">
@@ -1583,6 +1588,66 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                 <p className="text-xs text-blue-800 font-bold leading-relaxed">
                   التزامن مع الإدارة: بمجرد الضغط على "نشر" لأي محتوى، سيتم إرسال نسخة تلقائياً إلى "الأرشيف الزمني" وسيصل إشعار للمشرف للمراجعة والاعتماد.
                 </p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Post Preview Modal */}
+      <AnimatePresence>
+        {viewingPost && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 className="font-black text-lg text-slate-800">{viewingPost.title}</h3>
+                <button onClick={() => setViewingPost(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+              <div className="p-6 overflow-y-auto space-y-6">
+                <p className="text-slate-600 leading-relaxed">{viewingPost.content}</p>
+                {viewingPost.attachments && viewingPost.attachments.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-slate-800">المرفقات:</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {viewingPost.attachments.map((att, idx) => {
+                        const iconInfo = getAttachmentIcon(att);
+                        const Icon = iconInfo.icon;
+                        return (
+                          <div key={`${att.url}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                            <div className="flex items-center gap-3">
+                              <div className={cn("p-2 rounded-lg", iconInfo.bg, iconInfo.color)}>
+                                <Icon className="w-4 h-4" />
+                              </div>
+                              <span className="text-xs font-bold text-slate-700 truncate max-w-[120px]">{att.name}</span>
+                            </div>
+                            <div className="flex gap-2">
+                              {(att.type === 'image' || att.type === 'video' || att.type === 'link') && (
+                                <button onClick={() => setPreviewAttachment(att)} className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-500">
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                              )}
+                              <button onClick={() => {
+                                const link = document.createElement('a');
+                                link.href = att.url;
+                                link.download = att.name;
+                                link.click();
+                              }} className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-500">
+                                <Download className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           </div>

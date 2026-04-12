@@ -1040,7 +1040,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     {notifications.length > 0 ? (
                       notifications.map((notification, index) => (
                         <motion.div 
-                          key={`${notification.id}-${index}`} 
+                          key={notification.id} 
                           variants={{
                             hidden: { opacity: 0, y: 10 },
                             visible: { opacity: 1, y: 0 },
@@ -1113,7 +1113,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                 <div className="space-y-8">
                   {dashboardWidgets.map((widgetId, index) => (
-                    <div key={`${widgetId}-${index}`} className="relative group">
+                    <div key={widgetId} className="relative group">
                       {isCustomizingDashboard && (
                         <div className="absolute -right-12 top-0 bottom-0 flex flex-col justify-center gap-2 z-10">
                           <button 
@@ -1819,7 +1819,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           const Icon = fileInfo.icon;
                           
                           return (
-                            <div key={`${material.id}-${index}`} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
+                            <div key={material.id} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
                               <div className="p-6 flex-1">
                                 <div className="flex justify-between items-start mb-4">
                                   <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border relative", fileInfo.bg, fileInfo.color, "border-slate-50")}>
@@ -1940,7 +1940,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                         )}
                                         {material.comments && material.comments.length > 0 ? (
                                           material.comments.map((comment, index) => (
-                                            <div key={`${comment.id}-${index}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                            <div key={comment.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                                               <div className="flex justify-between items-center mb-2">
                                                 <span className="text-xs font-black text-slate-900">{comment.authorName}</span>
                                                 <span className="text-[10px] font-bold text-slate-400">
@@ -2316,7 +2316,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                 <div className="space-y-6">
                   {filteredPosts.map((post, index) => (
-                    <div key={`${post.id}-${index}`} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden">
+                    <div key={post.id} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden">
                       {post.isPinned && (
                         <div className="absolute top-0 left-0 w-full h-1.5 bg-indigo-500" />
                       )}
@@ -2710,7 +2710,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 <div className="flex flex-col gap-6 max-h-[70vh] overflow-y-auto snap-y snap-mandatory pr-2 custom-scrollbar focus:outline-none" tabIndex={0}>
                   {filteredProjects.map((project, index) => (
                     <motion.div 
-                      key={`${project.id}-${index}`}
+                      key={project.id}
                       initial={{ opacity: 0, y: 50 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
@@ -2967,7 +2967,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         return true;
                       }).map((msg, index) => (
                         <div 
-                          key={`${msg.id}-${index}`} 
+                          key={msg.id}
                           className={cn(
                             "flex flex-col max-w-[75%]",
                             msg.senderId === user.id ? "mr-auto items-end" : "ml-auto items-start"
