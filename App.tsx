@@ -641,6 +641,20 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdateUserPreferences = async (preferences: any) => {
+    if (auth.user) {
+      try {
+        await updateDoc(doc(db, 'users', auth.user.id), { preferences });
+        setAuth(prev => ({
+          ...prev,
+          user: prev.user ? { ...prev.user, preferences } : null
+        }));
+      } catch (error) {
+        handleFirestoreError(error, OperationType.UPDATE, `users/${auth.user.id}`);
+      }
+    }
+  };
+
   if (!isAuthReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 font-['Tajawal']">
@@ -826,6 +840,7 @@ const App: React.FC = () => {
           semester={currentSemester}
           notifications={notifications.filter(n => n.userId === auth.user?.id)}
           onMarkAsRead={handleMarkNotificationAsRead}
+          onAddNotification={handleAddNotification}
           onSwitchBackToSupervisorView={() => setIsPreviewMode(false)}
         />
       );
@@ -839,6 +854,7 @@ const App: React.FC = () => {
         lessonMaterials={lessonMaterials}
         resetRequests={resetRequests}
         messages={messages}
+        onUpdateUserPreferences={handleUpdateUserPreferences}
         onSendMessage={handleSendMessage}
         onMarkMessageAsRead={handleMarkMessageAsRead}
         onAddPost={async (p) => {
@@ -1112,6 +1128,7 @@ const App: React.FC = () => {
           semester={currentSemester}
           notifications={notifications.filter(n => n.userId === auth.user?.id)}
           onMarkAsRead={handleMarkNotificationAsRead}
+          onAddNotification={handleAddNotification}
         />
       </main>
 

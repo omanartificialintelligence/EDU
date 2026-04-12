@@ -69,6 +69,7 @@ interface SupervisorDashboardProps {
   academicYear: string;
   semester: string;
   onSwitchToTeacherView?: () => void;
+  onUpdateUserPreferences?: (preferences: any) => void;
 }
 
 const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ 
@@ -84,7 +85,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   notifications, onMarkNotificationAsRead,
   onLogout,
   supervisorConfig, academicYear, semester,
-  onSwitchToTeacherView
+  onSwitchToTeacherView,
+  onUpdateUserPreferences
 }) => {
   const AVAILABLE_GRADES = ['الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع'];
   const AVAILABLE_SUBJECTS = ['لغة عربية', 'تربية إسلامية'];
@@ -474,7 +476,13 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     }
   }, [viewingLesson]);
 
-  const [dashboardWidgets, setDashboardWidgets] = useState<string[]>(['stats', 'charts', 'quickActions', 'recentActivity']);
+  const defaultWidgets = ['stats', 'charts', 'quickActions', 'recentActivity'];
+  const [dashboardWidgets, setDashboardWidgets] = useState<string[]>(
+    user?.preferences?.dashboardWidgets || defaultWidgets
+  );
+  const [hiddenWidgets, setHiddenWidgets] = useState<string[]>(
+    defaultWidgets.filter(w => !(user?.preferences?.dashboardWidgets || defaultWidgets).includes(w))
+  );
   const [isCustomizingDashboard, setIsCustomizingDashboard] = useState(false);
 
   const moveWidget = (index: number, direction: 'up' | 'down') => {
@@ -483,6 +491,26 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     if (targetIndex < 0 || targetIndex >= newWidgets.length) return;
     [newWidgets[index], newWidgets[targetIndex]] = [newWidgets[targetIndex], newWidgets[index]];
     setDashboardWidgets(newWidgets);
+  };
+
+  const toggleWidgetVisibility = (widgetId: string) => {
+    if (dashboardWidgets.includes(widgetId)) {
+      setDashboardWidgets(dashboardWidgets.filter(w => w !== widgetId));
+      setHiddenWidgets([...hiddenWidgets, widgetId]);
+    } else {
+      setHiddenWidgets(hiddenWidgets.filter(w => w !== widgetId));
+      setDashboardWidgets([...dashboardWidgets, widgetId]);
+    }
+  };
+
+  const saveDashboardPreferences = () => {
+    if (onUpdateUserPreferences) {
+      onUpdateUserPreferences({
+        ...user?.preferences,
+        dashboardWidgets
+      });
+    }
+    setIsCustomizingDashboard(false);
   };
 
   const allSubjects = [
@@ -678,6 +706,17 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
     onUpdateLessonMaterial(updatedLesson);
     setCommentText('');
+
+    if (lesson.teacherId !== user.id) {
+      onAddNotification({
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        userId: lesson.teacherId,
+        message: `أضافت المشرفة ${user.name} تعليقاً على درسك: ${lesson.lessonTitle}`,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        type: 'comment',
+      });
+    }
   };
 
   const handleSaveSupervisorNotes = async () => {
@@ -688,6 +727,18 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     };
     await onUpdateLessonMaterial(updatedLesson);
     setViewingLesson(updatedLesson);
+    
+    if (viewingLesson.teacherId !== user.id) {
+      onAddNotification({
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        userId: viewingLesson.teacherId,
+        message: `أضافت المشرفة ${user.name} ملاحظات على درسك: ${viewingLesson.lessonTitle}`,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        type: 'comment',
+      });
+    }
+    
     alert('تم حفظ الملاحظات بنجاح');
   };
 
@@ -1165,7 +1216,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     <p className="text-slate-500 font-bold text-sm">مرحباً بك في لوحة تحكم المشرف</p>
                   </div>
                   <button 
-                    onClick={() => setIsCustomizingDashboard(!isCustomizingDashboard)}
+                    onClick={() => isCustomizingDashboard ? saveDashboardPreferences() : setIsCustomizingDashboard(true)}
                     className={cn(
                       "px-6 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2",
                       isCustomizingDashboard 
@@ -1199,6 +1250,13 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             className="p-2 bg-white rounded-lg shadow-md border border-slate-100 text-slate-400 hover:text-indigo-600 disabled:opacity-30 transition-all hover:scale-110"
                           >
                             <ChevronDown className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => toggleWidgetVisibility(widgetId)}
+                            className="p-2 bg-white rounded-lg shadow-md border border-rose-100 text-rose-400 hover:text-rose-600 transition-all hover:scale-110 mt-2"
+                            title="إخفاء"
+                          >
+                            <X className="w-4 h-4" />
                           </button>
                         </div>
                       )}
@@ -1327,6 +1385,35 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     </div>
                   ))}
                 </div>
+
+                {isCustomizingDashboard && hiddenWidgets.length > 0 && (
+                  <div className="mt-8 p-6 bg-slate-50 rounded-3xl border border-slate-200 border-dashed">
+                    <h3 className="font-black text-sm text-slate-500 mb-4 flex items-center gap-2">
+                      <Plus className="w-4 h-4" />
+                      عناصر مخفية
+                    </h3>
+                    <div className="flex flex-wrap gap-3">
+                      {hiddenWidgets.map(widgetId => {
+                        const widgetLabels: Record<string, string> = {
+                          'stats': 'الإحصائيات السريعة',
+                          'charts': 'الرسوم البيانية',
+                          'quickActions': 'الإجراءات السريعة',
+                          'recentActivity': 'آخر النشاطات'
+                        };
+                        return (
+                          <button
+                            key={widgetId}
+                            onClick={() => toggleWidgetVisibility(widgetId)}
+                            className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:border-indigo-300 hover:text-indigo-600 transition-all flex items-center gap-2 shadow-sm"
+                          >
+                            <Plus className="w-3 h-3" />
+                            {widgetLabels[widgetId] || widgetId}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
 
@@ -1784,7 +1871,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                             return (
                               <div 
-                                key={`${grade}-${subject.name}`} 
+                                key={`${grade}-${subject.name}-${j}`} 
                                 onClick={() => {
                                   setViewingSubject(subject.name);
                                   setActiveGradeTab(grade);
@@ -2007,7 +2094,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                         )}
                                         {material.comments && material.comments.length > 0 ? (
                                           material.comments.map((comment, index) => (
-                                            <div key={`material-comment-${comment.id}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                            <div key={`material-comment-${material.id}-${comment.id}-${index}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                                               <div className="flex justify-between items-center mb-2">
                                                 <span className="text-xs font-black text-slate-900">{comment.authorName}</span>
                                                 <span className="text-[10px] font-bold text-slate-400">
@@ -2488,9 +2575,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                       {selectedArchiveGrade && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
-                          {allSubjects.map((subject) => (
+                          {allSubjects.map((subject, idx) => (
                             <div 
-                              key={`${selectedArchiveGrade}-${subject.name}`}
+                              key={`${selectedArchiveGrade}-${subject.name}-${idx}`}
                               onClick={() => {
                                 setSelectedArchiveSubject(subject.name);
                                 setSelectedArchiveSemester('الفصل الدراسي الأول');
@@ -2877,7 +2964,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           <h4 className="font-black text-slate-800 mb-3 text-sm">مهام المشروع المطلوبة:</h4>
                           <ul className="space-y-2">
                             {viewingProject.tasks.map((task, i) => (
-                                  <li key={`proj-task-${viewingProject.id}-${task}`} className="flex items-start gap-2 text-sm text-slate-600">
+                                  <li key={`proj-task-${viewingProject.id}-${task}-${i}`} className="flex items-start gap-2 text-sm text-slate-600">
                                     <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold mt-0.5 shrink-0">
                                       {i + 1}
                                     </span>
@@ -3034,7 +3121,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         return true;
                       }).map((msg, index) => (
                         <div 
-                          key={msg.id}
+                          key={`msg-${msg.id}-${index}`}
                           className={cn(
                             "flex flex-col max-w-[75%]",
                             msg.senderId === user.id ? "mr-auto items-end" : "ml-auto items-start"
@@ -3267,7 +3354,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   <div className="flex flex-wrap gap-1 mt-1">
                                     <span className="text-[10px] text-slate-500">المواد:</span>
                                     {supervisor.tempPermissions.allowedSubjects.map((s, index) => (
-                                      <span key={`${supervisor.id}-${s}`} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">{s}</span>
+                                      <span key={`${supervisor.id}-${s}-${index}`} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">{s}</span>
                                     ))}
                                   </div>
                                 )}
@@ -4121,8 +4208,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         التعليقات والملاحظات
                       </h4>
                       <div className="space-y-3">
-                        {viewingLesson.comments.map((comment) => (
-                          <div key={`lesson-comment-${comment.id}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
+                        {viewingLesson.comments.map((comment, index) => (
+                          <div key={`lesson-comment-${comment.id}-${index}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
                             <div className="flex justify-between items-center mb-2">
                               <span className="text-xs font-black text-amber-700">{comment.authorName}</span>
                               <span className="text-[10px] font-bold text-slate-400">{new Date(comment.createdAt).toLocaleDateString('ar-OM')}</span>

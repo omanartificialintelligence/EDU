@@ -30,12 +30,13 @@ interface TeacherDashboardV2Props {
   semester: string;
   notifications: Notification[];
   onMarkAsRead: (id: string) => void;
+  onAddNotification?: (notification: Notification) => void;
   onSwitchBackToSupervisorView?: () => void;
 }
 
 const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   user, posts, lessonMaterials, onAddMaterial, onUpdateMaterial, notifications,
-  messages, onSendMessage, onMarkMessageAsRead, projects, updateProjectSubmission, onMarkAsRead, currentYear, semester,
+  messages, onSendMessage, onMarkMessageAsRead, projects, updateProjectSubmission, onMarkAsRead, onAddNotification, currentYear, semester,
   onSwitchBackToSupervisorView
 }) => {
   // Dynamic Grades and Subjects based on Assignments
@@ -317,6 +318,17 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
 
     onUpdateMaterial(updatedMaterial);
     setCommentText('');
+
+    if (material.teacherId !== user.id && onAddNotification) {
+      onAddNotification({
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        userId: material.teacherId,
+        message: `أضافت المعلمة ${user.name} تعليقاً على درسك: ${material.lessonTitle}`,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        type: 'comment',
+      });
+    }
   };
 
   const getFileIcon = (material: LessonMaterial) => {
@@ -827,7 +839,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                                     <div className="space-y-3">
                                       {material.comments && material.comments.length > 0 ? (
                                         material.comments.map((comment, index) => (
-                                          <div key={`material-comment-${comment.id}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                          <div key={`material-comment-${material.id}-${comment.id}-${index}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                                             <div className="flex justify-between items-center mb-2">
                                               <span className="text-xs font-black text-slate-900">{comment.authorName}</span>
                                               <span className="text-[10px] font-bold text-slate-400">
@@ -1003,7 +1015,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                             <span className="text-xs font-bold text-slate-500">فريق العمل:</span>
                             <div className="flex -space-x-2 space-x-reverse">
                               {project.assignedTeacherIds.map((teacherId, i) => (
-                                <div key={`teacher-${project.id}-${teacherId}`} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600" title={teacherId === user.id ? 'أنا' : 'زميلة'}>
+                                <div key={`teacher-${project.id}-${teacherId}-${i}`} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600" title={teacherId === user.id ? 'أنا' : 'زميلة'}>
                                   {teacherId === user.id ? 'أنا' : 'ز'}
                                 </div>
                               ))}
@@ -1325,7 +1337,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   ) : (
                     messages.map((msg, index) => (
                       <div 
-                        key={`msg-${msg.id}`}
+                        key={`msg-${msg.id}-${index}`}
                         className={cn(
                           "flex flex-col max-w-[80%]",
                           msg.senderId === user.id ? "mr-auto items-end" : "ml-auto items-start"
@@ -1620,7 +1632,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         const iconInfo = getAttachmentIcon(att);
                         const Icon = iconInfo.icon;
                         return (
-                          <div key={`${att.url}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                          <div key={`post-att-${viewingPost.id}-${att.url}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                             <div className="flex items-center gap-3">
                               <div className={cn("p-2 rounded-lg", iconInfo.bg, iconInfo.color)}>
                                 <Icon className="w-4 h-4" />
@@ -1752,8 +1764,8 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         التعليقات والملاحظات
                       </h4>
                       <div className="space-y-3">
-                        {viewingLesson.comments.map((comment) => (
-                          <div key={`lesson-comment-${comment.id}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
+                        {viewingLesson.comments.map((comment, index) => (
+                          <div key={`lesson-comment-${comment.id}-${index}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
                             <div className="flex justify-between items-center mb-2">
                               <span className="text-xs font-black text-amber-700">{comment.authorName}</span>
                               <span className="text-[10px] font-bold text-slate-400">{new Date(comment.createdAt).toLocaleDateString('ar-OM')}</span>
