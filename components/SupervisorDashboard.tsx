@@ -1231,7 +1231,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                 <div className="space-y-8">
                   {dashboardWidgets.map((widgetId, index) => (
-                    <div key={widgetId} className="relative group">
+                    <div key={`${widgetId}-${index}`} className="relative group">
                       {isCustomizingDashboard && (
                         <div className="absolute -right-12 top-0 bottom-0 flex flex-col justify-center gap-2 z-10">
                           <button 
@@ -1402,7 +1402,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         };
                         return (
                           <button
-                            key={widgetId}
+                            key={`${widgetId}-hidden`}
                             onClick={() => toggleWidgetVisibility(widgetId)}
                             className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:border-indigo-300 hover:text-indigo-600 transition-all flex items-center gap-2 shadow-sm"
                           >
@@ -1658,7 +1658,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="teachers-grid-container">
                   {filteredTeachers.map((teacher, i) => (
-                    <div key={teacher.id} className="bg-white p-5 rounded-[1.5rem] shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-200 transition-all duration-300 group relative overflow-hidden">
+                    <div key={`teacher-card-${teacher.id}-${i}`} className="bg-white p-5 rounded-[1.5rem] shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-200 transition-all duration-300 group relative overflow-hidden">
                       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                       
                       <div className="flex items-start justify-between mb-6">
@@ -2925,7 +2925,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 <div className="flex flex-col gap-6 max-h-[70vh] overflow-y-auto snap-y snap-mandatory pr-2 custom-scrollbar focus:outline-none" tabIndex={0}>
                   {filteredProjects.map((project, index) => (
                     <motion.div 
-                      key={`project-${project.id}-${index}`}
+                      key={`project-card-${project.id}-${index}`}
                       initial={{ opacity: 0, y: 50 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
@@ -3398,9 +3398,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     <section className="space-y-6">
                       <h4 className="font-black text-slate-800 text-sm border-r-4 border-red-500 pr-4">المشرفين المؤقتين الحاليين</h4>
                       <div className="space-y-4">
-                        {teachers.filter(t => t.role === UserRole.TEMP_SUPERVISOR).map((supervisor) => {
+                        {teachers.filter(t => t.role === UserRole.TEMP_SUPERVISOR).map((supervisor, sIdx) => {
                           return (
-                            <div key={`supervisor-${supervisor.id}`} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-slate-50 rounded-xl border border-slate-100 gap-4">
+                            <div key={`supervisor-card-${supervisor.id}-${sIdx}`} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-slate-50 rounded-xl border border-slate-100 gap-4">
                               <div>
                                 <span className="font-bold text-slate-700 block">{supervisor.name}</span>
                                 <span className="text-xs text-slate-500 font-mono mt-1 block">الرقم الوظيفي: {supervisor.code}</span>

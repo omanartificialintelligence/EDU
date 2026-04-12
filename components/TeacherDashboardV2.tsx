@@ -606,7 +606,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
               <div className="flex overflow-x-auto pb-2 sm:pb-0 items-center gap-2 sm:gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm w-full sm:w-fit scrollbar-hide">
                 {grades.map((grade, i) => (
                   <button
-                    key={`grade-select-${grade}`}
+                    key={`grade-select-${grade}-${i}`}
                     onClick={() => { setSelectedGrade(grade); setViewingSubject(null); }}
                     className={cn(
                       "px-4 sm:px-8 py-2.5 sm:py-3 rounded-[12px] text-xs sm:text-sm font-bold transition-all duration-200 whitespace-nowrap",
@@ -644,7 +644,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
 
                     return (
                       <div 
-                        key={`subject-select-${subject.name}`} 
+                        key={`subject-select-${subject.name}-${i}`} 
                         className={cn(
                           "relative p-8 rounded-[24px] border-2 transition-all duration-300 overflow-hidden group hover:shadow-xl",
                           subject.bg, subject.border

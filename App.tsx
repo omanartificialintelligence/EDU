@@ -163,7 +163,7 @@ const App: React.FC = () => {
 
     // Private listeners (only for authenticated users with roles)
     const setupPrivateListeners = () => {
-      const unsubPosts = onSnapshot(query(collection(db, 'posts'), limit(50)), (snapshot) => {
+      const unsubPosts = onSnapshot(query(collection(db, 'posts'), limit(20)), (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Post));
         setPosts(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       }, (error) => handleAsyncError(error, OperationType.LIST, 'posts'));
@@ -173,7 +173,8 @@ const App: React.FC = () => {
         collection(db, 'lessonMaterials'),
         where('academicYear', '==', currentAcademicYear),
         where('semester', '==', currentSemester),
-        where('isArchived', '==', false)
+        where('isArchived', '==', false),
+        limit(50)
       );
 
       const unsubLessons = onSnapshot(qLessons, (snapshot) => {
@@ -184,12 +185,13 @@ const App: React.FC = () => {
 
       let qProjects;
       if (auth.user?.role === UserRole.SUPERVISOR || auth.user?.role === UserRole.TEMP_SUPERVISOR) {
-        qProjects = query(collection(db, 'projects'), where('academicYear', '==', currentAcademicYear));
+        qProjects = query(collection(db, 'projects'), where('academicYear', '==', currentAcademicYear), limit(30));
       } else {
         qProjects = query(
           collection(db, 'projects'), 
           where('academicYear', '==', currentAcademicYear),
-          where('assignedTeacherIds', 'array-contains', auth.user?.id)
+          where('assignedTeacherIds', 'array-contains', auth.user?.id),
+          limit(30)
         );
       }
 
@@ -200,7 +202,7 @@ const App: React.FC = () => {
       unsubs.push(unsubProjects);
 
       const unsubNotifications = onSnapshot(
-        query(collection(db, 'notifications'), where('userId', '==', auth.user?.id), limit(100)), 
+        query(collection(db, 'notifications'), where('userId', '==', auth.user?.id), limit(50)), 
         (snapshot) => {
           const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Notification));
           setNotifications(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
@@ -214,7 +216,7 @@ const App: React.FC = () => {
           where('recipientId', '==', auth.user?.id),
           where('senderId', '==', auth.user?.id)
         ),
-        limit(200)
+        limit(50)
       );
 
       const unsubMessages = onSnapshot(qMessages, (snapshot) => {
@@ -224,13 +226,13 @@ const App: React.FC = () => {
       unsubs.push(unsubMessages);
 
       if (auth.user?.role === UserRole.SUPERVISOR || auth.user?.role === UserRole.TEMP_SUPERVISOR) {
-        const unsubTeachers = onSnapshot(query(collection(db, 'users'), limit(200)), (snapshot) => {
+        const unsubTeachers = onSnapshot(query(collection(db, 'users'), limit(100)), (snapshot) => {
           const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
           setTeachers(list);
         }, (error) => handleAsyncError(error, OperationType.LIST, 'users'));
         unsubs.push(unsubTeachers);
 
-        const unsubReset = onSnapshot(collection(db, 'resetRequests'), (snapshot) => {
+        const unsubReset = onSnapshot(query(collection(db, 'resetRequests'), limit(20)), (snapshot) => {
           const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as ResetRequest));
           setResetRequests(list);
         }, (error) => handleAsyncError(error, OperationType.LIST, 'resetRequests'));
