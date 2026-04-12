@@ -81,8 +81,8 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      if (file.size > 700 * 1024) {
-        alert('حجم الملف كبير جداً. يرجى اختيار ملف بحجم أقل من 700 كيلوبايت أو استخدام رابط.');
+      if (file.size > 10 * 1024 * 1024) {
+        alert('حجم الملف كبير جداً. يرجى اختيار ملف بحجم أقل من 10 ميجابايت أو استخدام رابط.');
         e.target.value = '';
         return;
       }
@@ -1188,8 +1188,8 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
-                                  if (file.size > 700 * 1024) {
-                                    alert('حجم الملف كبير جداً. يرجى اختيار ملف بحجم أقل من 700 كيلوبايت أو استخدام رابط.');
+                                  if (file.size > 10 * 1024 * 1024) {
+                                    alert('حجم الملف كبير جداً. يرجى اختيار ملف بحجم أقل من 10 ميجابايت أو استخدام رابط.');
                                     e.target.value = '';
                                     return;
                                   }

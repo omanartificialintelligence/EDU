@@ -2265,9 +2265,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             onChange={async (e) => {
                               if (e.target.files) {
                                 const files = Array.from(e.target.files);
-                                const validFiles = files.filter(f => f.size <= 700 * 1024);
+                                const validFiles = files.filter(f => f.size <= 10 * 1024 * 1024);
                                 if (validFiles.length < files.length) {
-                                  alert('تم تجاهل بعض الملفات لأن حجمها يتجاوز 700 كيلوبايت.');
+                                  alert('تم تجاهل بعض الملفات لأن حجمها يتجاوز 10 ميجابايت.');
                                 }
                                 const newAttachments = await Promise.all(validFiles.map(file => {
                                   return new Promise<Attachment>((resolve) => {
@@ -2436,9 +2436,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           onChange={async (e) => {
                             if (e.target.files) {
                               const files = Array.from(e.target.files);
-                              const validFiles = files.filter(f => f.size <= 700 * 1024);
+                              const validFiles = files.filter(f => f.size <= 10 * 1024 * 1024);
                               if (validFiles.length < files.length) {
-                                alert('تم تجاهل بعض الملفات لأن حجمها يتجاوز 700 كيلوبايت.');
+                                alert('تم تجاهل بعض الملفات لأن حجمها يتجاوز 10 ميجابايت.');
                               }
                               const newAtts = await Promise.all(validFiles.map(file => {
                                 return new Promise<Attachment>((resolve) => {
@@ -3861,9 +3861,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       onChange={async (e) => {
                         if (e.target.files) {
                           const files = Array.from(e.target.files);
-                          const validFiles = files.filter(f => f.size <= 700 * 1024);
+                          const validFiles = files.filter(f => f.size <= 10 * 1024 * 1024);
                           if (validFiles.length < files.length) {
-                            alert('تم تجاهل بعض الملفات لأن حجمها يتجاوز 700 كيلوبايت.');
+                            alert('تم تجاهل بعض الملفات لأن حجمها يتجاوز 10 ميجابايت.');
                           }
                           const newAtts = await Promise.all(validFiles.map(file => {
                             return new Promise<Attachment>((resolve) => {
