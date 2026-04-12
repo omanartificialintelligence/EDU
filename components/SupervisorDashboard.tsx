@@ -2161,34 +2161,38 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
             {/* Add Attachment Modal */}
             <AnimatePresence>
               {isAddAttachmentModalOpen && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4"
-                  onClick={() => setIsAddAttachmentModalOpen(false)}
-                >
                   <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    onClick={e => e.stopPropagation()}
-                    className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4"
+                    onClick={() => { if (!isSubmitting) setIsAddAttachmentModalOpen(false); }}
                   >
-                    <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center">
-                          <Plus className="w-6 h-6" />
+                    <motion.div
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.9, opacity: 0 }}
+                      onClick={e => e.stopPropagation()}
+                      className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden"
+                    >
+                      <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center">
+                            <Plus className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-black text-slate-900">إضافة مرفق جديد</h3>
+                            <p className="text-slate-500 font-bold text-xs">أضيفي ملفات ومرفقات للدروس</p>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="text-xl font-black text-slate-900">إضافة مرفق جديد</h3>
-                          <p className="text-slate-500 font-bold text-xs">أضيفي ملفات ومرفقات للدروس</p>
-                        </div>
+                        <button 
+                          onClick={() => { if (!isSubmitting) setIsAddAttachmentModalOpen(false); }} 
+                          disabled={isSubmitting}
+                          className="p-2 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors text-slate-400 disabled:opacity-50"
+                        >
+                          <X className="w-6 h-6" />
+                        </button>
                       </div>
-                      <button onClick={() => setIsAddAttachmentModalOpen(false)} className="p-2 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors text-slate-400">
-                        <X className="w-6 h-6" />
-                      </button>
-                    </div>
 
                     <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
                       <div className="space-y-2">
@@ -2316,27 +2320,46 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       </div>
                     </div>
 
-                    <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex gap-4">
-                      <button 
-                        onClick={() => setIsAddAttachmentModalOpen(false)}
-                        className="flex-1 py-4 rounded-2xl font-black text-sm text-slate-500 hover:bg-slate-100 transition-all"
-                      >
-                        إلغاء
-                      </button>
-                      <button 
-                        onClick={handleAddAttachment}
-                        disabled={isSubmitting}
-                        className="flex-[2] bg-indigo-600 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 hover:shadow-indigo-600/40 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                      >
-                        {isSubmitting ? (
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <>
-                            <CheckCircle className="w-5 h-5" />
-                            حفظ المرفقات
-                          </>
-                        )}
-                      </button>
+                    <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex flex-col gap-4">
+                      {isSubmitting && (
+                        <div className="space-y-2 mb-2">
+                          <div className="flex justify-between items-center text-[10px] font-black text-indigo-600">
+                            <span>جاري حفظ المرفقات...</span>
+                            <span>يرجى عدم إغلاق النافذة</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-indigo-100 rounded-full overflow-hidden">
+                            <motion.div 
+                              initial={{ x: '-100%' }}
+                              animate={{ x: '100%' }}
+                              transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                              className="w-full h-full bg-indigo-600"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex gap-4">
+                        <button 
+                          onClick={() => { if (!isSubmitting) setIsAddAttachmentModalOpen(false); }}
+                          disabled={isSubmitting}
+                          className="flex-1 py-4 rounded-2xl font-black text-sm text-slate-500 hover:bg-slate-100 transition-all disabled:opacity-50"
+                        >
+                          إلغاء
+                        </button>
+                        <button 
+                          onClick={handleAddAttachment}
+                          disabled={isSubmitting}
+                          className="flex-[2] bg-indigo-600 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 hover:shadow-indigo-600/40 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                        >
+                          {isSubmitting ? (
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <>
+                              <CheckCircle className="w-5 h-5" />
+                              حفظ المرفقات
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </motion.div>
                 </motion.div>
@@ -3703,53 +3726,76 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
       {/* Add Lesson Modal */}
       <AnimatePresence>
         {isAddLessonModalOpen && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+          <div 
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
+            onClick={() => { if (!isSubmitting) { setIsAddLessonModalOpen(false); setEditingLesson(null); } }}
+          >
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              onClick={e => e.stopPropagation()}
               className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl p-8 border border-slate-100"
             >
               <h3 className="text-xl font-black text-slate-900 mb-6">{editingLesson ? 'تعديل الدرس' : 'إضافة درس جديد'}</h3>
               <div className="space-y-4">
-                <input type="text" placeholder="عنوان الدرس" value={newLessonTitle} onChange={e => setNewLessonTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" />
-                <select value={newLessonGrade} onChange={e => setNewLessonGrade(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm">
+                <input type="text" placeholder="عنوان الدرس" value={newLessonTitle} onChange={e => setNewLessonTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" disabled={isSubmitting} />
+                <select value={newLessonGrade} onChange={e => setNewLessonGrade(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" disabled={isSubmitting}>
                   {AVAILABLE_GRADES.map((g) => <option key={`grade-select-3-${g}`} value={g}>{g}</option>)}
                 </select>
-                <select value={newLessonSemester} onChange={e => setNewLessonSemester(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm">
+                <select value={newLessonSemester} onChange={e => setNewLessonSemester(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" disabled={isSubmitting}>
                   <option value="الفصل الأول">الفصل الأول</option>
                   <option value="الفصل الثاني">الفصل الثاني</option>
                 </select>
-                <select value={newLessonSubject} onChange={e => setNewLessonSubject(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm">
+                <select value={newLessonSubject} onChange={e => setNewLessonSubject(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" disabled={isSubmitting}>
                   {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-3-${s}`} value={s}>{s}</option>)}
                 </select>
-                <textarea placeholder="وصف الدرس" value={newLessonDescription} onChange={e => setNewLessonDescription(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" rows={4} />
+                <textarea placeholder="وصف الدرس" value={newLessonDescription} onChange={e => setNewLessonDescription(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" rows={4} disabled={isSubmitting} />
                 
                 <div className="space-y-2 mt-4">
                   <p className="text-xs font-bold text-slate-500">المرفقات:</p>
                   {newLessonAttachments.map((att, i) => (
                     <div key={`new-lesson-att-${att.name}-${i}`} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
                       {att.name}
-                      <button onClick={() => setNewLessonAttachments(newLessonAttachments.filter((_, idx) => idx !== i))} className="text-red-500">حذف</button>
+                      <button onClick={() => setNewLessonAttachments(newLessonAttachments.filter((_, idx) => idx !== i))} className="text-red-500" disabled={isSubmitting}>حذف</button>
                     </div>
                   ))}
-                  <div className="flex gap-2">
-                    <input type="text" placeholder="اسم المرفق" id="newAttName" className="flex-1 px-3 py-2 rounded-lg bg-slate-50 border-none font-bold text-xs" />
-                    <input type="text" placeholder="رابط المرفق" id="newAttUrl" className="flex-1 px-3 py-2 rounded-lg bg-slate-50 border-none font-bold text-xs" />
-                    <button onClick={() => {
-                      const nameInput = document.getElementById('newAttName') as HTMLInputElement;
-                      const urlInput = document.getElementById('newAttUrl') as HTMLInputElement;
-                      if (nameInput.value && urlInput.value) {
-                        setNewLessonAttachments([...newLessonAttachments, { name: nameInput.value, url: urlInput.value, type: 'link' }]);
-                        nameInput.value = '';
-                        urlInput.value = '';
-                      }
-                    }} className="px-3 py-2 rounded-lg bg-indigo-600 text-white font-black text-xs">+</button>
-                  </div>
+                  {!isSubmitting && (
+                    <div className="flex gap-2">
+                      <input type="text" placeholder="اسم المرفق" id="newAttName" className="flex-1 px-3 py-2 rounded-lg bg-slate-50 border-none font-bold text-xs" />
+                      <input type="text" placeholder="رابط المرفق" id="newAttUrl" className="flex-1 px-3 py-2 rounded-lg bg-slate-50 border-none font-bold text-xs" />
+                      <button onClick={() => {
+                        const nameInput = document.getElementById('newAttName') as HTMLInputElement;
+                        const urlInput = document.getElementById('newAttUrl') as HTMLInputElement;
+                        if (nameInput.value && urlInput.value) {
+                          setNewLessonAttachments([...newLessonAttachments, { name: nameInput.value, url: urlInput.value, type: 'link' }]);
+                          nameInput.value = '';
+                          urlInput.value = '';
+                        }
+                      }} className="px-3 py-2 rounded-lg bg-indigo-600 text-white font-black text-xs">+</button>
+                    </div>
+                  )}
                 </div>
 
+                {isSubmitting && (
+                  <div className="space-y-2 mt-4">
+                    <div className="flex justify-between items-center text-[10px] font-black text-indigo-600">
+                      <span>جاري حفظ الدرس...</span>
+                      <span>يرجى عدم إغلاق النافذة</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-indigo-100 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ x: '-100%' }}
+                        animate={{ x: '100%' }}
+                        transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                        className="w-full h-full bg-indigo-600"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-3 mt-6">
-                  <button onClick={() => { setIsAddLessonModalOpen(false); setEditingLesson(null); }} className="flex-1 px-4 py-3 rounded-xl bg-slate-100 text-slate-600 font-black text-xs hover:bg-slate-200">إلغاء</button>
+                  <button onClick={() => { if (!isSubmitting) { setIsAddLessonModalOpen(false); setEditingLesson(null); } }} disabled={isSubmitting} className="flex-1 px-4 py-3 rounded-xl bg-slate-100 text-slate-600 font-black text-xs hover:bg-slate-200 disabled:opacity-50">إلغاء</button>
                   <button onClick={handleAddLesson} disabled={isSubmitting} className="flex-1 px-4 py-3 rounded-xl bg-indigo-600 text-white font-black text-xs hover:bg-indigo-700 disabled:opacity-50">{editingLesson ? 'حفظ التعديلات' : 'حفظ الدرس'}</button>
                 </div>
               </div>

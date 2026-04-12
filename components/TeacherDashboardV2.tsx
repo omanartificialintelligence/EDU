@@ -1477,11 +1477,22 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
       {/* Multimedia Upload Hub Modal */}
       <AnimatePresence>
         {isUploadModalOpen && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+          <div 
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
+            onClick={() => {
+              if (!isSubmitting) {
+                setIsUploadModalOpen(false);
+                setEditingLesson(null);
+                setNewLessonTitle('');
+                setNewLessonAttachments([]);
+              }
+            }}
+          >
             <motion.div 
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              onClick={e => e.stopPropagation()}
               className="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden border border-slate-100"
             >
               <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
@@ -1493,12 +1504,15 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                 </div>
                 <button 
                   onClick={() => {
-                    setIsUploadModalOpen(false);
-                    setEditingLesson(null);
-                    setNewLessonTitle('');
-                    setNewLessonAttachments([]);
+                    if (!isSubmitting) {
+                      setIsUploadModalOpen(false);
+                      setEditingLesson(null);
+                      setNewLessonTitle('');
+                      setNewLessonAttachments([]);
+                    }
                   }} 
-                  className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400 hover:text-slate-600"
+                  disabled={isSubmitting}
+                  className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400 hover:text-slate-600 disabled:opacity-50"
                 >
                   <XCircle className="w-7 h-7" />
                 </button>
@@ -1600,6 +1614,23 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                     >
                       تأكيد إضافة المرفق
                     </button>
+                  </div>
+                )}
+
+                {isSubmitting && (
+                  <div className="mt-4 space-y-2">
+                    <div className="flex justify-between items-center text-[10px] font-black text-blue-600">
+                      <span>جاري حفظ البيانات والمرفقات...</span>
+                      <span>يرجى عدم إغلاق النافذة</span>
+                    </div>
+                    <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ x: '-100%' }}
+                        animate={{ x: '100%' }}
+                        transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                        className="w-full h-full bg-blue-600"
+                      />
+                    </div>
                   </div>
                 )}
 
