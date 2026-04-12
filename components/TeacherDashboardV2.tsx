@@ -514,7 +514,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                     {notifications.length > 0 ? (
                       notifications.map((notification, index) => (
                         <div 
-                          key={`notif-${notification.id}-${index}`} 
+                          key={`notif-${notification.id}-${notification.createdAt}-${index}`} 
                           className={cn(
                             "p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer",
                             !notification.isRead ? "bg-indigo-50/50" : ""
@@ -751,7 +751,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         const Icon = fileInfo.icon;
                         
                         return (
-                          <div key={`material-${material.id}-${index}`} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
+                          <div key={`material-${material.id}-${material.createdAt}-${index}`} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
                             <div className="p-6 flex-1">
                               <div className="flex justify-between items-start mb-4">
                                 <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border relative", fileInfo.bg, fileInfo.color, "border-slate-50")}>
@@ -797,7 +797,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                               <div className="flex flex-wrap gap-2">
                                 {material.attachments.map((attachment, idx) => (
                                   <button 
-                                    key={`${material.id}-${attachment.url}-${attachment.name}-${idx}`}
+                                    key={`att-${material.id}-${idx}-${attachment.name}`}
                                     onClick={() => {
                                       if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
                                         setPreviewAttachment(attachment);
@@ -1518,7 +1518,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                 </button>
               </div>
 
-              <div className="p-8 bg-slate-50/50 space-y-6">
+              <div className="p-8 bg-slate-50/50 space-y-6 pb-32">
                 <div className="space-y-2">
                   <label className="text-sm font-black text-slate-700 block">عنوان الدرس</label>
                   <input 
@@ -1641,6 +1641,56 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                 >
                   {isSubmitting ? 'جاري النشر...' : 'نشر الدرس الآن'}
                 </button>
+              </div>
+
+              {/* Save Attachment Bar */}
+              <div className="absolute bottom-0 left-0 right-0 p-6 bg-white border-t border-slate-100 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] flex items-center justify-between z-10">
+                <div className="flex items-center gap-4">
+                  <div className="flex -space-x-2">
+                    {newLessonAttachments.slice(0, 3).map((att, i) => {
+                      const { icon: Icon, color } = getAttachmentIcon(att);
+                      return (
+                        <div key={`bar-att-${i}`} className={cn("w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shadow-sm", color)}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                      );
+                    })}
+                    {newLessonAttachments.length > 3 && (
+                      <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-black text-slate-500 shadow-sm">
+                        +{newLessonAttachments.length - 3}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-slate-900">
+                      {newLessonAttachments.length} مرفقات مضافة
+                    </p>
+                    <p className="text-[10px] font-bold text-slate-400">
+                      {isSubmitting ? 'جاري الحفظ...' : 'جاهز للنشر'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setIsUploadModalOpen(false);
+                      setEditingLesson(null);
+                      setNewLessonTitle('');
+                      setNewLessonAttachments([]);
+                    }}
+                    disabled={isSubmitting}
+                    className="px-6 py-3 rounded-xl text-slate-500 font-bold text-sm hover:bg-slate-50 transition-all"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    onClick={handleAddLesson}
+                    disabled={isSubmitting || !newLessonTitle || newLessonAttachments.length === 0}
+                    className="px-8 py-3 bg-blue-600 text-white rounded-xl font-black text-sm shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all disabled:opacity-50"
+                  >
+                    {isSubmitting ? 'جاري الحفظ...' : 'حفظ ونشر'}
+                  </button>
+                </div>
               </div>
 
               <div className="px-8 py-6 bg-blue-50/50 border-t border-blue-100 flex items-start gap-3">

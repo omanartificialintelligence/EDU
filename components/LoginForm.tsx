@@ -167,7 +167,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, teachers, onForgotPasswo
           <h1 className="text-xl sm:text-2xl font-black text-slate-800 mb-1 sm:mb-2 tracking-tight">{supervisorConfig.schoolName || 'مدرسة الخضراء للتعليم الأساسي 1-8'}</h1>
           <p className="text-slate-500 font-bold text-[10px] sm:text-sm mb-1">بوابة الدخول الموحدة للمجال الأول</p>
           <p className="text-[8px] sm:text-[10px] font-black text-emerald-600 bg-emerald-50 inline-block px-3 py-1 rounded-full">
-            {currentYear || '2025-2026'} | {currentSemester || 'الفصل الأول'}
+            {currentYear || '2025-2026'} | {currentSemester || 'الفصل الدراسي الأول'}
           </p>
         </div>
 

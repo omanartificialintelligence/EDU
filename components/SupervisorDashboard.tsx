@@ -478,10 +478,10 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
   const defaultWidgets = ['stats', 'charts', 'quickActions', 'recentActivity'];
   const [dashboardWidgets, setDashboardWidgets] = useState<string[]>(
-    user?.preferences?.dashboardWidgets || defaultWidgets
+    Array.from(new Set(user?.preferences?.dashboardWidgets || defaultWidgets))
   );
   const [hiddenWidgets, setHiddenWidgets] = useState<string[]>(
-    defaultWidgets.filter(w => !(user?.preferences?.dashboardWidgets || defaultWidgets).includes(w))
+    defaultWidgets.filter(w => !Array.from(new Set(user?.preferences?.dashboardWidgets || defaultWidgets)).includes(w))
   );
   const [isCustomizingDashboard, setIsCustomizingDashboard] = useState(false);
 
@@ -495,11 +495,11 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
   const toggleWidgetVisibility = (widgetId: string) => {
     if (dashboardWidgets.includes(widgetId)) {
-      setDashboardWidgets(dashboardWidgets.filter(w => w !== widgetId));
-      setHiddenWidgets([...hiddenWidgets, widgetId]);
+      setDashboardWidgets(prev => prev.filter(w => w !== widgetId));
+      setHiddenWidgets(prev => Array.from(new Set([...prev, widgetId])));
     } else {
-      setHiddenWidgets(hiddenWidgets.filter(w => w !== widgetId));
-      setDashboardWidgets([...dashboardWidgets, widgetId]);
+      setHiddenWidgets(prev => prev.filter(w => w !== widgetId));
+      setDashboardWidgets(prev => Array.from(new Set([...prev, widgetId])));
     }
   };
 
@@ -1158,7 +1158,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     {notifications.length > 0 ? (
                       notifications.map((notification, index) => (
                         <motion.div 
-                          key={`notif-${notification.id}-${index}`} 
+                          key={`notif-${notification.id}-${notification.createdAt}-${index}`} 
                           variants={{
                             hidden: { opacity: 0, y: 10 },
                             visible: { opacity: 1, y: 0 },
@@ -1355,7 +1355,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             </h3>
                             <div className="space-y-4">
                               {lessonMaterials.slice(0, 5).map((lesson, idx) => (
-                                <div key={lesson.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                <div key={`recent-lesson-${lesson.id}-${idx}`} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                                   <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-indigo-600 shadow-sm">
                                       <BookOpen className="w-5 h-5" />
@@ -2241,8 +2241,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         >
                           <option value="الفصل الدراسي الأول">الفصل الدراسي الأول</option>
                           <option value="الفصل الدراسي الثاني">الفصل الدراسي الثاني</option>
-                          <option value="الفصل الأول">الفصل الأول</option>
-                          <option value="الفصل الثاني">الفصل الثاني</option>
                         </select>
                       </div>
 
@@ -2656,7 +2654,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                               {selectedArchiveSubject === subject.name && (
                                 <div className="mt-6 flex flex-wrap gap-3 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-                                  {['الفصل الأول', 'الفصل الثاني', 'الفصل الدراسي الأول', 'الفصل الدراسي الثاني'].map((sem, idx) => {
+                                  {['الفصل الدراسي الأول', 'الفصل الدراسي الثاني'].map((sem, idx) => {
                                     // Only show semesters that actually have materials in the archive for this selection
                                     const hasMaterials = lessonMaterials.some(m => 
                                       m.academicYear === selectedArchiveYear && 
@@ -2683,7 +2681,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                     );
                                   })}
                                   {/* Show a message if no materials are found for any semester */}
-                                  {!['الفصل الأول', 'الفصل الثاني', 'الفصل الدراسي الأول', 'الفصل الدراسي الثاني'].some(sem => 
+                                  {!['الفصل الدراسي الأول', 'الفصل الدراسي الثاني'].some(sem => 
                                     lessonMaterials.some(m => 
                                       m.academicYear === selectedArchiveYear && 
                                       m.grade === selectedArchiveGrade && 
@@ -3744,8 +3742,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   {AVAILABLE_GRADES.map((g) => <option key={`grade-select-3-${g}`} value={g}>{g}</option>)}
                 </select>
                 <select value={newLessonSemester} onChange={e => setNewLessonSemester(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" disabled={isSubmitting}>
-                  <option value="الفصل الأول">الفصل الأول</option>
-                  <option value="الفصل الثاني">الفصل الثاني</option>
+                  <option value="الفصل الدراسي الأول">الفصل الدراسي الأول</option>
+                  <option value="الفصل الدراسي الثاني">الفصل الدراسي الثاني</option>
                 </select>
                 <select value={newLessonSubject} onChange={e => setNewLessonSubject(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" disabled={isSubmitting}>
                   {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-3-${s}`} value={s}>{s}</option>)}
