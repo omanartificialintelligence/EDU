@@ -2521,7 +2521,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       {post.attachments.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                           {post.attachments.map((att, i) => (
-                            <div key={`post-att-${post.id}-${i}`} className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-500 flex items-center gap-2">
+                            <div key={`post-att-${post.id}-${att.url}-${i}`} className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-500 flex items-center gap-2">
                               <FileText className="w-3 h-3" /> <span className="truncate max-w-[150px]">{att.name}</span>
                               <div className="flex items-center gap-1 mr-2 border-r border-slate-200 pr-2">
                                 {(att.type === 'image' || att.type === 'video' || att.type === 'link') && (

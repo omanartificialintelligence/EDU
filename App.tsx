@@ -471,13 +471,16 @@ const App: React.FC = () => {
   };
 
   const handleAddLessonMaterial = async (material: LessonMaterial) => {
+    console.log("Attempting to save lesson:", material);
     try {
       const cleanMaterial = { ...material } as any;
       Object.keys(cleanMaterial).forEach(key => {
         if (cleanMaterial[key] === undefined) delete cleanMaterial[key];
       });
       await setDoc(doc(db, 'lessonMaterials', material.id), cleanMaterial);
+      console.log("Lesson saved successfully:", material.id);
     } catch (error) {
+      console.error("Error saving lesson:", error);
       handleFirestoreError(error, OperationType.WRITE, `lessonMaterials/${material.id}`);
     }
   };
