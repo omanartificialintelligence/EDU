@@ -81,6 +81,11 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      if (file.size > 700 * 1024) {
+        alert('حجم الملف كبير جداً. يرجى اختيار ملف بحجم أقل من 700 كيلوبايت أو استخدام رابط.');
+        e.target.value = '';
+        return;
+      }
       const reader = new FileReader();
       reader.onload = () => {
         setNewLessonUrl(reader.result as string);
@@ -1183,12 +1188,21 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
-                                  setSubmissionFiles(prev => [...prev, {
-                                    type: file.type.startsWith('image/') ? 'image' : 'file',
-                                    url: URL.createObjectURL(file),
-                                    name: file.name,
-                                    comment: ''
-                                  }]);
+                                  if (file.size > 700 * 1024) {
+                                    alert('حجم الملف كبير جداً. يرجى اختيار ملف بحجم أقل من 700 كيلوبايت أو استخدام رابط.');
+                                    e.target.value = '';
+                                    return;
+                                  }
+                                  const reader = new FileReader();
+                                  reader.onload = () => {
+                                    setSubmissionFiles(prev => [...prev, {
+                                      type: file.type.startsWith('image/') ? 'image' : 'file',
+                                      url: reader.result as string,
+                                      name: file.name,
+                                      comment: ''
+                                    }]);
+                                  };
+                                  reader.readAsDataURL(file);
                                 }
                               }}
                             />

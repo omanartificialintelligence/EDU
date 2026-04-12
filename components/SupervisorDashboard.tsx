@@ -2262,13 +2262,25 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             type="file" 
                             multiple
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            onChange={(e) => {
+                            onChange={async (e) => {
                               if (e.target.files) {
                                 const files = Array.from(e.target.files);
-                                const newAttachments = files.map(file => ({
-                                  type: 'file' as const,
-                                  url: URL.createObjectURL(file), // In a real app, upload to server
-                                  name: file.name
+                                const validFiles = files.filter(f => f.size <= 700 * 1024);
+                                if (validFiles.length < files.length) {
+                                  alert('تم تجاهل بعض الملفات لأن حجمها يتجاوز 700 كيلوبايت.');
+                                }
+                                const newAttachments = await Promise.all(validFiles.map(file => {
+                                  return new Promise<Attachment>((resolve) => {
+                                    const reader = new FileReader();
+                                    reader.onload = () => {
+                                      resolve({
+                                        type: 'file' as const,
+                                        url: reader.result as string,
+                                        name: file.name
+                                      });
+                                    };
+                                    reader.readAsDataURL(file);
+                                  });
                                 }));
                                 setAttachmentFiles(prev => [...prev, ...newAttachments]);
                               }
@@ -2421,13 +2433,25 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           id="post-file-upload"
                           multiple
                           className="hidden"
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             if (e.target.files) {
                               const files = Array.from(e.target.files);
-                              const newAtts = files.map(file => ({
-                                type: 'file' as const,
-                                url: URL.createObjectURL(file),
-                                name: file.name
+                              const validFiles = files.filter(f => f.size <= 700 * 1024);
+                              if (validFiles.length < files.length) {
+                                alert('تم تجاهل بعض الملفات لأن حجمها يتجاوز 700 كيلوبايت.');
+                              }
+                              const newAtts = await Promise.all(validFiles.map(file => {
+                                return new Promise<Attachment>((resolve) => {
+                                  const reader = new FileReader();
+                                  reader.onload = () => {
+                                    resolve({
+                                      type: 'file' as const,
+                                      url: reader.result as string,
+                                      name: file.name
+                                    });
+                                  };
+                                  reader.readAsDataURL(file);
+                                });
                               }));
                               setNewPostAttachments([...newPostAttachments, ...newAtts]);
                             }
@@ -2498,7 +2522,17 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         <div className="flex flex-wrap gap-2">
                           {post.attachments.map((att, i) => (
                             <div key={`post-att-${post.id}-${i}`} className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-500 flex items-center gap-2">
-                              <FileText className="w-3 h-3" /> {att.name}
+                              <FileText className="w-3 h-3" /> <span className="truncate max-w-[150px]">{att.name}</span>
+                              <div className="flex items-center gap-1 mr-2 border-r border-slate-200 pr-2">
+                                {(att.type === 'image' || att.type === 'video' || att.type === 'link') && (
+                                  <button onClick={() => setPreviewAttachment(att)} className="p-1 hover:bg-slate-200 rounded text-slate-500" title="معاينة">
+                                    <Eye className="w-3 h-3" />
+                                  </button>
+                                )}
+                                <button onClick={() => downloadFile(att.url, att.name)} className="p-1 hover:bg-slate-200 rounded text-slate-500" title="تنزيل">
+                                  <Download className="w-3 h-3" />
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -3824,13 +3858,25 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       id="project-file-upload"
                       multiple
                       className="hidden"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         if (e.target.files) {
                           const files = Array.from(e.target.files);
-                          const newAtts = files.map(file => ({
-                            type: 'file' as const,
-                            url: URL.createObjectURL(file),
-                            name: file.name
+                          const validFiles = files.filter(f => f.size <= 700 * 1024);
+                          if (validFiles.length < files.length) {
+                            alert('تم تجاهل بعض الملفات لأن حجمها يتجاوز 700 كيلوبايت.');
+                          }
+                          const newAtts = await Promise.all(validFiles.map(file => {
+                            return new Promise<Attachment>((resolve) => {
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                resolve({
+                                  type: 'file' as const,
+                                  url: reader.result as string,
+                                  name: file.name
+                                });
+                              };
+                              reader.readAsDataURL(file);
+                            });
                           }));
                           setNewProjectAttachments([...newProjectAttachments, ...newAtts]);
                         }
