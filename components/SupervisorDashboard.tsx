@@ -2494,7 +2494,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                 <div className="space-y-6">
                   {filteredPosts.map((post, index) => (
-                    <div key={post.id} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden">
+                    <div key={`post-${post.id}-${index}`} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden">
                       {post.isPinned && (
                         <div className="absolute top-0 left-0 w-full h-1.5 bg-indigo-500" />
                       )}
@@ -2737,7 +2737,13 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               {lesson.attachments.map((attachment, idx) => (
                                 <button 
                                   key={`${lesson.id}-${attachment.url}-${attachment.name}-${idx}`}
-                                  onClick={() => downloadFile(attachment.url, attachment.name || lesson.lessonTitle)}
+                                  onClick={() => {
+                                  if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
+                                    setPreviewAttachment(attachment);
+                                  } else {
+                                    downloadFile(attachment.url, attachment.name || lesson.lessonTitle);
+                                  }
+                                }}
                                   className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm"
                                   title={`تحميل ${attachment.name || `مرفق ${idx + 1}`}`}
                                 >
@@ -3057,7 +3063,13 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                     {submission.files.map((file, i) => (
                                       <button 
                                         key={`sub-file-${file.name}-${i}`}
-                                        onClick={() => downloadFile(file.url, file.name)}
+                                        onClick={() => {
+                                          if (file.type === 'image' || file.type === 'video' || file.type === 'link') {
+                                            setPreviewAttachment({url: file.url, type: file.type, name: file.name});
+                                          } else {
+                                            downloadFile(file.url, file.name);
+                                          }
+                                        }}
                                         className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:text-indigo-600 hover:border-indigo-200 transition-all"
                                       >
                                         <Download className="w-4 h-4" />

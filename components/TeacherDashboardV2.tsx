@@ -249,46 +249,51 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
 
     setIsSubmitting(true);
     
-    if (editingLesson) {
-      const updatedMaterial: LessonMaterial = {
-        ...editingLesson,
-        lessonTitle: newLessonTitle,
-        description: `درس: ${newLessonTitle}`,
-        attachments: newLessonAttachments,
-        grade: selectedGrade,
-        subject: selectedSubject,
-        tags: [selectedSubject, selectedGrade]
-      };
-      onUpdateMaterial(updatedMaterial);
-      alert('تم تحديث الدرس بنجاح.');
-    } else {
-      const newMaterial: LessonMaterial = {
-        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        teacherId: user.id,
-        teacherName: user.name,
-        lessonTitle: newLessonTitle,
-        description: `درس: ${newLessonTitle}`,
-        attachments: newLessonAttachments,
-        comments: [],
-        createdAt: new Date().toISOString(),
-        academicYear: currentYear,
-        semester: semester,
-        grade: selectedGrade,
-        subject: selectedSubject,
-        status: 'pending',
-        isActive: true,
-        isModelLesson: false,
-        tags: [selectedSubject, selectedGrade]
-      };
-      onAddMaterial(newMaterial);
-      alert('تمت إضافة الدرس بنجاح وسيتم مراجعته من قبل المشرفة.');
+    try {
+      if (editingLesson) {
+        const updatedMaterial: LessonMaterial = {
+          ...editingLesson,
+          lessonTitle: newLessonTitle,
+          description: `درس: ${newLessonTitle}`,
+          attachments: newLessonAttachments,
+          grade: selectedGrade,
+          subject: selectedSubject,
+          tags: [selectedSubject, selectedGrade]
+        };
+        await onUpdateMaterial(updatedMaterial);
+        alert('تم تحديث الدرس بنجاح.');
+      } else {
+        const newMaterial: LessonMaterial = {
+          id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          teacherId: user.id,
+          teacherName: user.name,
+          lessonTitle: newLessonTitle,
+          description: `درس: ${newLessonTitle}`,
+          attachments: newLessonAttachments,
+          comments: [],
+          createdAt: new Date().toISOString(),
+          academicYear: currentYear,
+          semester: semester,
+          grade: selectedGrade,
+          subject: selectedSubject,
+          status: 'pending',
+          isActive: true,
+          isModelLesson: false,
+          tags: [selectedSubject, selectedGrade]
+        };
+        await onAddMaterial(newMaterial);
+        alert('تمت إضافة الدرس بنجاح وسيتم مراجعته من قبل المشرفة.');
+      }
+      setIsUploadModalOpen(false);
+      setEditingLesson(null);
+      setNewLessonTitle('');
+      setNewLessonAttachments([]);
+    } catch (error) {
+      console.error("Error saving lesson:", error);
+      alert('حدث خطأ أثناء حفظ الدرس. يرجى المحاولة مرة أخرى.');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
-    setIsUploadModalOpen(false);
-    setEditingLesson(null);
-    setNewLessonTitle('');
-    setNewLessonAttachments([]);
   };
 
   const downloadFile = (url: string, filename: string) => {
@@ -572,7 +577,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                     {posts.filter(p => !p.isArchived).length > 0 ? (
                       posts.filter(p => !p.isArchived).slice(0, 3).map((post, index) => (
                         <div 
-                          key={`post-${post.id}`} 
+                          key={`post-${post.id}-${index}`} 
                           onClick={() => setViewingPost(post)}
                           className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-amber-200 hover:bg-amber-50/30 transition-all group cursor-pointer"
                         >
