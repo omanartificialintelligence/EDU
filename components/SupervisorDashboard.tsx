@@ -850,12 +850,56 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     return list;
   }, [lessonMaterials, filteredTeachers, isMainSupervisor, isTempSupervisor, user.tempPermissions, activeGradeTab, activeSubjectTab]);
 
+  const statsTeachers = useMemo(() => {
+    if (isTempSupervisor && user.tempPermissions?.canViewTeachers === false) {
+      return [];
+    }
+    let list = teachers.filter(t => t.isActive && t.role === UserRole.TEACHER && 
+      ((t.assignments && t.assignments.length > 0) || 
+       (t.subject && t.subject.trim() !== '' && t.teachingGrades && t.teachingGrades.trim() !== ''))
+    );
+    
+    if (isTempSupervisor && !user.tempPermissions?.hasFullAccess && user.tempPermissions?.allowedSubjects) {
+      const allowed = user.tempPermissions.allowedSubjects;
+      if (allowed.length > 0) {
+        list = list.filter(t => {
+          const hasAllowedSubject = t.subject && allowed.includes(t.subject);
+          const hasAllowedAssignment = t.assignments?.some(a => allowed.includes(a.subject));
+          return hasAllowedSubject || hasAllowedAssignment;
+        });
+      }
+    }
+    return list;
+  }, [teachers, isTempSupervisor, user.tempPermissions]);
+
+  const statsLessons = useMemo(() => {
+    let list = lessonMaterials.filter(m => m.isActive !== false && m.academicYear === academicYear && m.semester === semester && !m.isArchived);
+    
+    if (isTempSupervisor && !user.tempPermissions?.hasFullAccess && user.tempPermissions?.allowedSubjects) {
+      const allowed = user.tempPermissions.allowedSubjects;
+      if (allowed.length > 0) {
+        list = list.filter(m => allowed.includes(m.subject) || (m.tags && m.tags.some(tag => allowed.includes(tag))));
+      }
+    }
+    
+    if (!isMainSupervisor) {
+      const allowedTeacherIds = statsTeachers.map(t => t.id);
+      list = list.filter(m => allowedTeacherIds.includes(m.teacherId));
+    }
+    
+    return list;
+  }, [lessonMaterials, academicYear, semester, isTempSupervisor, user.tempPermissions, isMainSupervisor, statsTeachers]);
+
+  const statsPosts = useMemo(() => {
+    return posts.filter(p => p.academicYear === academicYear && p.semester === semester && !p.isArchived);
+  }, [posts, academicYear, semester]);
+
   // Stats for Charts
   const statsData = useMemo(() => [
-    { name: 'المعلمات', value: filteredTeachers.length, color: '#4f46e5' },
-    { name: 'الدروس', value: filteredLessons.length, color: '#10b981' },
-    { name: 'التعاميم', value: filteredPosts.length, color: '#ef4444' },
-  ], [filteredTeachers, filteredLessons, filteredPosts]);
+    { name: 'المعلمات', value: statsTeachers.length, color: '#4f46e5' },
+    { name: 'الدروس', value: statsLessons.length, color: '#10b981' },
+    { name: 'التعاميم', value: statsPosts.length, color: '#ef4444' },
+  ], [statsTeachers, statsLessons, statsPosts]);
 
   const sidebarItems = [
     { id: 'overview', label: 'الرئيسية', icon: LayoutDashboard, visible: true },
@@ -1374,7 +1418,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   onChange={(e) => setCurrentAssignmentGrade(e.target.value)} 
                                   className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-transparent shadow-sm focus:border-indigo-500 font-bold text-sm outline-none appearance-none cursor-pointer"
                                 >
-                                  {AVAILABLE_GRADES.map((g, i) => <option key={`grade-select-1-${g}-${i}`} value={g}>{g}</option>)}
+                                  {AVAILABLE_GRADES.map((g) => <option key={`grade-select-1-${g}`} value={g}>{g}</option>)}
                                 </select>
                                 <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                                   <Filter className="w-4 h-4" />
@@ -1398,7 +1442,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                     !user.tempPermissions?.allowedSubjects || 
                                     user.tempPermissions.allowedSubjects.length === 0 || 
                                     user.tempPermissions.allowedSubjects.includes(s)
-                                  ).map((s, i) => <option key={`subject-select-1-${s}-${i}`} value={s}>{s}</option>)}
+                                  ).map((s) => <option key={`subject-select-1-${s}`} value={s}>{s}</option>)}
                                 </select>
                                 <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                                   <Filter className="w-4 h-4" />
@@ -2059,7 +2103,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             onChange={e => setAttachmentGrade(e.target.value)}
                             className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
                           >
-                            {AVAILABLE_GRADES.map((g, i) => <option key={`grade-select-2-${g}-${i}`} value={g}>{g}</option>)}
+                            {AVAILABLE_GRADES.map((g) => <option key={`grade-select-2-${g}`} value={g}>{g}</option>)}
                           </select>
                         </div>
                         <div className="space-y-2">
@@ -2069,7 +2113,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             onChange={e => setAttachmentSubject(e.target.value)}
                             className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
                           >
-                            {AVAILABLE_SUBJECTS.map((s, i) => <option key={`subject-select-2-${s}-${i}`} value={s}>{s}</option>)}
+                            {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-2-${s}`} value={s}>{s}</option>)}
                           </select>
                         </div>
                       </div>
@@ -3514,14 +3558,14 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               <div className="space-y-4">
                 <input type="text" placeholder="عنوان الدرس" value={newLessonTitle} onChange={e => setNewLessonTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" />
                 <select value={newLessonGrade} onChange={e => setNewLessonGrade(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm">
-                  {AVAILABLE_GRADES.map((g, i) => <option key={`grade-select-3-${g}-${i}`} value={g}>{g}</option>)}
+                  {AVAILABLE_GRADES.map((g) => <option key={`grade-select-3-${g}`} value={g}>{g}</option>)}
                 </select>
                 <select value={newLessonSemester} onChange={e => setNewLessonSemester(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm">
                   <option value="الفصل الأول">الفصل الأول</option>
                   <option value="الفصل الثاني">الفصل الثاني</option>
                 </select>
                 <select value={newLessonSubject} onChange={e => setNewLessonSubject(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm">
-                  {AVAILABLE_SUBJECTS.map((s, i) => <option key={`subject-select-3-${s}-${i}`} value={s}>{s}</option>)}
+                  {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-3-${s}`} value={s}>{s}</option>)}
                 </select>
                 <textarea placeholder="وصف الدرس" value={newLessonDescription} onChange={e => setNewLessonDescription(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" rows={4} />
                 
@@ -3883,7 +3927,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         onChange={(e) => setEditAssignmentGrade(e.target.value)} 
                         className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-transparent shadow-sm focus:border-indigo-500 font-bold text-sm outline-none"
                       >
-                        {AVAILABLE_GRADES.map((g, i) => <option key={`grade-select-4-${g}-${i}`} value={g}>{g}</option>)}
+                        {AVAILABLE_GRADES.map((g) => <option key={`grade-select-4-${g}`} value={g}>{g}</option>)}
                       </select>
                     </div>
 
@@ -3894,7 +3938,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         onChange={(e) => setEditAssignmentSubject(e.target.value)} 
                         className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-transparent shadow-sm focus:border-indigo-500 font-bold text-sm outline-none"
                       >
-                        {AVAILABLE_SUBJECTS.map((s, i) => <option key={`subject-select-4-${s}-${i}`} value={s}>{s}</option>)}
+                        {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-4-${s}`} value={s}>{s}</option>)}
                       </select>
                     </div>
 

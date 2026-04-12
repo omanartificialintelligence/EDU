@@ -187,7 +187,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
     : allSubjects;
 
   const uploadOptions = [
-    { id: 'ppt', label: 'باور بوينت', icon: FileText, color: 'text-orange-600', bg: 'bg-orange-100', border: 'border-orange-300' },
+    { id: 'ppt', label: 'بوربوينت', icon: FileText, color: 'text-orange-600', bg: 'bg-orange-100', border: 'border-orange-300' },
     { id: 'doc', label: 'ملف وورد', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-100', border: 'border-blue-300' },
     { id: 'video', label: 'فيديو', icon: Video, color: 'text-red-600', bg: 'bg-red-100', border: 'border-red-300' },
     { id: 'image', label: 'صورة', icon: ImageIcon, color: 'text-emerald-600', bg: 'bg-emerald-100', border: 'border-emerald-300' },
