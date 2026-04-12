@@ -5,7 +5,7 @@ import {
   Plus, FileText, ExternalLink, Play, Image as ImageIcon, XCircle, Eye,
   MessageSquare, Settings, Award, FileIcon, Link as LinkIcon, Video,
   TrendingUp, Users, ClipboardList, Send, Music, CheckCircle2, AlertCircle,
-  Calendar, ListTodo, Trash2, Clock, X, Edit, Download
+  Calendar, ListTodo, Trash2, Clock, X, Edit, Download, LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -30,11 +30,13 @@ interface TeacherDashboardV2Props {
   semester: string;
   notifications: Notification[];
   onMarkAsRead: (id: string) => void;
+  onSwitchBackToSupervisorView?: () => void;
 }
 
 const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   user, posts, lessonMaterials, onAddMaterial, onUpdateMaterial, notifications,
-  messages, onSendMessage, onMarkMessageAsRead, projects, updateProjectSubmission, onMarkAsRead, currentYear, semester
+  messages, onSendMessage, onMarkMessageAsRead, projects, updateProjectSubmission, onMarkAsRead, currentYear, semester,
+  onSwitchBackToSupervisorView
 }) => {
   // Dynamic Grades and Subjects based on Assignments
   const teacherAssignments = user.assignments || [];
@@ -95,6 +97,20 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   const [projectFilter, setProjectFilter] = useState<'all' | 'pending' | 'submitted' | 'completed'>('all');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
+  const getAttachmentIcon = (attachment: Attachment) => {
+    const fileName = (attachment.name || '').toLowerCase();
+    const type = attachment.type;
+
+    if (type === 'link') return { icon: LinkIcon, color: 'text-blue-500', bg: 'bg-blue-50' };
+    if (fileName.endsWith('.pdf')) return { icon: FileText, color: 'text-red-600', bg: 'bg-red-50' };
+    if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) return { icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' };
+    if (fileName.endsWith('.ppt') || fileName.endsWith('.pptx')) return { icon: FileIcon, color: 'text-orange-500', bg: 'bg-orange-50' };
+    if (fileName.endsWith('.mp4') || fileName.endsWith('.mov') || fileName.endsWith('.avi')) return { icon: Video, color: 'text-red-500', bg: 'bg-red-50' };
+    if (fileName.endsWith('.mp3') || fileName.endsWith('.wav')) return { icon: Music, color: 'text-emerald-500', bg: 'bg-emerald-50' };
+    if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png') || fileName.endsWith('.gif')) return { icon: ImageIcon, color: 'text-purple-500', bg: 'bg-purple-50' };
+    
+    return { icon: FileIcon, color: 'text-slate-400', bg: 'bg-slate-50' };
+  };
   const handleAddLink = () => {
     if (!newLinkUrl || !newLinkName) return;
     setSubmissionFiles(prev => [...prev, {
@@ -336,21 +352,6 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
     return { icon: FileText, color: 'text-slate-400', bg: 'bg-slate-50', label: 'ملف' };
   };
 
-  const getAttachmentIcon = (attachment: Attachment) => {
-    const fileName = (attachment.name || '').toLowerCase();
-    const type = attachment.type;
-
-    if (type === 'link') return { icon: LinkIcon, color: 'text-blue-500', bg: 'bg-blue-50' };
-    if (fileName.endsWith('.pdf')) return { icon: FileText, color: 'text-red-600', bg: 'bg-red-50' };
-    if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) return { icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' };
-    if (fileName.endsWith('.ppt') || fileName.endsWith('.pptx')) return { icon: FileIcon, color: 'text-orange-500', bg: 'bg-orange-50' };
-    if (fileName.endsWith('.mp4') || fileName.endsWith('.mov') || fileName.endsWith('.avi')) return { icon: Video, color: 'text-red-500', bg: 'bg-red-50' };
-    if (fileName.endsWith('.mp3') || fileName.endsWith('.wav')) return { icon: Music, color: 'text-emerald-500', bg: 'bg-emerald-50' };
-    if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png') || fileName.endsWith('.gif')) return { icon: ImageIcon, color: 'text-purple-500', bg: 'bg-purple-50' };
-    
-    return { icon: FileIcon, color: 'text-slate-400', bg: 'bg-slate-50' };
-  };
-
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex font-sans text-slate-900" dir="rtl">
       {/* Mobile Menu Overlay */}
@@ -408,6 +409,22 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
             <MessageSquare className="w-5 h-5" />
             <span>الرسائل</span>
           </button>
+          <button 
+            onClick={() => { setActiveTab('lessons'); setIsMobileMenuOpen(false); }}
+            className={cn("w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all", activeTab === 'lessons' ? "bg-blue-50 text-blue-700" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900")}
+          >
+            <BookOpen className="w-5 h-5" />
+            <span>الدروس</span>
+          </button>
+          {onSwitchBackToSupervisorView && (
+            <button 
+              onClick={onSwitchBackToSupervisorView}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all text-amber-600 hover:bg-amber-50"
+            >
+              <LogOut className="w-5 h-5" />
+              <span>العودة للوحة المشرفة</span>
+            </button>
+          )}
         </nav>
         <div className="p-4 border-t border-slate-100">
           <div className="flex items-center gap-3">
@@ -1228,6 +1245,58 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
           </AnimatePresence>
 
 
+
+          {activeTab === 'lessons' && (
+            <div className="space-y-6 animate-in fade-in duration-500">
+              <h2 className="text-2xl font-black text-slate-900">دروسي المرفوعة</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {lessonMaterials.filter(m => m.teacherId === user.id).map((lesson, index) => {
+                  const { icon: Icon, color, bg } = getAttachmentIcon({ name: lesson.lessonTitle, type: 'file' } as Attachment);
+                  return (
+                    <div key={`${lesson.id}-${index}`} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className={cn("p-3 rounded-xl", bg, color)}>
+                          <BookOpen className="w-6 h-6" />
+                        </div>
+                        <span className={cn("px-3 py-1 rounded-full text-[10px] font-black", 
+                          lesson.status === 'approved' ? "bg-emerald-50 text-emerald-700" :
+                          lesson.status === 'rejected' ? "bg-red-50 text-red-700" :
+                          "bg-amber-50 text-amber-700"
+                        )}>
+                          {lesson.status === 'approved' ? 'معتمد' : lesson.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
+                        </span>
+                      </div>
+                      <h3 className="font-black text-slate-900 mb-1">{lesson.lessonTitle}</h3>
+                      <p className="text-xs text-slate-500 mb-4 line-clamp-2">{lesson.description}</p>
+                      
+                      <div className="space-y-2 mb-4">
+                        {lesson.attachments.map((att, idx) => {
+                          const { icon: AttIcon, color: AttColor } = getAttachmentIcon(att);
+                          return (
+                            <div key={`att-${lesson.id}-${idx}`} className="flex items-center justify-between text-xs p-2 bg-slate-50 rounded-lg">
+                              <div className="flex items-center gap-2">
+                                <AttIcon className={cn("w-4 h-4", AttColor)} />
+                                <span className="font-bold text-slate-700">{att.name}</span>
+                              </div>
+                              <button onClick={() => downloadFile(att.url, att.name)} className="text-indigo-600 hover:text-indigo-800">
+                                <Download className="w-4 h-4" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button onClick={() => setViewingLesson(lesson)} className="flex-1 text-xs font-bold py-2 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors">
+                          عرض التعليقات
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {activeTab === 'messages' && (
             <div className="space-y-6 animate-in fade-in duration-500 h-[calc(100vh-12rem)] flex flex-col">

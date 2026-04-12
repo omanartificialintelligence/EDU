@@ -11,7 +11,7 @@ import {
   Clock, Shield, MessageSquare, Pin, FileText, Download, Calendar,
   TrendingUp, Award, Activity, Settings, Share2, Send, Trash2,
   Phone, Hash, BookOpen, GraduationCap, User as UserIcon,
-  FileIcon, Link as LinkIcon, Video, Music, Image as ImageIcon, ChevronDown, Eye, ListTodo, Edit
+  FileIcon, Link as LinkIcon, Video, Music, Image as ImageIcon, ChevronDown, ChevronUp, GripVertical, Eye, ListTodo, Edit
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -68,6 +68,7 @@ interface SupervisorDashboardProps {
   supervisorConfig: SupervisorConfig;
   academicYear: string;
   semester: string;
+  onSwitchToTeacherView?: () => void;
 }
 
 const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ 
@@ -82,7 +83,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   onAddNotification,
   notifications, onMarkNotificationAsRead,
   onLogout,
-  supervisorConfig, academicYear, semester
+  supervisorConfig, academicYear, semester,
+  onSwitchToTeacherView
 }) => {
   const AVAILABLE_GRADES = ['الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع'];
   const AVAILABLE_SUBJECTS = ['لغة عربية', 'تربية إسلامية'];
@@ -464,6 +466,17 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   
   const [previewAttachment, setPreviewAttachment] = useState<{url: string, type: string, name: string} | null>(null);
   const [viewingLesson, setViewingLesson] = useState<LessonMaterial | null>(null);
+
+  const [dashboardWidgets, setDashboardWidgets] = useState<string[]>(['stats', 'charts', 'quickActions', 'recentActivity']);
+  const [isCustomizingDashboard, setIsCustomizingDashboard] = useState(false);
+
+  const moveWidget = (index: number, direction: 'up' | 'down') => {
+    const newWidgets = [...dashboardWidgets];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newWidgets.length) return;
+    [newWidgets[index], newWidgets[targetIndex]] = [newWidgets[targetIndex], newWidgets[index]];
+    setDashboardWidgets(newWidgets);
+  };
 
   const allSubjects = [
     { 
@@ -929,6 +942,17 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               )}
             </motion.button>
           ))}
+          {onSwitchToTeacherView && (
+            <motion.button
+              whileHover={{ scale: 1.02, x: -4 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={onSwitchToTeacherView}
+              className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-colors duration-300 text-amber-400 hover:bg-amber-900/20 hover:text-amber-300"
+            >
+              <Eye className="w-5 h-5" />
+              <span className="font-bold text-sm">معاينة واجهة المعلمة</span>
+            </motion.button>
+          )}
         </nav>
 
         <div className="p-4 sm:p-6 border-t border-slate-800/50 bg-slate-900/50">
@@ -1068,89 +1092,173 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 exit={{ opacity: 0, y: -20 }}
                 className="space-y-8"
               >
-                {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[
-                    { label: 'المعلمات النشطات', value: filteredTeachers.length, icon: Users, color: 'indigo' },
-                    { label: 'الدروس المرفوعة', value: lessonMaterials.length, icon: Palette, color: 'amber' },
-                    { label: 'التعاميم المنشورة', value: posts.length, icon: MessageSquare, color: 'rose' },
-                  ].map((stat, i) => (
-                    <div key={`${stat.label}-${i}`} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center gap-6 group hover:shadow-xl hover:shadow-indigo-500/5 transition-all">
-                      <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shadow-inner", `bg-${stat.color}-50 text-${stat.color}-600`)}>
-                        <stat.icon className="w-7 h-7" />
-                      </div>
-                      <div>
-                        <p className="text-slate-400 text-xs font-black mb-1">{stat.label}</p>
-                        <p className="text-3xl font-black text-slate-900">{stat.value}</p>
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h2 className="text-2xl font-black text-slate-900">نظرة عامة</h2>
+                    <p className="text-slate-500 font-bold text-sm">مرحباً بك في لوحة تحكم المشرف</p>
+                  </div>
+                  <button 
+                    onClick={() => setIsCustomizingDashboard(!isCustomizingDashboard)}
+                    className={cn(
+                      "px-6 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2",
+                      isCustomizingDashboard 
+                        ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/20" 
+                        : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                    )}
+                  >
+                    <Settings className="w-4 h-4" />
+                    {isCustomizingDashboard ? 'حفظ التنسيق' : 'تخصيص اللوحة'}
+                  </button>
+                </div>
+
+                <div className="space-y-8">
+                  {dashboardWidgets.map((widgetId, index) => (
+                    <div key={`${widgetId}-${index}`} className="relative group">
+                      {isCustomizingDashboard && (
+                        <div className="absolute -right-12 top-0 bottom-0 flex flex-col justify-center gap-2 z-10">
+                          <button 
+                            onClick={() => moveWidget(index, 'up')}
+                            disabled={index === 0}
+                            className="p-2 bg-white rounded-lg shadow-md border border-slate-100 text-slate-400 hover:text-indigo-600 disabled:opacity-30 transition-all hover:scale-110"
+                          >
+                            <ChevronUp className="w-4 h-4" />
+                          </button>
+                          <div className="p-2 bg-white rounded-lg shadow-md border border-slate-100 text-slate-300 cursor-grab">
+                            <GripVertical className="w-4 h-4" />
+                          </div>
+                          <button 
+                            onClick={() => moveWidget(index, 'down')}
+                            disabled={index === dashboardWidgets.length - 1}
+                            className="p-2 bg-white rounded-lg shadow-md border border-slate-100 text-slate-400 hover:text-indigo-600 disabled:opacity-30 transition-all hover:scale-110"
+                          >
+                            <ChevronDown className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                      
+                      <div className={cn(
+                        "transition-all duration-300",
+                        isCustomizingDashboard && "ring-2 ring-indigo-500 ring-offset-4 rounded-[2.5rem] bg-indigo-50/5 opacity-80 scale-[0.98]"
+                      )}>
+                        {widgetId === 'stats' && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {[
+                              { label: 'المعلمات النشطات', value: filteredTeachers.length, icon: Users, color: 'indigo' },
+                              { label: 'الدروس المرفوعة', value: lessonMaterials.length, icon: Palette, color: 'amber' },
+                              { label: 'التعاميم المنشورة', value: posts.length, icon: MessageSquare, color: 'rose' },
+                            ].map((stat, i) => (
+                              <div key={`${stat.label}-${i}`} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center gap-6 group hover:shadow-xl hover:shadow-indigo-500/5 transition-all">
+                                <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shadow-inner", `bg-${stat.color}-50 text-${stat.color}-600`)}>
+                                  <stat.icon className="w-7 h-7" />
+                                </div>
+                                <div>
+                                  <p className="text-slate-400 text-xs font-black mb-1">{stat.label}</p>
+                                  <p className="text-3xl font-black text-slate-900">{stat.value}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {widgetId === 'charts' && (
+                          <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
+                            <div className="flex justify-between items-center mb-8">
+                              <h3 className="font-black text-lg flex items-center gap-3">
+                                <TrendingUp className="text-indigo-600 w-5 h-5" />
+                                إحصائيات المنصة العامة
+                              </h3>
+                              <select className="bg-slate-50 border-none rounded-xl text-xs font-bold px-4 py-2 outline-none">
+                                <option>آخر 7 أيام</option>
+                                <option>آخر 30 يوم</option>
+                              </select>
+                            </div>
+                            <div className="h-[300px] w-full">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={statsData}>
+                                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700, fill: '#64748b' }} dy={10} />
+                                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700, fill: '#64748b' }} />
+                                  <Tooltip 
+                                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px' }}
+                                    cursor={{ fill: '#f8fafc' }}
+                                  />
+                                  <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={40}>
+                                    {statsData.map((entry, index) => (
+                                      <Cell key={`cell-${entry.name}-${index}`} fill={entry.color} />
+                                    ))}
+                                  </Bar>
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </div>
+                        )}
+
+                        {widgetId === 'quickActions' && (
+                          <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
+                            <h3 className="font-black text-lg mb-8 flex items-center gap-3">
+                              <Plus className="text-indigo-600 w-5 h-5" />
+                              إجراءات سريعة
+                            </h3>
+                            <div className="grid grid-cols-2 gap-4">
+                              {[
+                                { label: 'إضافة تعميم', icon: MessageSquare, color: 'indigo', action: () => setActiveTab('feed') },
+                                { label: 'تسجيل معلمة', icon: Users, color: 'amber', action: () => setActiveTab('teachers') },
+                              ].map((btn, i) => (
+                                <button 
+                                  key={`${btn.label}-${i}`} 
+                                  onClick={btn.action}
+                                  className={cn(
+                                    "p-6 rounded-3xl border border-slate-100 flex flex-col items-center gap-4 transition-all hover:shadow-lg hover:-translate-y-1",
+                                    `bg-${btn.color}-50/30 hover:bg-${btn.color}-50`
+                                  )}
+                                >
+                                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center", `bg-${btn.color}-100 text-${btn.color}-600`)}>
+                                    <btn.icon className="w-6 h-6" />
+                                  </div>
+                                  <span className="font-black text-xs text-slate-700">{btn.label}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {widgetId === 'recentActivity' && (
+                          <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
+                            <h3 className="font-black text-lg mb-8 flex items-center gap-3">
+                              <Clock className="text-indigo-600 w-5 h-5" />
+                              آخر النشاطات
+                            </h3>
+                            <div className="space-y-4">
+                              {lessonMaterials.slice(0, 5).map((lesson, idx) => (
+                                <div key={lesson.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                  <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-indigo-600 shadow-sm">
+                                      <BookOpen className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-black text-slate-900">{lesson.lessonTitle}</p>
+                                      <p className="text-[10px] text-slate-400 font-bold">{lesson.teacherName} • {new Date(lesson.createdAt).toLocaleDateString('ar-SA')}</p>
+                                    </div>
+                                  </div>
+                                  <span className={cn(
+                                    "px-3 py-1 rounded-full text-[10px] font-black",
+                                    lesson.status === 'approved' ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"
+                                  )}>
+                                    {lesson.status === 'approved' ? 'معتمد' : 'قيد المراجعة'}
+                                  </span>
+                                </div>
+                              ))}
+                              {lessonMaterials.length === 0 && (
+                                <div className="text-center py-8 text-slate-400 text-xs font-bold">
+                                  لا توجد نشاطات حديثة
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
-                </div>
-
-                {/* Charts Row */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
-                    <div className="flex justify-between items-center mb-8">
-                      <h3 className="font-black text-lg flex items-center gap-3">
-                        <TrendingUp className="text-indigo-600 w-5 h-5" />
-                        إحصائيات المنصة العامة
-                      </h3>
-                      <select className="bg-slate-50 border-none rounded-xl text-xs font-bold px-4 py-2 outline-none">
-                        <option>آخر 7 أيام</option>
-                        <option>آخر 30 يوم</option>
-                      </select>
-                    </div>
-                    <div className="h-[300px] w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={statsData}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700, fill: '#64748b' }} dy={10} />
-                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700, fill: '#64748b' }} />
-                          <Tooltip 
-                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px' }}
-                            cursor={{ fill: '#f8fafc' }}
-                          />
-                          <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={40}>
-                            {statsData.map((entry, index) => (
-                              <Cell key={`cell-${entry.name}-${index}`} fill={entry.color} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* Audit Log & Recent Activity */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-                  <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
-                    <h3 className="font-black text-lg mb-8 flex items-center gap-3">
-                      <Plus className="text-indigo-600 w-5 h-5" />
-                      إجراءات سريعة
-                    </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      {[
-                        { label: 'إضافة تعميم', icon: MessageSquare, color: 'indigo', action: () => setActiveTab('feed') },
-                        { label: 'تسجيل معلمة', icon: Users, color: 'amber', action: () => setActiveTab('teachers') },
-                      ].map((btn, i) => (
-                        <button 
-                          key={`${btn.label}-${i}`} 
-                          onClick={btn.action}
-                          className={cn(
-                            "p-6 rounded-3xl border border-slate-100 flex flex-col items-center gap-4 transition-all hover:shadow-lg hover:-translate-y-1",
-                            `bg-${btn.color}-50/30 hover:bg-${btn.color}-50`
-                          )}
-                        >
-                          <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center", `bg-${btn.color}-100 text-${btn.color}-600`)}>
-                            <btn.icon className="w-6 h-6" />
-                          </div>
-                          <span className="font-black text-xs text-slate-700">{btn.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                 </div>
               </motion.div>
             )}
@@ -1564,6 +1672,13 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     >
                       <Plus className="w-4 h-4" />
                       إضافة مرفق
+                    </button>
+                    <button 
+                      onClick={() => exportLessonsCSV(lessonMaterials)}
+                      className="px-6 py-3 rounded-xl bg-indigo-50 text-indigo-600 font-black text-xs flex items-center gap-2 hover:bg-indigo-100 transition-all"
+                    >
+                      <Download className="w-4 h-4" />
+                      تصدير التقارير
                     </button>
                     <button 
                       onClick={handleDownloadAllAttachments}
