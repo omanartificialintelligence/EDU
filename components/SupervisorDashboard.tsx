@@ -1883,7 +1883,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                     const AttachIcon = attachInfo.icon;
                                     return (
                                       <button 
-                                        key={`${attachment.url || attachment.name || idx}-${idx}`}
+                                        key={`${material.id}-${attachment.url}-${attachment.name}-${idx}`}
                                         onClick={() => {
                                           if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
                                             setPreviewAttachment(attachment);
@@ -2548,7 +2548,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               </button>
                               {lesson.attachments.map((attachment, idx) => (
                                 <button 
-                                  key={`${attachment.url || attachment.name || idx}-${idx}`}
+                                  key={`${lesson.id}-${attachment.url}-${attachment.name}-${idx}`}
                                   onClick={() => downloadFile(attachment.url, attachment.name || lesson.lessonTitle)}
                                   className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm"
                                   title={`تحميل ${attachment.name || `مرفق ${idx + 1}`}`}
@@ -3200,7 +3200,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   <div className="flex flex-wrap gap-1 mt-1">
                                     <span className="text-[10px] text-slate-500">المواد:</span>
                                     {supervisor.tempPermissions.allowedSubjects.map((s, index) => (
-                                      <span key={`${s}-${index}`} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">{s}</span>
+                                      <span key={`${supervisor.id}-${s}`} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">{s}</span>
                                     ))}
                                   </div>
                                 )}
@@ -4054,8 +4054,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         التعليقات والملاحظات
                       </h4>
                       <div className="space-y-3">
-                        {viewingLesson.comments.map((comment, idx) => (
-                          <div key={`preview-comment-${idx}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
+                        {viewingLesson.comments.map((comment) => (
+                          <div key={comment.id} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
                             <div className="flex justify-between items-center mb-2">
                               <span className="text-xs font-black text-amber-700">{comment.authorName}</span>
                               <span className="text-[10px] font-bold text-slate-400">{new Date(comment.createdAt).toLocaleDateString('ar-OM')}</span>

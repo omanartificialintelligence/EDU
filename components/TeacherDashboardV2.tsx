@@ -770,7 +770,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                               <div className="flex flex-wrap gap-2">
                                 {material.attachments.map((attachment, idx) => (
                                   <button 
-                                    key={`${attachment.url || attachment.name || idx}-${idx}`}
+                                    key={`${material.id}-${attachment.url}-${attachment.name}-${idx}`}
                                     onClick={() => {
                                       if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
                                         setPreviewAttachment(attachment);
@@ -1687,8 +1687,8 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         التعليقات والملاحظات
                       </h4>
                       <div className="space-y-3">
-                        {viewingLesson.comments.map((comment, idx) => (
-                          <div key={`preview-comment-${idx}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
+                        {viewingLesson.comments.map((comment) => (
+                          <div key={comment.id} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
                             <div className="flex justify-between items-center mb-2">
                               <span className="text-xs font-black text-amber-700">{comment.authorName}</span>
                               <span className="text-[10px] font-bold text-slate-400">{new Date(comment.createdAt).toLocaleDateString('ar-OM')}</span>
