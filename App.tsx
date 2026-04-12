@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { UserRole, User, AuthState, Project, Post, ResetRequest, LessonMaterial, LessonComment, SupervisorConfig, Notification, Message, Attachment } from './types';
+import { UserRole, User, AuthState, Project, Post, ResetRequest, LessonMaterial, LessonComment, SupervisorConfig, Notification, Message, Attachment, ProjectSubmission } from './types';
 import LoginForm from './components/LoginForm';
 import TeacherDashboard from './components/TeacherDashboardV2';
 import SupervisorDashboard from './components/SupervisorDashboard';
@@ -49,6 +49,7 @@ const App: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [resetRequests, setResetRequests] = useState<ResetRequest[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [asyncError, setAsyncError] = useState<Error | null>(null);
   const [supervisorConfig, setSupervisorConfig] = useState<SupervisorConfig>({ 
     mainPassword: 'admin', 
     backupPassword: 'admin', 
@@ -57,10 +58,16 @@ const App: React.FC = () => {
     archiveYears: ['2024-2025', '2023-2024']
   });
 
+  const currentAcademicYear = supervisorConfig.academicYear;
+  const currentSemester = supervisorConfig.semester;
+
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false);
   const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+
+  // Bridge async errors to ErrorBoundary
+  if (asyncError) throw asyncError;
 
   // Firebase Auth Listener
   useEffect(() => {
@@ -136,30 +143,32 @@ const App: React.FC = () => {
 
     let unsubs: Unsubscribe[] = [];
 
+    const handleAsyncError = (error: any, op: OperationType, path: string) => {
+      try {
+        handleFirestoreError(error, op, path);
+      } catch (e) {
+        setAsyncError(e as Error);
+      }
+    };
+
     // Public/Login-required listeners (for everyone including anonymous)
     const setupPublicListeners = () => {
       const unsubConfig = onSnapshot(doc(db, 'config', 'supervisor'), (docSnap) => {
         if (docSnap.exists()) {
           setSupervisorConfig(docSnap.data() as SupervisorConfig);
         }
-      }, (error) => handleFirestoreError(error, OperationType.GET, 'config/supervisor'));
+      }, (error) => handleAsyncError(error, OperationType.GET, 'config/supervisor'));
       unsubs.push(unsubConfig);
-
-      const unsubTeachers = onSnapshot(query(collection(db, 'users'), limit(200)), (snapshot) => {
-        const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
-        setTeachers(list);
-      }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
-      unsubs.push(unsubTeachers);
-      
-      const unsubPosts = onSnapshot(query(collection(db, 'posts'), limit(50)), (snapshot) => {
-        const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Post));
-        setPosts(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-      }, (error) => handleFirestoreError(error, OperationType.LIST, 'posts'));
-      unsubs.push(unsubPosts);
     };
 
     // Private listeners (only for authenticated users with roles)
     const setupPrivateListeners = () => {
+      const unsubPosts = onSnapshot(query(collection(db, 'posts'), limit(50)), (snapshot) => {
+        const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Post));
+        setPosts(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      }, (error) => handleAsyncError(error, OperationType.LIST, 'posts'));
+      unsubs.push(unsubPosts);
+
       const qLessons = query(
         collection(db, 'lessonMaterials'),
         where('academicYear', '==', currentAcademicYear),
@@ -170,7 +179,7 @@ const App: React.FC = () => {
       const unsubLessons = onSnapshot(qLessons, (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as LessonMaterial));
         setLessonMaterials(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-      }, (error) => handleFirestoreError(error, OperationType.LIST, 'lessonMaterials'));
+      }, (error) => handleAsyncError(error, OperationType.LIST, 'lessonMaterials'));
       unsubs.push(unsubLessons);
 
       let qProjects;
@@ -187,7 +196,7 @@ const App: React.FC = () => {
       const unsubProjects = onSnapshot(qProjects, (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Project));
         setProjects(list);
-      }, (error) => handleFirestoreError(error, OperationType.LIST, 'projects'));
+      }, (error) => handleAsyncError(error, OperationType.LIST, 'projects'));
       unsubs.push(unsubProjects);
 
       const unsubNotifications = onSnapshot(
@@ -195,7 +204,7 @@ const App: React.FC = () => {
         (snapshot) => {
           const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Notification));
           setNotifications(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-        }, (error) => handleFirestoreError(error, OperationType.LIST, 'notifications'));
+        }, (error) => handleAsyncError(error, OperationType.LIST, 'notifications'));
       unsubs.push(unsubNotifications);
 
       const qMessages = query(
@@ -211,14 +220,20 @@ const App: React.FC = () => {
       const unsubMessages = onSnapshot(qMessages, (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Message));
         setMessages(list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
-      }, (error) => handleFirestoreError(error, OperationType.LIST, 'messages'));
+      }, (error) => handleAsyncError(error, OperationType.LIST, 'messages'));
       unsubs.push(unsubMessages);
 
       if (auth.user?.role === UserRole.SUPERVISOR || auth.user?.role === UserRole.TEMP_SUPERVISOR) {
+        const unsubTeachers = onSnapshot(query(collection(db, 'users'), limit(200)), (snapshot) => {
+          const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
+          setTeachers(list);
+        }, (error) => handleAsyncError(error, OperationType.LIST, 'users'));
+        unsubs.push(unsubTeachers);
+
         const unsubReset = onSnapshot(collection(db, 'resetRequests'), (snapshot) => {
           const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as ResetRequest));
           setResetRequests(list);
-        }, (error) => handleFirestoreError(error, OperationType.LIST, 'resetRequests'));
+        }, (error) => handleAsyncError(error, OperationType.LIST, 'resetRequests'));
         unsubs.push(unsubReset);
       }
     };
@@ -231,7 +246,7 @@ const App: React.FC = () => {
     return () => {
       unsubs.forEach(unsub => unsub());
     };
-  }, [isAuthReady, auth.isAuthenticated, auth.user?.role]);
+  }, [isAuthReady, auth.isAuthenticated, auth.user?.role, currentAcademicYear, currentSemester]);
 
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
@@ -297,9 +312,6 @@ const App: React.FC = () => {
       }
     }
   };
-
-  const currentAcademicYear = supervisorConfig.academicYear || "2025-2026";
-  const currentSemester = supervisorConfig.semester || "الفصل الدراسي الأول";
 
   const [showChangePassword, setShowChangePassword] = useState(false);
 
@@ -706,6 +718,128 @@ const App: React.FC = () => {
     }
   };
 
+  const handleAddPost = async (post: Post) => {
+    try {
+      const cleanPost = { ...post } as any;
+      Object.keys(cleanPost).forEach(key => {
+        if (cleanPost[key] === undefined) delete cleanPost[key];
+      });
+      await setDoc(doc(db, 'posts', post.id), cleanPost);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `posts/${post.id}`);
+    }
+  };
+
+  const handleDeletePost = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'posts', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `posts/${id}`);
+    }
+  };
+
+  const handleTogglePinPost = async (id: string) => {
+    const post = posts.find(p => p.id === id);
+    if (post) {
+      try {
+        await updateDoc(doc(db, 'posts', id), { isPinned: !post.isPinned });
+      } catch (error) {
+        handleFirestoreError(error, OperationType.UPDATE, `posts/${id}`);
+      }
+    }
+  };
+
+  const handleAddTeacher = async (id: string, name: string, email?: string, phoneNumber?: string, assignments?: { grade: string; subject: string }[]) => {
+    const newTeacher: User = {
+      id,
+      name,
+      email,
+      phoneNumber,
+      assignments,
+      role: UserRole.TEACHER,
+      code: id,
+      password: Math.random().toString(36).substring(2, 10),
+      isActive: true,
+      joinedAt: new Date().getFullYear().toString(),
+      mustChangePassword: true
+    };
+    try {
+      const cleanTeacher = { ...newTeacher } as any;
+      Object.keys(cleanTeacher).forEach(key => {
+        if (cleanTeacher[key] === undefined) delete cleanTeacher[key];
+      });
+      await setDoc(doc(db, 'users', id), cleanTeacher);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${id}`);
+    }
+  };
+
+  const handleUpdateTeacher = async (originalId: string, teacher: User) => {
+    try {
+      const cleanTeacher = { ...teacher } as any;
+      Object.keys(cleanTeacher).forEach(key => {
+        if (cleanTeacher[key] === undefined) delete cleanTeacher[key];
+      });
+      if (originalId !== teacher.id) {
+        await deleteDoc(doc(db, 'users', originalId));
+      }
+      await setDoc(doc(db, 'users', teacher.id), cleanTeacher);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${teacher.id}`);
+    }
+  };
+
+  const handleAddProject = async (project: Project) => {
+    try {
+      const cleanProject = { ...project } as any;
+      Object.keys(cleanProject).forEach(key => {
+        if (cleanProject[key] === undefined) delete cleanProject[key];
+      });
+      await setDoc(doc(db, 'projects', project.id), cleanProject);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `projects/${project.id}`);
+    }
+  };
+
+  const handleDeleteProject = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'projects', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `projects/${id}`);
+    }
+  };
+
+  const handleAddTempSupervisor = async (user: User) => {
+    try {
+      const cleanUser = { ...user } as any;
+      Object.keys(cleanUser).forEach(key => {
+        if (cleanUser[key] === undefined) delete cleanUser[key];
+      });
+      await setDoc(doc(db, 'users', user.id), cleanUser);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${user.id}`);
+    }
+  };
+
+  const handleUpdateSecurity = async (config: SupervisorConfig) => {
+    try {
+      await setDoc(doc(db, 'config', 'supervisor'), config);
+      setSupervisorConfig(config);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'config/supervisor');
+    }
+  };
+
+  const handleUpdateProjectSubmission = async (pid: string, sub: ProjectSubmission) => {
+    try {
+      await updateDoc(doc(db, 'projects', pid), {
+        [`submissions.${sub.teacherId}`]: sub
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `projects/${pid}`);
+    }
+  };
+
   const renderContent = () => {
     if (!isAuthReady) {
       return (
@@ -875,14 +1009,14 @@ const App: React.FC = () => {
             messages={messages}
             onSendMessage={handleSendMessage}
             onMarkMessageAsRead={handleMarkMessageAsRead}
-            onAddMaterial={onAddMaterial}
-            onUpdateMaterial={onUpdateMaterial}
-            updateProjectSubmission={updateProjectSubmission}
+            onAddMaterial={handleAddLessonMaterial}
+            onUpdateMaterial={handleUpdateLessonMaterial}
+            updateProjectSubmission={handleUpdateProjectSubmission}
             currentYear={currentAcademicYear}
             semester={currentSemester}
             notifications={notifications.filter(n => n.userId === auth.user?.id)}
-            onMarkAsRead={onMarkAsRead}
-            onAddNotification={onAddNotification}
+            onMarkAsRead={handleMarkNotificationAsRead}
+            onAddNotification={handleAddNotification}
             onSwitchBackToSupervisorView={() => setIsPreviewMode(false)}
           />
         );
@@ -899,22 +1033,22 @@ const App: React.FC = () => {
           onUpdateUserPreferences={handleUpdateUserPreferences}
           onSendMessage={handleSendMessage}
           onMarkMessageAsRead={handleMarkMessageAsRead}
-          onAddPost={onAddPost}
-          onDeletePost={onDeletePost}
-          onTogglePinPost={onTogglePinPost}
-          onAddTeacher={onAddTeacher}
+          onAddPost={handleAddPost}
+          onDeletePost={handleDeletePost}
+          onTogglePinPost={handleTogglePinPost}
+          onAddTeacher={handleAddTeacher}
           onSoftDeleteTeacher={handleSoftDeleteTeacher}
           onRestoreTeacher={handleRestoreTeacher}
           onDeletePermanentlyTeacher={handleDeletePermanentlyTeacher}
-          onUpdateTeacher={onUpdateTeacher}
+          onUpdateTeacher={handleUpdateTeacher}
           onResetPassword={handleResetPassword}
-          onAddProject={onAddProject}
-          onDeleteProject={onDeleteProject}
-          onDeletePermanentlyProject={onDeletePermanentlyProject}
-          onUpdateProjectSubmission={onUpdateProjectSubmission}
-          onAddTempSupervisor={onAddTempSupervisor}
+          onAddProject={handleAddProject}
+          onDeleteProject={handleDeleteProject}
+          onDeletePermanentlyProject={handleDeletePermanentlyProject}
+          onUpdateProjectSubmission={handleUpdateProjectSubmission}
+          onAddTempSupervisor={handleAddTempSupervisor}
           onDeleteTempSupervisor={handleDeleteTempSupervisor}
-          onUpdateSecurity={onUpdateSecurity}
+          onUpdateSecurity={handleUpdateSecurity}
           onUpdateLessonMaterial={handleUpdateLessonMaterial}
           onAddLessonMaterial={handleAddLessonMaterial}
           onSoftDeleteLesson={handleSoftDeleteLesson}
