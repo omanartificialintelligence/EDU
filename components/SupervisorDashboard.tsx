@@ -1184,7 +1184,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   />
                                   <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={40}>
                                     {statsData.map((entry, index) => (
-                                      <Cell key={`cell-${entry.name}-${index}`} fill={entry.color} />
+                                      <Cell key={`cell-${entry.name}`} fill={entry.color} />
                                     ))}
                                   </Bar>
                                 </BarChart>

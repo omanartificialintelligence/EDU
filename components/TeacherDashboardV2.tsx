@@ -492,7 +492,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                     {notifications.length > 0 ? (
                       notifications.map((notification, index) => (
                         <div 
-                          key={`${notification.id}-${index}`} 
+                          key={notification.id} 
                           className={cn(
                             "p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer",
                             !notification.isRead ? "bg-indigo-50/50" : ""
@@ -729,7 +729,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         const Icon = fileInfo.icon;
                         
                         return (
-                          <div key={`${material.id}-${index}`} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
+                          <div key={material.id} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
                             <div className="p-6 flex-1">
                               <div className="flex justify-between items-start mb-4">
                                 <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border relative", fileInfo.bg, fileInfo.color, "border-slate-50")}>
@@ -827,7 +827,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                                     <div className="space-y-3">
                                       {material.comments && material.comments.length > 0 ? (
                                         material.comments.map((comment, index) => (
-                                          <div key={`${comment.id}-${index}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                          <div key={comment.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                                             <div className="flex justify-between items-center mb-2">
                                               <span className="text-xs font-black text-slate-900">{comment.authorName}</span>
                                               <span className="text-[10px] font-bold text-slate-400">
@@ -956,7 +956,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   
                   return (
                     <motion.div 
-                      key={`${project.id}-${index}`} 
+                      key={project.id}
                       initial={{ opacity: 0, y: 50 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
@@ -1258,7 +1258,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                 {lessonMaterials.filter(m => m.teacherId === user.id).map((lesson, index) => {
                   const { icon: Icon, color, bg } = getAttachmentIcon({ name: lesson.lessonTitle, type: 'file' } as Attachment);
                   return (
-                    <div key={`${lesson.id}-${index}`} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+                    <div key={lesson.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
                       <div className="flex items-start justify-between mb-4">
                         <div className={cn("p-3 rounded-xl", bg, color)}>
                           <BookOpen className="w-6 h-6" />
@@ -1325,7 +1325,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   ) : (
                     messages.map((msg, index) => (
                       <div 
-                        key={`${msg.id}-${index}`} 
+                        key={msg.id}
                         className={cn(
                           "flex flex-col max-w-[80%]",
                           msg.senderId === user.id ? "mr-auto items-end" : "ml-auto items-start"
