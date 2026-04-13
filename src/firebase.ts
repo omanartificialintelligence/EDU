@@ -1,6 +1,7 @@
 
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, OAuthProvider, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 import { 
   initializeFirestore, 
   persistentLocalCache, 
@@ -22,6 +23,7 @@ export const db = initializeFirestore(app, {
 }, firebaseConfig.firestoreDatabaseId);
 
 export const auth = getAuth(app);
+export const storage = getStorage(app);
 
 /**
  * Clears Firestore persistence and reloads the page.

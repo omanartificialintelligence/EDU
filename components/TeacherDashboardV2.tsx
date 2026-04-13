@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, Project, Post, LessonMaterial, LessonComment, Notification, ProjectSubmission, Message, Attachment } from '../types';
+import { db, auth, storage, handleFirestoreError, OperationType } from '../src/firebase';
+import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, deleteDoc, arrayUnion, getDoc, setDoc } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { 
   LayoutDashboard, BookOpen, FolderOpen, Search, Bell, ChevronDown, 
   Plus, FileText, ExternalLink, Play, Image as ImageIcon, XCircle, Eye,
@@ -70,6 +73,8 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
   const [viewingLesson, setViewingLesson] = useState<LessonMaterial | null>(null);
   const [viewingPost, setViewingPost] = useState<Post | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
     if (editingLesson) {
@@ -82,16 +87,30 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      if (file.size > 700 * 1024) {
-        alert('حجم الملف كبير جداً. يرجى اختيار ملف بحجم أقل من 700 كيلوبايت أو استخدام رابط.');
-        e.target.value = '';
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => {
-        setNewLessonUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      
+      setIsUploading(true);
+      setUploadProgress(0);
+
+      const storageRef = ref(storage, `uploads/${Date.now()}_${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      uploadTask.on('state_changed', 
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress(progress);
+        }, 
+        (error) => { 
+          console.error("فشل الرفع:", error);
+          alert('حدث خطأ أثناء رفع الملف.');
+          setIsUploading(false);
+        }, 
+        () => {
+          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+            setNewLessonUrl(downloadURL);
+            setIsUploading(false);
+          });
+        }
+      );
     }
   };
 
@@ -104,6 +123,12 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   const [submissionNote, setSubmissionNote] = useState('');
   const [projectFilter, setProjectFilter] = useState<'all' | 'pending' | 'submitted' | 'completed'>('all');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+  const [isUploadingSubmission, setIsUploadingSubmission] = useState(false);
+  const [submissionUploadProgress, setSubmissionUploadProgress] = useState(0);
+
+  const [isUploadingMessage, setIsUploadingMessage] = useState(false);
+  const [messageUploadProgress, setMessageUploadProgress] = useState(0);
 
   const getAttachmentIcon = (attachment: Attachment) => {
     const fileName = (attachment.name || '').toLowerCase();
@@ -1190,26 +1215,48 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
-                                  if (file.size > 700 * 1024) {
-                                    alert('حجم الملف كبير جداً. يرجى اختيار ملف بحجم أقل من 700 كيلوبايت أو استخدام رابط.');
-                                    e.target.value = '';
-                                    return;
-                                  }
-                                  const reader = new FileReader();
-                                  reader.onload = () => {
-                                    setSubmissionFiles(prev => [...prev, {
-                                      type: file.type.startsWith('image/') ? 'image' : 'file',
-                                      url: reader.result as string,
-                                      name: file.name,
-                                      comment: ''
-                                    }]);
-                                  };
-                                  reader.readAsDataURL(file);
+                                  setIsUploadingSubmission(true);
+                                  setSubmissionUploadProgress(0);
+
+                                  const storageRef = ref(storage, `submissions/${Date.now()}_${file.name}`);
+                                  const uploadTask = uploadBytesResumable(storageRef, file);
+
+                                  uploadTask.on('state_changed', 
+                                    (snapshot) => {
+                                      const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                                      setSubmissionUploadProgress(progress);
+                                    }, 
+                                    (error) => { 
+                                      console.error("فشل الرفع:", error);
+                                      alert('حدث خطأ أثناء رفع الملف.');
+                                      setIsUploadingSubmission(false);
+                                    }, 
+                                    () => {
+                                      getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+                                        setSubmissionFiles(prev => [...prev, {
+                                          type: file.type.startsWith('image/') ? 'image' : 'file',
+                                          url: downloadURL,
+                                          name: file.name,
+                                          comment: ''
+                                        }]);
+                                        setIsUploadingSubmission(false);
+                                      });
+                                    }
+                                  );
                                 }
                               }}
                             />
                           </label>
                         </div>
+
+                        {isUploadingSubmission && (
+                          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden mt-2">
+                            <div 
+                              className="bg-indigo-500 h-full transition-all duration-300" 
+                              style={{ width: `${submissionUploadProgress}%` }}
+                            />
+                          </div>
+                        )}
 
                         {isAddingLink && (
                           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3 animate-in fade-in slide-in-from-top-2">
@@ -1423,12 +1470,24 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         if (fileInput) fileInput.value = '';
                       }
                     }}
-                    className="flex gap-2"
+                    className="flex gap-2 relative"
                   >
+                    {isUploadingMessage && (
+                      <div className="absolute bottom-full left-0 w-full bg-white p-2 border border-slate-100 rounded-lg mb-2 shadow-sm">
+                        <div className="text-xs font-bold text-slate-500 mb-1">جاري الرفع...</div>
+                        <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
+                          <div 
+                            className="bg-blue-500 h-full transition-all duration-300" 
+                            style={{ width: `${messageUploadProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
                     <button
                       type="button"
                       onClick={() => document.getElementById('msg-file-upload')?.click()}
-                      className="p-3 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-200 transition-all"
+                      disabled={isUploadingMessage}
+                      className="p-3 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-200 transition-all disabled:opacity-50"
                     >
                       <Plus className="w-5 h-5" />
                     </button>
@@ -1441,11 +1500,30 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         if (file) {
                           setMessageAttachmentName(file.name);
                           setMessageAttachmentType(file.type.startsWith('image/') ? 'image' : 'file');
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setMessageAttachment(reader.result as string);
-                          };
-                          reader.readAsDataURL(file);
+                          
+                          setIsUploadingMessage(true);
+                          setMessageUploadProgress(0);
+
+                          const storageRef = ref(storage, `messages/${Date.now()}_${file.name}`);
+                          const uploadTask = uploadBytesResumable(storageRef, file);
+
+                          uploadTask.on('state_changed', 
+                            (snapshot) => {
+                              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                              setMessageUploadProgress(progress);
+                            }, 
+                            (error) => { 
+                              console.error("فشل الرفع:", error);
+                              alert('حدث خطأ أثناء رفع الملف.');
+                              setIsUploadingMessage(false);
+                            }, 
+                            () => {
+                              getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+                                setMessageAttachment(downloadURL);
+                                setIsUploadingMessage(false);
+                              });
+                            }
+                          );
                         }
                       }}
                     />
@@ -1597,16 +1675,27 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-sm"
                       />
                     ) : newLessonType !== 'text' ? (
-                      <input 
-                        type="file" 
-                        onChange={handleFileSelect}
-                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-sm"
-                      />
+                      <div className="space-y-2">
+                        <input 
+                          type="file" 
+                          onChange={handleFileSelect}
+                          disabled={isUploading}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-sm disabled:opacity-50"
+                        />
+                        {isUploading && (
+                          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                            <div 
+                              className="bg-blue-500 h-full transition-all duration-300" 
+                              style={{ width: `${uploadProgress}%` }}
+                            />
+                          </div>
+                        )}
+                      </div>
                     ) : null}
 
                     <button 
                       onClick={handleAddAttachment}
-                      disabled={!newLessonUrl}
+                      disabled={!newLessonUrl || isUploading}
                       className="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       تأكيد إضافة المرفق

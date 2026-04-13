@@ -4,6 +4,9 @@ import {
   User, Project, Post, ProjectSubmission, Attachment, ResetRequest, 
   LessonMaterial, LessonComment, UserRole, SupervisorConfig, Notification, AuditLog, Message 
 } from '../types';
+import { db, auth, storage, handleFirestoreError, OperationType } from '../src/firebase';
+import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, deleteDoc, arrayUnion, getDoc, setDoc } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import SettingsPage from './SettingsPage';
 import { 
   LayoutDashboard, Users, Rocket, Palette, Archive, Bell, 
@@ -104,6 +107,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [newLessonSemester, setNewLessonSemester] = useState(semester);
   const [newLessonDescription, setNewLessonDescription] = useState('');
   const [newLessonAttachments, setNewLessonAttachments] = useState<Attachment[]>([]);
+  const [isUploadingLesson, setIsUploadingLesson] = useState(false);
+  const [lessonUploadProgress, setLessonUploadProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // تنظيف تلقائي: حذف المعلمات اللاتي ليس لديهن صفوف دراسية (غير مسجلات) أو بيانات غير صحيحة
@@ -196,6 +201,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [attachmentLessonId, setAttachmentLessonId] = useState<string>('new');
   const [attachmentNewLessonTitle, setAttachmentNewLessonTitle] = useState('');
   const [attachmentFiles, setAttachmentFiles] = useState<Attachment[]>([]);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+  const [attachmentUploadProgress, setAttachmentUploadProgress] = useState(0);
   const [attachmentTeacherId, setAttachmentTeacherId] = useState('');
   const [isZipping, setIsZipping] = useState(false);
 
@@ -547,6 +554,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [newProjectStartDate, setNewProjectStartDate] = useState('');
   const [newProjectEndDate, setNewProjectEndDate] = useState('');
   const [newProjectAttachments, setNewProjectAttachments] = useState<Attachment[]>([]);
+  const [isUploadingProject, setIsUploadingProject] = useState(false);
+  const [projectUploadProgress, setProjectUploadProgress] = useState(0);
 
 
 
@@ -852,6 +861,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [newPostContent, setNewPostContent] = useState('');
   const [newPostIsPinned, setNewPostIsPinned] = useState(false);
   const [newPostAttachments, setNewPostAttachments] = useState<Attachment[]>([]);
+  const [isUploadingPost, setIsUploadingPost] = useState(false);
+  const [postUploadProgress, setPostUploadProgress] = useState(0);
 
   const isMainSupervisor = user.role === UserRole.SUPERVISOR;
   const isTempSupervisor = user.role === UserRole.TEMP_SUPERVISOR;
@@ -2263,24 +2274,41 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             onChange={async (e) => {
                               if (e.target.files) {
                                 const files = Array.from(e.target.files);
-                                const validFiles = files.filter(f => f.size <= 700 * 1024);
-                                if (validFiles.length < files.length) {
-                                  alert('تم تجاهل بعض الملفات لأن حجمها يتجاوز 700 كيلوبايت.');
-                                }
-                                const newAttachments = await Promise.all(validFiles.map(file => {
-                                  return new Promise<Attachment>((resolve) => {
-                                    const reader = new FileReader();
-                                    reader.onload = () => {
-                                      resolve({
-                                        type: 'file' as const,
-                                        url: reader.result as string,
-                                        name: file.name
-                                      });
-                                    };
-                                    reader.readAsDataURL(file);
+                                setIsUploadingAttachment(true);
+                                setAttachmentUploadProgress(0);
+
+                                const newAttachments: Attachment[] = [];
+                                let completed = 0;
+
+                                for (const file of files) {
+                                  const storageRef = ref(storage, `attachments/${Date.now()}_${file.name}`);
+                                  const uploadTask = uploadBytesResumable(storageRef, file);
+
+                                  await new Promise<void>((resolve, reject) => {
+                                    uploadTask.on('state_changed',
+                                      (snapshot) => {
+                                        const progress = ((completed + (snapshot.bytesTransferred / snapshot.totalBytes)) / files.length) * 100;
+                                        setAttachmentUploadProgress(progress);
+                                      },
+                                      (error) => {
+                                        console.error("فشل الرفع:", error);
+                                        reject(error);
+                                      },
+                                      async () => {
+                                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                                        newAttachments.push({
+                                          type: 'file' as const,
+                                          url: downloadURL,
+                                          name: file.name
+                                        });
+                                        completed++;
+                                        resolve();
+                                      }
+                                    );
                                   });
-                                }));
+                                }
                                 setAttachmentFiles(prev => [...prev, ...newAttachments]);
+                                setIsUploadingAttachment(false);
                               }
                             }}
                           />
@@ -2290,6 +2318,15 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           <p className="font-black text-slate-900 text-sm">اسحبي الملفات هنا أو اضغطي للرفع</p>
                           <p className="text-slate-400 text-xs font-bold mt-2">PDF, Word, Images, PowerPoint</p>
                         </div>
+
+                        {isUploadingAttachment && (
+                          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden mt-4">
+                            <div 
+                              className="bg-indigo-500 h-full transition-all duration-300" 
+                              style={{ width: `${attachmentUploadProgress}%` }}
+                            />
+                          </div>
+                        )}
 
                         {attachmentFiles.length > 0 && (
                           <div className="space-y-2 mt-4">
@@ -2453,27 +2490,52 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           onChange={async (e) => {
                             if (e.target.files) {
                               const files = Array.from(e.target.files);
-                              const validFiles = files.filter(f => f.size <= 700 * 1024);
-                              if (validFiles.length < files.length) {
-                                alert('تم تجاهل بعض الملفات لأن حجمها يتجاوز 700 كيلوبايت.');
-                              }
-                              const newAtts = await Promise.all(validFiles.map(file => {
-                                return new Promise<Attachment>((resolve) => {
-                                  const reader = new FileReader();
-                                  reader.onload = () => {
-                                    resolve({
-                                      type: 'file' as const,
-                                      url: reader.result as string,
-                                      name: file.name
-                                    });
-                                  };
-                                  reader.readAsDataURL(file);
+                              setIsUploadingPost(true);
+                              setPostUploadProgress(0);
+
+                              const newAtts: Attachment[] = [];
+                              let completed = 0;
+
+                              for (const file of files) {
+                                const storageRef = ref(storage, `posts/${Date.now()}_${file.name}`);
+                                const uploadTask = uploadBytesResumable(storageRef, file);
+
+                                await new Promise<void>((resolve, reject) => {
+                                  uploadTask.on('state_changed',
+                                    (snapshot) => {
+                                      const progress = ((completed + (snapshot.bytesTransferred / snapshot.totalBytes)) / files.length) * 100;
+                                      setPostUploadProgress(progress);
+                                    },
+                                    (error) => {
+                                      console.error("فشل الرفع:", error);
+                                      reject(error);
+                                    },
+                                    async () => {
+                                      const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                                      newAtts.push({
+                                        type: 'file' as const,
+                                        url: downloadURL,
+                                        name: file.name
+                                      });
+                                      completed++;
+                                      resolve();
+                                    }
+                                  );
                                 });
-                              }));
+                              }
                               setNewPostAttachments([...newPostAttachments, ...newAtts]);
+                              setIsUploadingPost(false);
                             }
                           }}
                         />
+                        {isUploadingPost && (
+                          <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden mt-2">
+                            <div 
+                              className="bg-indigo-500 h-full transition-all duration-300" 
+                              style={{ width: `${postUploadProgress}%` }}
+                            />
+                          </div>
+                        )}
                         {newPostAttachments.length > 0 && (
                           <div className="flex flex-wrap gap-2">
                             {newPostAttachments.map((att, idx) => (
@@ -3243,12 +3305,24 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           if (fileInput) fileInput.value = '';
                         }
                       }}
-                      className="flex gap-3"
+                      className="flex gap-3 relative"
                     >
+                      {isUploadingMessage && (
+                        <div className="absolute bottom-full left-0 w-full bg-white p-2 border border-slate-100 rounded-lg mb-2 shadow-sm">
+                          <div className="text-xs font-bold text-slate-500 mb-1">جاري الرفع...</div>
+                          <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
+                            <div 
+                              className="bg-indigo-500 h-full transition-all duration-300" 
+                              style={{ width: `${messageUploadProgress}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={() => document.getElementById('sup-msg-file-upload')?.click()}
-                        className="p-4 bg-slate-100 text-slate-500 rounded-2xl hover:bg-slate-200 transition-all"
+                        disabled={isUploadingMessage}
+                        className="p-4 bg-slate-100 text-slate-500 rounded-2xl hover:bg-slate-200 transition-all disabled:opacity-50"
                       >
                         <Plus className="w-6 h-6" />
                       </button>
@@ -3261,11 +3335,29 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           if (file) {
                             setMessageAttachmentName(file.name);
                             setMessageAttachmentType(file.type.startsWith('image/') ? 'image' : 'file');
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                              setMessageAttachment(reader.result as string);
-                            };
-                            reader.readAsDataURL(file);
+                            setIsUploadingMessage(true);
+                            setMessageUploadProgress(0);
+
+                            const storageRef = ref(storage, `messages/${Date.now()}_${file.name}`);
+                            const uploadTask = uploadBytesResumable(storageRef, file);
+
+                            uploadTask.on('state_changed', 
+                              (snapshot) => {
+                                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                                setMessageUploadProgress(progress);
+                              }, 
+                              (error) => { 
+                                console.error("فشل الرفع:", error);
+                                alert('حدث خطأ أثناء رفع الملف.');
+                                setIsUploadingMessage(false);
+                              }, 
+                              () => {
+                                getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+                                  setMessageAttachment(downloadURL);
+                                  setIsUploadingMessage(false);
+                                });
+                              }
+                            );
                           }
                         }}
                       />
@@ -3745,18 +3837,84 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     </div>
                   ))}
                   {!isSubmitting && (
-                    <div className="flex gap-2">
-                      <input type="text" placeholder="اسم المرفق" id="newAttName" className="flex-1 px-3 py-2 rounded-lg bg-slate-50 border-none font-bold text-xs" />
-                      <input type="text" placeholder="رابط المرفق" id="newAttUrl" className="flex-1 px-3 py-2 rounded-lg bg-slate-50 border-none font-bold text-xs" />
-                      <button onClick={() => {
-                        const nameInput = document.getElementById('newAttName') as HTMLInputElement;
-                        const urlInput = document.getElementById('newAttUrl') as HTMLInputElement;
-                        if (nameInput.value && urlInput.value) {
-                          setNewLessonAttachments([...newLessonAttachments, { name: nameInput.value, url: urlInput.value, type: 'link' }]);
-                          nameInput.value = '';
-                          urlInput.value = '';
-                        }
-                      }} className="px-3 py-2 rounded-lg bg-indigo-600 text-white font-black text-xs">+</button>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <input type="text" placeholder="اسم المرفق" id="newAttName" className="flex-1 px-3 py-2 rounded-lg bg-slate-50 border-none font-bold text-xs" />
+                        <input type="text" placeholder="رابط المرفق" id="newAttUrl" className="flex-1 px-3 py-2 rounded-lg bg-slate-50 border-none font-bold text-xs" />
+                        <button onClick={() => {
+                          const nameInput = document.getElementById('newAttName') as HTMLInputElement;
+                          const urlInput = document.getElementById('newAttUrl') as HTMLInputElement;
+                          if (nameInput.value && urlInput.value) {
+                            setNewLessonAttachments([...newLessonAttachments, { name: nameInput.value, url: urlInput.value, type: 'link' }]);
+                            nameInput.value = '';
+                            urlInput.value = '';
+                          }
+                        }} className="px-3 py-2 rounded-lg bg-indigo-600 text-white font-black text-xs">+</button>
+                      </div>
+                      <div className="flex gap-2 mt-2">
+                        <input 
+                          type="file" 
+                          id="lesson-file-upload"
+                          multiple
+                          className="hidden"
+                          onChange={async (e) => {
+                            if (e.target.files) {
+                              const files = Array.from(e.target.files);
+                              setIsUploadingLesson(true);
+                              setLessonUploadProgress(0);
+
+                              const newAtts: Attachment[] = [];
+                              let completed = 0;
+
+                              for (const file of files) {
+                                const storageRef = ref(storage, `lessons/${Date.now()}_${file.name}`);
+                                const uploadTask = uploadBytesResumable(storageRef, file);
+
+                                await new Promise<void>((resolve, reject) => {
+                                  uploadTask.on('state_changed',
+                                    (snapshot) => {
+                                      const progress = ((completed + (snapshot.bytesTransferred / snapshot.totalBytes)) / files.length) * 100;
+                                      setLessonUploadProgress(progress);
+                                    },
+                                    (error) => {
+                                      console.error("فشل الرفع:", error);
+                                      reject(error);
+                                    },
+                                    async () => {
+                                      const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                                      newAtts.push({
+                                        type: 'file' as const,
+                                        url: downloadURL,
+                                        name: file.name
+                                      });
+                                      completed++;
+                                      resolve();
+                                    }
+                                  );
+                                });
+                              }
+                              setNewLessonAttachments([...newLessonAttachments, ...newAtts]);
+                              setIsUploadingLesson(false);
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => document.getElementById('lesson-file-upload')?.click()}
+                          disabled={isUploadingLesson}
+                          className="w-full py-2 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs hover:bg-slate-200 transition-all disabled:opacity-50"
+                        >
+                          رفع ملفات
+                        </button>
+                      </div>
+                      {isUploadingLesson && (
+                        <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden mt-2">
+                          <div 
+                            className="bg-indigo-500 h-full transition-all duration-300" 
+                            style={{ width: `${lessonUploadProgress}%` }}
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -3903,28 +4061,53 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       onChange={async (e) => {
                         if (e.target.files) {
                           const files = Array.from(e.target.files);
-                          const validFiles = files.filter(f => f.size <= 700 * 1024);
-                          if (validFiles.length < files.length) {
-                            alert('تم تجاهل بعض الملفات لأن حجمها يتجاوز 700 كيلوبايت.');
-                          }
-                          const newAtts = await Promise.all(validFiles.map(file => {
-                            return new Promise<Attachment>((resolve) => {
-                              const reader = new FileReader();
-                              reader.onload = () => {
-                                resolve({
-                                  type: 'file' as const,
-                                  url: reader.result as string,
-                                  name: file.name
-                                });
-                              };
-                              reader.readAsDataURL(file);
+                          setIsUploadingProject(true);
+                          setProjectUploadProgress(0);
+
+                          const newAtts: Attachment[] = [];
+                          let completed = 0;
+
+                          for (const file of files) {
+                            const storageRef = ref(storage, `projects/${Date.now()}_${file.name}`);
+                            const uploadTask = uploadBytesResumable(storageRef, file);
+
+                            await new Promise<void>((resolve, reject) => {
+                              uploadTask.on('state_changed',
+                                (snapshot) => {
+                                  const progress = ((completed + (snapshot.bytesTransferred / snapshot.totalBytes)) / files.length) * 100;
+                                  setProjectUploadProgress(progress);
+                                },
+                                (error) => {
+                                  console.error("فشل الرفع:", error);
+                                  reject(error);
+                                },
+                                async () => {
+                                  const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                                  newAtts.push({
+                                    type: 'file' as const,
+                                    url: downloadURL,
+                                    name: file.name
+                                  });
+                                  completed++;
+                                  resolve();
+                                }
+                              );
                             });
-                          }));
+                          }
                           setNewProjectAttachments([...newProjectAttachments, ...newAtts]);
+                          setIsUploadingProject(false);
                         }
                       }}
                     />
                   </div>
+                  {isUploadingProject && (
+                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden mt-2">
+                      <div 
+                        className="bg-indigo-500 h-full transition-all duration-300" 
+                        style={{ width: `${projectUploadProgress}%` }}
+                      />
+                    </div>
+                  )}
                   {newProjectAttachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {newProjectAttachments.map((att, idx) => (
