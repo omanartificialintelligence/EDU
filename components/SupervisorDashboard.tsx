@@ -150,6 +150,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [messageAttachment, setMessageAttachment] = useState<string | null>(null);
   const [messageAttachmentName, setMessageAttachmentName] = useState<string>('');
   const [messageAttachmentType, setMessageAttachmentType] = useState<'image' | 'file'>('file');
+  const [isUploadingMessage, setIsUploadingMessage] = useState(false);
+  const [messageUploadProgress, setMessageUploadProgress] = useState(0);
   const [editingTeacher, setEditingTeacher] = useState<User | null>(null);
   const [editTeacherName, setEditTeacherName] = useState('');
   const [editTeacherId, setEditTeacherId] = useState('');
@@ -276,7 +278,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     }
   };
 
-  const handleAddAttachment = () => {
+  const handleAddAttachment = async () => {
     if (!attachmentTeacherId) {
       alert('يرجى اختيار المعلمة');
       return;
@@ -292,50 +294,56 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
     setIsSubmitting(true);
 
-    const selectedTeacher = teachers.find(t => t.id === attachmentTeacherId);
-    const teacherName = selectedTeacher ? selectedTeacher.name : user.name;
-    const teacherId = selectedTeacher ? selectedTeacher.id : user.id;
+    try {
+      const selectedTeacher = teachers.find(t => t.id === attachmentTeacherId);
+      const teacherName = selectedTeacher ? selectedTeacher.name : user.name;
+      const teacherId = selectedTeacher ? selectedTeacher.id : user.id;
 
-    if (attachmentLessonId === 'new') {
-      // Create new lesson with attachments
-      const newMaterial: LessonMaterial = {
-        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        teacherId: teacherId,
-        teacherName: teacherName,
-        lessonTitle: attachmentNewLessonTitle,
-        description: 'تم إضافة المرفقات بواسطة المشرف',
-        attachments: attachmentFiles,
-        comments: [],
-        createdAt: new Date().toISOString(),
-        academicYear: academicYear,
-        semester: attachmentSemester,
-        grade: attachmentGrade,
-        subject: attachmentSubject,
-        status: 'approved',
-        isActive: true,
-        isModelLesson: false,
-        tags: [attachmentSubject, attachmentGrade]
-      };
-      onAddLessonMaterial(newMaterial);
-    } else {
-      // Add to existing lesson
-      const lesson = lessonMaterials.find(l => l.id === attachmentLessonId);
-      if (lesson) {
-        const updatedMaterial: LessonMaterial = {
-          ...lesson,
-          attachments: [...lesson.attachments, ...attachmentFiles]
+      if (attachmentLessonId === 'new') {
+        // Create new lesson with attachments
+        const newMaterial: LessonMaterial = {
+          id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          teacherId: teacherId,
+          teacherName: teacherName,
+          lessonTitle: attachmentNewLessonTitle,
+          description: 'تم إضافة المرفقات بواسطة المشرف',
+          attachments: attachmentFiles,
+          comments: [],
+          createdAt: new Date().toISOString(),
+          academicYear: academicYear,
+          semester: attachmentSemester,
+          grade: attachmentGrade,
+          subject: attachmentSubject,
+          status: 'approved',
+          isActive: true,
+          isModelLesson: false,
+          tags: [attachmentSubject, attachmentGrade]
         };
-        onUpdateLessonMaterial(updatedMaterial);
+        await onAddLessonMaterial(newMaterial);
+      } else {
+        // Add to existing lesson
+        const lesson = lessonMaterials.find(l => l.id === attachmentLessonId);
+        if (lesson) {
+          const updatedMaterial: LessonMaterial = {
+            ...lesson,
+            attachments: [...lesson.attachments, ...attachmentFiles]
+          };
+          await onUpdateLessonMaterial(updatedMaterial);
+        }
       }
-    }
 
-    setIsSubmitting(false);
-    setIsAddAttachmentModalOpen(false);
-    setAttachmentFiles([]);
-    setAttachmentNewLessonTitle('');
-    setAttachmentLessonId('new');
-    setAttachmentTeacherId('');
-    alert('تم إضافة المرفقات بنجاح');
+      setIsAddAttachmentModalOpen(false);
+      setAttachmentFiles([]);
+      setAttachmentNewLessonTitle('');
+      setAttachmentLessonId('new');
+      setAttachmentTeacherId('');
+      alert('تم إضافة المرفقات بنجاح');
+    } catch (error) {
+      console.error("Error adding attachment:", error);
+      alert('حدث خطأ أثناء إضافة المرفقات. يرجى المحاولة مرة أخرى.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Add Teacher State
@@ -752,8 +760,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   };
 
   const handleAddLesson = async () => {
-    if (!newLessonTitle || !newLessonDescription) {
-      alert('يرجى إكمال جميع الحقول');
+    if (!newLessonTitle) {
+      alert('يرجى إدخال عنوان الدرس');
       return;
     }
 
@@ -764,7 +772,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
         const updatedMaterial: LessonMaterial = {
           ...editingLesson,
           lessonTitle: newLessonTitle,
-          description: newLessonDescription,
+          description: newLessonDescription || `درس: ${newLessonTitle}`,
           attachments: newLessonAttachments,
           grade: newLessonGrade,
           semester: newLessonSemester,
@@ -779,7 +787,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
           teacherId: user.id,
           teacherName: user.name,
           lessonTitle: newLessonTitle,
-          description: newLessonDescription,
+          description: newLessonDescription || `درس: ${newLessonTitle}`,
           attachments: newLessonAttachments,
           comments: [],
           createdAt: new Date().toISOString(),
@@ -788,6 +796,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
           grade: newLessonGrade,
           subject: newLessonSubject,
           status: 'approved',
+          isActive: true,
           isModelLesson: false,
           tags: [newLessonSubject, newLessonGrade]
         };

@@ -106,8 +106,17 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
         }, 
         () => {
           getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+            const newAttachment: Attachment = {
+              type: (newLessonType as any) || (file.type.startsWith('image/') ? 'image' : 
+                     file.type.startsWith('video/') ? 'video' : 
+                     file.type.startsWith('audio/') ? 'audio' : 'file'),
+              url: downloadURL,
+              name: file.name
+            };
+            setNewLessonAttachments(prev => [...prev, newAttachment]);
             setNewLessonUrl(downloadURL);
             setIsUploading(false);
+            setNewLessonType(null);
           });
         }
       );
