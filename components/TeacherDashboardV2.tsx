@@ -38,7 +38,7 @@ interface TeacherDashboardV2Props {
   onSwitchBackToSupervisorView?: () => void;
 }
 
-const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
+const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
   user, posts, lessonMaterials, onAddMaterial, onUpdateMaterial, onDeleteMaterial, notifications,
   messages, onSendMessage, onMarkMessageAsRead, projects, updateProjectSubmission, onMarkAsRead, onAddNotification, currentYear, semester,
   onSwitchBackToSupervisorView
@@ -84,42 +84,56 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
     }
   }, [editingLesson]);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const files = Array.from(e.target.files);
       setIsUploading(true);
       setUploadProgress(0);
 
-      const storageRef = ref(storage, `uploads/${Date.now()}_${file.name}`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
+      const uploadedAttachments: Attachment[] = [];
+      let completedCount = 0;
 
-      uploadTask.on('state_changed', 
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadProgress(progress);
-        }, 
-        (error) => { 
-          console.error("فشل الرفع:", error);
-          alert('حدث خطأ أثناء رفع الملف.');
-          setIsUploading(false);
-        }, 
-        () => {
-          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-            const newAttachment: Attachment = {
-              type: (newLessonType as any) || (file.type.startsWith('image/') ? 'image' : 
-                     file.type.startsWith('video/') ? 'video' : 
-                     file.type.startsWith('audio/') ? 'audio' : 'file'),
-              url: downloadURL,
-              name: file.name
-            };
-            setNewLessonAttachments(prev => [...prev, newAttachment]);
-            setNewLessonUrl(downloadURL);
-            setIsUploading(false);
-            setNewLessonType(null);
+      for (const file of files) {
+        try {
+          const storageRef = ref(storage, `uploads/${Date.now()}_${file.name}`);
+          const uploadTask = uploadBytesResumable(storageRef, file);
+
+          await new Promise<void>((resolve, reject) => {
+            uploadTask.on('state_changed', 
+              (snapshot) => {
+                const fileProgress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                const totalProgress = ((completedCount * 100) + fileProgress) / files.length;
+                setUploadProgress(totalProgress);
+              }, 
+              (error) => { 
+                console.error("فشل الرفع:", error);
+                reject(error);
+              }, 
+              async () => {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                const newAttachment: Attachment = {
+                  type: (newLessonType as any) || (file.type.startsWith('image/') ? 'image' : 
+                         file.type.startsWith('video/') ? 'video' : 
+                         file.type.startsWith('audio/') ? 'audio' : 'file'),
+                  url: downloadURL,
+                  name: file.name
+                };
+                uploadedAttachments.push(newAttachment);
+                completedCount++;
+                resolve();
+              }
+            );
           });
+        } catch (error) {
+          console.error("Error uploading file:", error);
         }
-      );
+      }
+
+      setNewLessonAttachments(prev => [...prev, ...uploadedAttachments]);
+      setIsUploading(false);
+      setUploadProgress(0);
+      setNewLessonType(null);
+      e.target.value = '';
     }
   };
 
@@ -272,8 +286,13 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   };
 
   const handleAddLesson = async () => {
-    if (!newLessonTitle || !selectedSubject) {
-      alert('يرجى إكمال جميع الحقول المطلوبة');
+    if (!newLessonTitle || !selectedSubject || !selectedGrade) {
+      alert('يرجى إكمال جميع الحقول المطلوبة (العنوان، الصف، المادة)');
+      return;
+    }
+
+    if (isUploading) {
+      alert('يرجى الانتظار حتى ينتهي رفع الملفات');
       return;
     }
 
@@ -1056,7 +1075,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                             <span className="text-xs font-bold text-slate-500">فريق العمل:</span>
                             <div className="flex -space-x-2 space-x-reverse">
                               {project.assignedTeacherIds.map((teacherId, i) => (
-                                <div key={`teacher-${project.id}-${teacherId}`} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600" title={teacherId === user.id ? 'أنا' : 'زميلة'}>
+                                <div key={`teacher-${project.id}-${teacherId}-${i}`} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600" title={teacherId === user.id ? 'أنا' : 'زميلة'}>
                                   {teacherId === user.id ? 'أنا' : 'ز'}
                                 </div>
                               ))}
@@ -1172,7 +1191,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         
                         <div className="grid grid-cols-1 gap-3">
                           {submissionFiles.map((file, idx) => (
-                            <div key={`sub-file-${file.name}`} className="bg-slate-50 rounded-xl border border-slate-100 p-3">
+                            <div key={`sub-file-${file.name}-${idx}`} className="bg-slate-50 rounded-xl border border-slate-100 p-3">
                               <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-3 overflow-hidden">
                                   <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-slate-100 text-slate-400">
@@ -1362,7 +1381,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         {lesson.attachments.map((att, idx) => {
                           const { icon: AttIcon, color: AttColor } = getAttachmentIcon(att);
                           return (
-                            <div key={`att-${lesson.id}-${att.name}-${idx}`} className="flex items-center justify-between text-xs p-2 bg-slate-50 rounded-lg">
+                            <div key={`lesson-att-${lesson.id}-${att.name}-${idx}`} className="flex items-center justify-between text-xs p-2 bg-slate-50 rounded-lg">
                               <div className="flex items-center gap-2">
                                 <AttIcon className={cn("w-4 h-4", AttColor)} />
                                 <span className="font-bold text-slate-700">{att.name}</span>
@@ -1621,7 +1640,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         <label className="text-sm font-black text-slate-700 block">المرفقات المضافة</label>
                         <div className="space-y-2">
                           {newLessonAttachments.map((att, idx) => (
-                            <div key={`new-lesson-att-${att.name}-${idx}`} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                            <div key={`new-lesson-att-modal-${att.name}-${idx}`} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center">
                                   {att.type === 'link' ? <LinkIcon className="w-5 h-5 text-indigo-500" /> : 
@@ -1731,10 +1750,10 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
 
                 <button 
                   onClick={handleAddLesson}
-                  disabled={isSubmitting || !newLessonTitle || newLessonAttachments.length === 0}
+                  disabled={isSubmitting || isUploading || !newLessonTitle || newLessonAttachments.length === 0}
                   className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4"
                 >
-                  {isSubmitting ? 'جاري النشر...' : 'نشر الدرس الآن'}
+                  {isSubmitting ? 'جاري النشر...' : isUploading ? 'جاري رفع المرفقات...' : 'نشر الدرس الآن'}
                 </button>
               </div>
 
@@ -1780,10 +1799,10 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   </button>
                   <button
                     onClick={handleAddLesson}
-                    disabled={isSubmitting || !newLessonTitle || newLessonAttachments.length === 0}
+                    disabled={isSubmitting || isUploading || !newLessonTitle || newLessonAttachments.length === 0}
                     className="px-8 py-3 bg-blue-600 text-white rounded-xl font-black text-sm shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all disabled:opacity-50"
                   >
-                    {isSubmitting ? 'جاري الحفظ...' : 'حفظ ونشر'}
+                    {isSubmitting ? 'جاري الحفظ...' : isUploading ? 'جاري الرفع...' : 'حفظ ونشر'}
                   </button>
                 </div>
               </div>
@@ -1919,27 +1938,74 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                       <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
                       المرفقات والمصادر ({viewingLesson.attachments.length})
                     </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {viewingLesson.attachments.map((attachment, idx) => {
                         const attachInfo = getAttachmentIcon(attachment);
                         const AttachIcon = attachInfo.icon;
+                        const isImage = attachment.type === 'image' || attachment.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)$/);
+                        const isVideo = attachment.type === 'video' || attachment.name.toLowerCase().match(/\.(mp4|mov|avi|webm)$/);
+                        const isPdf = attachment.name.toLowerCase().endsWith('.pdf');
+
                         return (
-                          <button 
+                          <div 
                             key={`preview-att-${attachment.url}-${idx}`}
-                            onClick={() => {
-                              setPreviewAttachment(attachment);
-                            }}
-                            className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 hover:border-indigo-200 hover:shadow-md transition-all group text-right"
+                            className="group relative bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg transition-all"
                           >
-                            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", attachInfo.bg, attachInfo.color)}>
-                              <AttachIcon className="w-5 h-5" />
+                            <div className="aspect-video w-full bg-slate-50 flex items-center justify-center overflow-hidden relative">
+                              {isImage ? (
+                                <img 
+                                  src={attachment.url} 
+                                  alt={attachment.name} 
+                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                  referrerPolicy="no-referrer"
+                                />
+                              ) : isVideo ? (
+                                <div className="w-full h-full flex items-center justify-center bg-slate-900">
+                                  <Video className="w-8 h-8 text-white/50" />
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
+                                    <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
+                                      <Play className="w-5 h-5 text-white fill-current" />
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : isPdf ? (
+                                <div className="w-full h-full flex flex-col items-center justify-center bg-red-50 group-hover:bg-red-100 transition-colors">
+                                  <FileText className="w-10 h-10 text-red-500" />
+                                  <span className="mt-2 text-[10px] font-black text-red-600 bg-white px-2 py-0.5 rounded-full shadow-sm">PDF</span>
+                                </div>
+                              ) : (
+                                <div className={cn("w-full h-full flex flex-col items-center justify-center", attachInfo.bg)}>
+                                  <AttachIcon className={cn("w-10 h-10", attachInfo.color)} />
+                                  <span className={cn("mt-2 text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm bg-white", attachInfo.color)}>
+                                    {(attachment.type || 'FILE').toUpperCase()}
+                                  </span>
+                                </div>
+                              )}
+                              
+                              {/* Overlay Actions */}
+                              <div className="absolute inset-0 bg-indigo-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                                <button 
+                                  onClick={() => setPreviewAttachment(attachment)}
+                                  className="p-2.5 bg-white text-indigo-600 rounded-xl hover:scale-110 transition-transform shadow-lg"
+                                  title="عرض"
+                                >
+                                  <Eye className="w-5 h-5" />
+                                </button>
+                                <button 
+                                  onClick={() => downloadFile(attachment.url, attachment.name)}
+                                  className="p-2.5 bg-white text-emerald-600 rounded-xl hover:scale-110 transition-transform shadow-lg"
+                                  title="تحميل"
+                                >
+                                  <Download className="w-5 h-5" />
+                                </button>
+                              </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-black text-slate-900 truncate">{attachment.name || `مرفق ${idx + 1}`}</p>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase">{attachment.type}</p>
+                            <div className="p-3">
+                              <p className="text-[10px] font-black text-slate-700 truncate text-center" title={attachment.name}>
+                                {attachment.name || `مرفق ${idx + 1}`}
+                              </p>
                             </div>
-                            <Download className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition-colors" />
-                          </button>
+                          </div>
                         );
                       })}
                     </div>
@@ -2036,6 +2102,6 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
       </AnimatePresence>
     </div>
   );
-};
+});
 
 export default TeacherDashboardV2;

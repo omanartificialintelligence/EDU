@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { UserRole, User, AuthState, Project, Post, ResetRequest, LessonMaterial, LessonComment, SupervisorConfig, Notification, Message, Attachment, ProjectSubmission } from './types';
 import LoginForm from './components/LoginForm';
 import TeacherDashboard from './components/TeacherDashboardV2';
@@ -24,7 +24,8 @@ import {
   getDocsFromCache,
   Unsubscribe,
   or,
-  limit
+  limit,
+  orderBy
 } from 'firebase/firestore';
 import { auth as firebaseAuth, googleProvider, microsoftProvider } from './src/firebase';
 import { 
@@ -199,9 +200,9 @@ const App: React.FC = () => {
 
     // Private listeners (only for authenticated users with roles)
     const setupPrivateListeners = () => {
-      const unsubPosts = onSnapshot(query(collection(db, 'posts'), limit(15)), (snapshot) => {
+      const unsubPosts = onSnapshot(query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(50)), (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Post));
-        setPosts(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        setPosts(list);
       }, (error) => handleAsyncError(error, OperationType.LIST, 'posts'));
       unsubs.push(unsubPosts);
 
@@ -210,7 +211,8 @@ const App: React.FC = () => {
         where('academicYear', '==', currentAcademicYear),
         where('semester', '==', currentSemester),
         where('isArchived', '==', false),
-        limit(30)
+        orderBy('createdAt', 'desc'),
+        limit(100)
       );
 
       const unsubLessons = onSnapshot(qLessons, (snapshot) => {
@@ -238,10 +240,10 @@ const App: React.FC = () => {
       unsubs.push(unsubProjects);
 
       const unsubNotifications = onSnapshot(
-        query(collection(db, 'notifications'), where('userId', '==', auth.user?.id), limit(30)), 
+        query(collection(db, 'notifications'), where('userId', '==', auth.user?.id), orderBy('createdAt', 'desc'), limit(50)), 
         (snapshot) => {
           const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Notification));
-          setNotifications(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+          setNotifications(list);
         }, (error) => handleAsyncError(error, OperationType.LIST, 'notifications'));
       unsubs.push(unsubNotifications);
 
@@ -252,7 +254,8 @@ const App: React.FC = () => {
           where('recipientId', '==', auth.user?.id),
           where('senderId', '==', auth.user?.id)
         ),
-        limit(30)
+        orderBy('createdAt', 'asc'),
+        limit(100)
       );
 
       const unsubMessages = onSnapshot(qMessages, (snapshot) => {
@@ -296,7 +299,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSendMessage = async (text: string, recipientId: string = 'ALL', attachments: Attachment[] = []) => {
+  const handleSendMessage = useCallback(async (text: string, recipientId: string = 'ALL', attachments: Attachment[] = []) => {
     if (auth.user) {
       const messageData: Message = {
         id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -318,15 +321,15 @@ const App: React.FC = () => {
         handleFirestoreError(error, OperationType.WRITE, `messages/${messageData.id}`);
       }
     }
-  };
+  }, [auth.user]);
 
-  const handleMarkMessageAsRead = async (messageId: string) => {
+  const handleMarkMessageAsRead = useCallback(async (messageId: string) => {
     try {
       await updateDoc(doc(db, 'messages', messageId), { isRead: true });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `messages/${messageId}`);
     }
-  };
+  }, []);
 
   const handleCleanupOrphanedLessons = async () => {
     const teacherIds = new Set(teachers.map(t => t.id));
@@ -567,7 +570,7 @@ const App: React.FC = () => {
     setShowChangePassword(false);
   };
 
-  const handleAddLessonMaterial = async (material: LessonMaterial) => {
+  const handleAddLessonMaterial = useCallback(async (material: LessonMaterial) => {
     console.log("Attempting to save lesson:", material);
     try {
       const cleanMaterial = { ...material } as any;
@@ -580,9 +583,9 @@ const App: React.FC = () => {
       console.error("Error saving lesson:", error);
       handleFirestoreError(error, OperationType.WRITE, `lessonMaterials/${material.id}`);
     }
-  };
+  }, []);
 
-  const handleUpdateLessonMaterial = async (updated: LessonMaterial) => {
+  const handleUpdateLessonMaterial = useCallback(async (updated: LessonMaterial) => {
     try {
       const cleanMaterial = { ...updated } as any;
       Object.keys(cleanMaterial).forEach(key => {
@@ -592,7 +595,7 @@ const App: React.FC = () => {
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `lessonMaterials/${updated.id}`);
     }
-  };
+  }, []);
 
   const handleSoftDeleteLesson = async (id: string) => {
     try {
@@ -877,6 +880,11 @@ const App: React.FC = () => {
     }
   };
 
+  const userNotifications = useMemo(() => 
+    notifications.filter(n => n.userId === auth.user?.id),
+    [notifications, auth.user?.id]
+  );
+
   const renderContent = () => {
     if (!isAuthReady) {
       return (
@@ -1052,7 +1060,7 @@ const App: React.FC = () => {
             updateProjectSubmission={handleUpdateProjectSubmission}
             currentYear={currentAcademicYear}
             semester={currentSemester}
-            notifications={notifications.filter(n => n.userId === auth.user?.id)}
+            notifications={userNotifications}
             onMarkAsRead={handleMarkNotificationAsRead}
             onAddNotification={handleAddNotification}
             onSwitchBackToSupervisorView={() => setIsPreviewMode(false)}
@@ -1095,7 +1103,7 @@ const App: React.FC = () => {
           onDeletePermanentlyPost={handleDeletePermanentlyPost}
           onAddNotification={handleAddNotification}
           onCleanupOrphanedLessons={handleCleanupOrphanedLessons}
-          notifications={notifications.filter(n => n.userId === auth.user?.id)}
+          notifications={userNotifications}
           onMarkNotificationAsRead={handleMarkNotificationAsRead}
           onLogout={handleLogout}
           supervisorConfig={supervisorConfig}
@@ -1149,34 +1157,13 @@ const App: React.FC = () => {
             messages={messages}
             onSendMessage={handleSendMessage}
             onMarkMessageAsRead={handleMarkMessageAsRead}
-            onAddMaterial={async (m) => {
-              const material = { ...m, status: 'pending', isModelLesson: false } as any;
-              Object.keys(material).forEach(key => {
-                if (material[key] === undefined) delete material[key];
-              });
-              try {
-                await setDoc(doc(db, 'lessonMaterials', material.id), material);
-              } catch (error) {
-                handleFirestoreError(error, OperationType.WRITE, `lessonMaterials/${material.id}`);
-              }
-            }}
+            onAddMaterial={handleAddLessonMaterial}
             onUpdateMaterial={handleUpdateLessonMaterial}
             onDeleteMaterial={handleDeletePermanentlyLesson}
-            updateProjectSubmission={async (pid, sub) => {
-              try {
-                const project = projects.find(p => p.id === pid);
-                if (project) {
-                  await updateDoc(doc(db, 'projects', pid), {
-                    [`submissions.${sub.teacherId}`]: sub
-                  });
-                }
-              } catch (error) {
-                handleFirestoreError(error, OperationType.UPDATE, `projects/${pid}`);
-              }
-            }}
+            updateProjectSubmission={handleUpdateProjectSubmission}
             currentYear={currentAcademicYear}
             semester={currentSemester}
-            notifications={notifications.filter(n => n.userId === auth.user?.id)}
+            notifications={userNotifications}
             onMarkAsRead={handleMarkNotificationAsRead}
             onAddNotification={handleAddNotification}
           />

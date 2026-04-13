@@ -14,7 +14,7 @@ import {
   Clock, Shield, MessageSquare, Pin, FileText, Download, Calendar,
   TrendingUp, Award, Activity, Settings, Share2, Send, Trash2,
   Phone, Hash, BookOpen, GraduationCap, User as UserIcon,
-  FileIcon, Link as LinkIcon, Video, Music, Image as ImageIcon, ChevronDown, ChevronUp, GripVertical, Eye, ListTodo, Edit
+  FileIcon, Link as LinkIcon, Video, Music, Image as ImageIcon, ChevronDown, ChevronUp, GripVertical, Eye, ListTodo, Edit, Play
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -75,7 +75,7 @@ interface SupervisorDashboardProps {
   onUpdateUserPreferences?: (preferences: any) => void;
 }
 
-const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ 
+const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({ 
   user, teachers, posts, projects, lessonMaterials, resetRequests,
   messages, onSendMessage, onMarkMessageAsRead,
   onAddPost, onDeletePost, onTogglePinPost,
@@ -1251,7 +1251,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                 <div className="space-y-8">
                   {dashboardWidgets.map((widgetId, index) => (
-                    <div key={widgetId} className="relative group">
+                    <div key={`${widgetId}-${index}`} className="relative group">
                       {isCustomizingDashboard && (
                         <div className="absolute -right-12 top-0 bottom-0 flex flex-col justify-center gap-2 z-10">
                           <button 
@@ -1722,7 +1722,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             </thead>
                             <tbody>
                               {teacher.assignments.map((assignment, idx) => (
-                                <tr key={`assignment-${assignment.grade}-${assignment.subject}`} className="border-b border-slate-100 last:border-0">
+                                <tr key={`assignment-${assignment.grade}-${assignment.subject}-${idx}`} className="border-b border-slate-100 last:border-0">
                                   <td className="py-2 text-slate-800 font-bold flex items-center gap-2">
                                     <GraduationCap className="w-3.5 h-3.5 text-emerald-500" />
                                     {assignment.grade}
@@ -3021,7 +3021,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               const status = submission?.status || 'pending';
                               
                               return (
-                                <div key={`proj-teacher-${project.id}-${teacherId}`} className={cn(
+                                <div key={`proj-teacher-${project.id}-${teacherId}-${idx}`} className={cn(
                                   "px-3 py-1 rounded-full text-[10px] font-black flex items-center gap-1 border",
                                   status === 'approved' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
                                   status === 'submitted' ? "bg-blue-50 text-blue-700 border-blue-100" :
@@ -3103,7 +3103,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         const status = submission?.status || 'pending';
 
                         return (
-                          <div key={`view-proj-teacher-${viewingProject.id}-${teacherId}`} className="bg-slate-50 rounded-[24px] border border-slate-100 overflow-hidden">
+                          <div key={`view-proj-teacher-${viewingProject.id}-${teacherId}-${idx}`} className="bg-slate-50 rounded-[24px] border border-slate-100 overflow-hidden">
                             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-black">
@@ -3144,7 +3144,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   <div className="flex flex-wrap gap-3">
                                     {submission.files.map((file, i) => (
                                       <button 
-                                        key={`sub-file-${file.name}`}
+                                        key={`sub-file-${file.name}-${i}`}
                                         onClick={() => {
                                           setPreviewAttachment({url: file.url, type: file.type, name: file.name});
                                         }}
@@ -3508,7 +3508,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   <div className="flex flex-wrap gap-1 mt-1">
                                     <span className="text-[10px] text-slate-500">المواد:</span>
                                     {supervisor.tempPermissions.allowedSubjects.map((s, index) => (
-                                      <span key={`${supervisor.id}-${s}`} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">{s}</span>
+                                      <span key={`${supervisor.id}-${s}-${index}`} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">{s}</span>
                                     ))}
                                   </div>
                                 )}
@@ -4187,7 +4187,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   {newProjectTasks.length > 0 && (
                     <div className="space-y-2 mt-2">
                       {newProjectTasks.map((task, idx) => (
-                        <div key={`new-proj-task-${task}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <div key={`new-proj-task-${task}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                           <span className="text-sm font-bold text-slate-700">{idx + 1}. {task}</span>
                           <button 
                             onClick={() => setNewProjectTasks(newProjectTasks.filter((_, i) => i !== idx))}
@@ -4450,27 +4450,74 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
                       المرفقات والمصادر ({viewingLesson.attachments.length})
                     </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {viewingLesson.attachments.map((attachment, idx) => {
                         const attachInfo = getAttachmentIcon(attachment);
                         const AttachIcon = attachInfo.icon;
+                        const isImage = attachment.type === 'image' || attachment.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)$/);
+                        const isVideo = attachment.type === 'video' || attachment.name.toLowerCase().match(/\.(mp4|mov|avi|webm)$/);
+                        const isPdf = attachment.name.toLowerCase().endsWith('.pdf');
+
                         return (
-                          <button 
+                          <div 
                             key={`preview-att-${attachment.url}-${idx}`}
-                            onClick={() => {
-                              setPreviewAttachment(attachment);
-                            }}
-                            className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 hover:border-indigo-200 hover:shadow-md transition-all group text-right"
+                            className="group relative bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg transition-all"
                           >
-                            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", attachInfo.bg, attachInfo.color)}>
-                              <AttachIcon className="w-5 h-5" />
+                            <div className="aspect-video w-full bg-slate-50 flex items-center justify-center overflow-hidden relative">
+                              {isImage ? (
+                                <img 
+                                  src={attachment.url} 
+                                  alt={attachment.name} 
+                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                  referrerPolicy="no-referrer"
+                                />
+                              ) : isVideo ? (
+                                <div className="w-full h-full flex items-center justify-center bg-slate-900">
+                                  <Video className="w-8 h-8 text-white/50" />
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
+                                    <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
+                                      <Play className="w-5 h-5 text-white fill-current" />
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : isPdf ? (
+                                <div className="w-full h-full flex flex-col items-center justify-center bg-red-50 group-hover:bg-red-100 transition-colors">
+                                  <FileText className="w-10 h-10 text-red-500" />
+                                  <span className="mt-2 text-[10px] font-black text-red-600 bg-white px-2 py-0.5 rounded-full shadow-sm">PDF</span>
+                                </div>
+                              ) : (
+                                <div className={cn("w-full h-full flex flex-col items-center justify-center", attachInfo.bg)}>
+                                  <AttachIcon className={cn("w-10 h-10", attachInfo.color)} />
+                                  <span className={cn("mt-2 text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm bg-white", attachInfo.color)}>
+                                    {(attachment.type || 'FILE').toUpperCase()}
+                                  </span>
+                                </div>
+                              )}
+                              
+                              {/* Overlay Actions */}
+                              <div className="absolute inset-0 bg-indigo-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                                <button 
+                                  onClick={() => setPreviewAttachment(attachment)}
+                                  className="p-2.5 bg-white text-indigo-600 rounded-xl hover:scale-110 transition-transform shadow-lg"
+                                  title="عرض"
+                                >
+                                  <Eye className="w-5 h-5" />
+                                </button>
+                                <button 
+                                  onClick={() => downloadFile(attachment.url, attachment.name)}
+                                  className="p-2.5 bg-white text-emerald-600 rounded-xl hover:scale-110 transition-transform shadow-lg"
+                                  title="تحميل"
+                                >
+                                  <Download className="w-5 h-5" />
+                                </button>
+                              </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-black text-slate-900 truncate">{attachment.name || `مرفق ${idx + 1}`}</p>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase">{attachment.type}</p>
+                            <div className="p-3">
+                              <p className="text-[10px] font-black text-slate-700 truncate text-center" title={attachment.name}>
+                                {attachment.name || `مرفق ${idx + 1}`}
+                              </p>
                             </div>
-                            <Download className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition-colors" />
-                          </button>
+                          </div>
                         );
                       })}
                     </div>
@@ -4662,6 +4709,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
       </AnimatePresence>
     </div>
   );
-};
+});
 
 export default SupervisorDashboard;
