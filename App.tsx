@@ -1048,6 +1048,7 @@ const App: React.FC = () => {
             onMarkMessageAsRead={handleMarkMessageAsRead}
             onAddMaterial={handleAddLessonMaterial}
             onUpdateMaterial={handleUpdateLessonMaterial}
+            onDeleteMaterial={handleDeletePermanentlyLesson}
             updateProjectSubmission={handleUpdateProjectSubmission}
             currentYear={currentAcademicYear}
             semester={currentSemester}
@@ -1160,6 +1161,7 @@ const App: React.FC = () => {
               }
             }}
             onUpdateMaterial={handleUpdateLessonMaterial}
+            onDeleteMaterial={handleDeletePermanentlyLesson}
             updateProjectSubmission={async (pid, sub) => {
               try {
                 const project = projects.find(p => p.id === pid);
