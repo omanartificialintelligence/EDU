@@ -1539,7 +1539,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   onChange={(e) => setCurrentAssignmentGrade(e.target.value)} 
                                   className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-transparent shadow-sm focus:border-indigo-500 font-bold text-sm outline-none appearance-none cursor-pointer"
                                 >
-                                  {AVAILABLE_GRADES.map((g) => <option key={`grade-select-1-${g}`} value={g}>{g}</option>)}
+                                  {AVAILABLE_GRADES.map((g, idx) => <option key={`grade-select-1-${g}-${idx}`} value={g}>{g}</option>)}
                                 </select>
                                 <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                                   <Filter className="w-4 h-4" />
@@ -1563,7 +1563,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                     !user.tempPermissions?.allowedSubjects || 
                                     user.tempPermissions.allowedSubjects.length === 0 || 
                                     user.tempPermissions.allowedSubjects.includes(s)
-                                  ).map((s) => <option key={`subject-select-1-${s}`} value={s}>{s}</option>)}
+                                  ).map((s, idx) => <option key={`subject-select-1-${s}-${idx}`} value={s}>{s}</option>)}
                                 </select>
                                 <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                                   <Filter className="w-4 h-4" />
@@ -2048,7 +2048,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                     const AttachIcon = attachInfo.icon;
                                     return (
                                       <button 
-                                        key={`${material.id}-${attachment.url}-${attachment.name}`}
+                                        key={`${material.id}-${attachment.url}-${attachment.name}-${idx}`}
                                         onClick={() => {
                                           setPreviewAttachment(attachment);
                                         }}
@@ -2224,7 +2224,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             onChange={e => setAttachmentGrade(e.target.value)}
                             className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
                           >
-                            {AVAILABLE_GRADES.map((g) => <option key={`grade-select-2-${g}`} value={g}>{g}</option>)}
+                            {AVAILABLE_GRADES.map((g, idx) => <option key={`grade-select-2-${g}-${idx}`} value={g}>{g}</option>)}
                           </select>
                         </div>
                         <div className="space-y-2">
@@ -2234,7 +2234,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             onChange={e => setAttachmentSubject(e.target.value)}
                             className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
                           >
-                            {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-2-${s}`} value={s}>{s}</option>)}
+                            {AVAILABLE_SUBJECTS.map((s, idx) => <option key={`subject-select-2-${s}-${idx}`} value={s}>{s}</option>)}
                           </select>
                         </div>
                       </div>
@@ -2331,7 +2331,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         {attachmentFiles.length > 0 && (
                           <div className="space-y-2 mt-4">
                             {attachmentFiles.map((file, idx) => (
-                              <div key={`att-file-${file.name}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                              <div key={`att-file-${file.name}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                                 <div className="flex items-center gap-3">
                                   <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-indigo-600 shadow-sm">
                                     <FileText className="w-4 h-4" />
@@ -2539,7 +2539,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         {newPostAttachments.length > 0 && (
                           <div className="flex flex-wrap gap-2">
                             {newPostAttachments.map((att, idx) => (
-                              <div key={`new-post-att-${att.name}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+                              <div key={`new-post-att-${att.name}-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
                                 <span className="truncate max-w-[100px]">{att.name}</span>
                                 <button 
                                   type="button"
@@ -2600,7 +2600,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       {post.attachments.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                           {post.attachments.map((att, i) => (
-                            <div key={`post-att-${post.id}-${att.url}`} className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-500 flex items-center gap-2">
+                            <div key={`post-att-${post.id}-${att.url}-${i}`} className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-500 flex items-center gap-2">
                               <FileText className="w-3 h-3" /> <span className="truncate max-w-[150px]">{att.name}</span>
                               <div className="flex items-center gap-1 mr-2 border-r border-slate-200 pr-2">
                                   <button onClick={() => setPreviewAttachment(att)} className="p-1 hover:bg-slate-200 rounded text-slate-500" title="معاينة">
@@ -2813,7 +2813,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               </button>
                               {lesson.attachments.map((attachment, idx) => (
                                 <button 
-                                  key={`${lesson.id}-${attachment.url}-${attachment.name}`}
+                                  key={`${lesson.id}-${attachment.url}-${attachment.name}-${idx}`}
                                   onClick={() => {
                                     setPreviewAttachment(attachment);
                                   }}
@@ -3258,7 +3258,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             {msg.attachments && msg.attachments.length > 0 && (
                               <div className="mt-2 space-y-1">
                                 {msg.attachments.map((att, idx) => (
-                                  <div key={`msg-att-${msg.id}-${att.name}`} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
+                                  <div key={`msg-att-${msg.id}-${att.name}-${idx}`} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
                                     {att.type === 'image' ? <ImageIcon className="w-4 h-4" /> : <FileIcon className="w-4 h-4" />}
                                     <a href={att.url} download={att.name} target="_blank" rel="noopener noreferrer" className="underline text-xs truncate max-w-[150px] block">
                                       {att.name}
@@ -3817,21 +3817,21 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               <div className="space-y-4">
                 <input type="text" placeholder="عنوان الدرس" value={newLessonTitle} onChange={e => setNewLessonTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" disabled={isSubmitting} />
                 <select value={newLessonGrade} onChange={e => setNewLessonGrade(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" disabled={isSubmitting}>
-                  {AVAILABLE_GRADES.map((g) => <option key={`grade-select-3-${g}`} value={g}>{g}</option>)}
+                  {AVAILABLE_GRADES.map((g, idx) => <option key={`grade-select-3-${g}-${idx}`} value={g}>{g}</option>)}
                 </select>
                 <select value={newLessonSemester} onChange={e => setNewLessonSemester(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" disabled={isSubmitting}>
                   <option value="الفصل الدراسي الأول">الفصل الدراسي الأول</option>
                   <option value="الفصل الدراسي الثاني">الفصل الدراسي الثاني</option>
                 </select>
                 <select value={newLessonSubject} onChange={e => setNewLessonSubject(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" disabled={isSubmitting}>
-                  {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-3-${s}`} value={s}>{s}</option>)}
+                  {AVAILABLE_SUBJECTS.map((s, idx) => <option key={`subject-select-3-${s}-${idx}`} value={s}>{s}</option>)}
                 </select>
                 <textarea placeholder="وصف الدرس" value={newLessonDescription} onChange={e => setNewLessonDescription(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" rows={4} disabled={isSubmitting} />
                 
                 <div className="space-y-2 mt-4">
                   <p className="text-xs font-bold text-slate-500">المرفقات:</p>
                   {newLessonAttachments.map((att, i) => (
-                    <div key={`new-lesson-att-${att.name}`} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
+                    <div key={`new-lesson-att-${att.name}-${i}`} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
                       {att.name}
                       <button onClick={() => setNewLessonAttachments(newLessonAttachments.filter((_, idx) => idx !== i))} className="text-red-500" disabled={isSubmitting}>حذف</button>
                     </div>
@@ -4111,7 +4111,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   {newProjectAttachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {newProjectAttachments.map((att, idx) => (
-                        <div key={`new-proj-att-${att.name}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+                        <div key={`new-proj-att-${att.name}-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
                           <FileText className="w-3 h-3" />
                           {att.name}
                           <button onClick={() => setNewProjectAttachments(newProjectAttachments.filter((_, i) => i !== idx))} className="hover:text-red-500">
@@ -4308,7 +4308,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         onChange={(e) => setEditAssignmentGrade(e.target.value)} 
                         className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-transparent shadow-sm focus:border-indigo-500 font-bold text-sm outline-none"
                       >
-                        {AVAILABLE_GRADES.map((g) => <option key={`grade-select-4-${g}`} value={g}>{g}</option>)}
+                        {AVAILABLE_GRADES.map((g, idx) => <option key={`grade-select-4-${g}-${idx}`} value={g}>{g}</option>)}
                       </select>
                     </div>
 
@@ -4319,7 +4319,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         onChange={(e) => setEditAssignmentSubject(e.target.value)} 
                         className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-transparent shadow-sm focus:border-indigo-500 font-bold text-sm outline-none"
                       >
-                        {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-4-${s}`} value={s}>{s}</option>)}
+                        {AVAILABLE_SUBJECTS.map((s, idx) => <option key={`subject-select-4-${s}-${idx}`} value={s}>{s}</option>)}
                       </select>
                     </div>
 
@@ -4447,7 +4447,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         const AttachIcon = attachInfo.icon;
                         return (
                           <button 
-                            key={`preview-att-${attachment.url}`}
+                            key={`preview-att-${attachment.url}-${idx}`}
                             onClick={() => {
                               setPreviewAttachment(attachment);
                             }}

@@ -632,7 +632,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
               <div className="flex overflow-x-auto pb-2 sm:pb-0 items-center gap-2 sm:gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm w-full sm:w-fit scrollbar-hide">
                 {grades.map((grade, i) => (
                   <button
-                    key={`grade-select-${grade}`}
+                    key={`grade-select-${grade}-${i}`}
                     onClick={() => { setSelectedGrade(grade); setViewingSubject(null); }}
                     className={cn(
                       "px-4 sm:px-8 py-2.5 sm:py-3 rounded-[12px] text-xs sm:text-sm font-bold transition-all duration-200 whitespace-nowrap",
@@ -670,7 +670,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
 
                     return (
                       <div 
-                        key={`subject-select-${subject.name}`} 
+                        key={`subject-select-${subject.name}-${i}`} 
                         className={cn(
                           "relative p-8 rounded-[24px] border-2 transition-all duration-300 overflow-hidden group hover:shadow-xl",
                           subject.bg, subject.border
@@ -823,7 +823,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                               <div className="flex flex-wrap gap-2">
                                 {material.attachments.map((attachment, idx) => (
                                   <button 
-                                    key={`att-${material.id}-${attachment.name}`}
+                                    key={`att-${material.id}-${attachment.name}-${idx}`}
                                     onClick={() => {
                                       setPreviewAttachment(attachment);
                                     }}
@@ -1120,7 +1120,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                           <div className="flex flex-wrap gap-2">
                             {selectedProject.attachments.map((att, idx) => (
                               <a 
-                                key={`proj-att-${selectedProject.id}-${att.name}`}
+                                key={`proj-att-${selectedProject.id}-${att.name}-${idx}`}
                                 href={att.url}
                                 download={att.name}
                                 target="_blank"
@@ -1353,7 +1353,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         {lesson.attachments.map((att, idx) => {
                           const { icon: AttIcon, color: AttColor } = getAttachmentIcon(att);
                           return (
-                            <div key={`att-${lesson.id}-${att.name}`} className="flex items-center justify-between text-xs p-2 bg-slate-50 rounded-lg">
+                            <div key={`att-${lesson.id}-${att.name}-${idx}`} className="flex items-center justify-between text-xs p-2 bg-slate-50 rounded-lg">
                               <div className="flex items-center gap-2">
                                 <AttIcon className={cn("w-4 h-4", AttColor)} />
                                 <span className="font-bold text-slate-700">{att.name}</span>
@@ -1422,7 +1422,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                           {msg.attachments && msg.attachments.length > 0 && (
                             <div className="mt-2 space-y-1">
                               {msg.attachments.map((att, idx) => (
-                                <div key={`msg-att-${msg.id}-${att.name}`} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
+                                <div key={`msg-att-${msg.id}-${att.name}-${idx}`} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
                                   {att.type === 'image' ? <ImageIcon className="w-4 h-4" /> : <FileIcon className="w-4 h-4" />}
                                   <a href={att.url} download={att.name} target="_blank" rel="noopener noreferrer" className="underline text-xs truncate max-w-[150px] block">
                                     {att.name}
@@ -1612,7 +1612,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         <label className="text-sm font-black text-slate-700 block">المرفقات المضافة</label>
                         <div className="space-y-2">
                           {newLessonAttachments.map((att, idx) => (
-                            <div key={`new-lesson-att-${att.name}`} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                            <div key={`new-lesson-att-${att.name}-${idx}`} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center">
                                   {att.type === 'link' ? <LinkIcon className="w-5 h-5 text-indigo-500" /> : 
@@ -1736,7 +1736,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                     {newLessonAttachments.slice(0, 3).map((att, i) => {
                       const { icon: Icon, color } = getAttachmentIcon(att);
                       return (
-                        <div key={`bar-att-${att.name}`} className={cn("w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shadow-sm", color)}>
+                        <div key={`bar-att-${att.name}-${i}`} className={cn("w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shadow-sm", color)}>
                           <Icon className="w-4 h-4" />
                         </div>
                       );
@@ -1818,7 +1818,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         const iconInfo = getAttachmentIcon(att);
                         const Icon = iconInfo.icon;
                         return (
-                          <div key={`post-att-${viewingPost.id}-${att.url}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                          <div key={`post-att-${viewingPost.id}-${att.url}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                             <div className="flex items-center gap-3">
                               <div className={cn("p-2 rounded-lg", iconInfo.bg, iconInfo.color)}>
                                 <Icon className="w-4 h-4" />
@@ -1916,7 +1916,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         const AttachIcon = attachInfo.icon;
                         return (
                           <button 
-                            key={`preview-att-${attachment.url}`}
+                            key={`preview-att-${attachment.url}-${idx}`}
                             onClick={() => {
                               setPreviewAttachment(attachment);
                             }}
