@@ -20,6 +20,8 @@ import {
   where, 
   getDocs,
   getDoc,
+  getDocFromCache,
+  getDocsFromCache,
   Unsubscribe,
   or,
   limit
@@ -69,7 +71,36 @@ const App: React.FC = () => {
   // Bridge async errors to ErrorBoundary
   if (asyncError) throw asyncError;
 
-  // Firebase Auth Listener
+  const handleAsyncError = (error: any, op: OperationType, path: string) => {
+    try {
+      handleFirestoreError(error, op, path);
+    } catch (e) {
+      setAsyncError(e as Error);
+    }
+  };
+
+  // 1. Config Listener (Separate to avoid redundant re-subscriptions)
+  useEffect(() => {
+    if (!isAuthReady) return;
+    
+    const unsubConfig = onSnapshot(doc(db, 'config', 'supervisor'), (docSnap) => {
+      if (docSnap.exists()) {
+        setSupervisorConfig(docSnap.data() as SupervisorConfig);
+      }
+    }, (error) => {
+      // If it's a quota error, don't crash the app, just log it.
+      // The user will see the default config.
+      if (error.message.includes('Quota limit exceeded') || error.message.includes('Quota exceeded')) {
+        console.error("Firestore Quota Exceeded for config/supervisor. Using default config.");
+      } else {
+        handleAsyncError(error, OperationType.GET, 'config/supervisor');
+      }
+    });
+    
+    return () => unsubConfig();
+  }, [isAuthReady]);
+
+  // 2. Firebase Auth Listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
       console.log("Auth state changed, user:", user);
@@ -91,10 +122,19 @@ const App: React.FC = () => {
             let userData: User | null = null;
             
             // 1. محاولة البحث بالبريد الإلكتروني
-            const q = query(collection(db, 'users'), where('email', '==', user.email));
-            const snap = await getDocs(q);
+            const q = query(collection(db, 'users'), where('email', '==', user.email), limit(1));
+            let snap;
+            try {
+              snap = await getDocs(q);
+            } catch (e: any) {
+              if (e.message?.includes('Quota') || e.code === 'resource-exhausted') {
+                snap = await getDocsFromCache(q).catch(() => ({ empty: true, docs: [] }));
+              } else {
+                throw e;
+              }
+            }
             
-            if (!snap.empty) {
+            if (snap && !snap.empty) {
               userData = { ...snap.docs[0].data() as User, id: snap.docs[0].id };
             } else {
               // 2. محاولة البحث بالمعرف (ID) إذا كان البريد الإلكتروني يتبع النمط ID@moe.om أو ID@app.com
@@ -102,8 +142,18 @@ const App: React.FC = () => {
               const emailParts = email.split('@');
               if (emailParts.length === 2 && (emailParts[1] === 'moe.om' || emailParts[1] === 'app.com')) {
                 const userId = emailParts[0];
-                const userDoc = await getDoc(doc(db, 'users', userId));
-                if (userDoc.exists()) {
+                let userDoc;
+                try {
+                  userDoc = await getDoc(doc(db, 'users', userId));
+                } catch (e: any) {
+                  if (e.message?.includes('Quota') || e.code === 'resource-exhausted') {
+                    userDoc = await getDocFromCache(doc(db, 'users', userId)).catch(() => ({ exists: () => false }));
+                  } else {
+                    throw e;
+                  }
+                }
+                
+                if (userDoc && userDoc.exists()) {
                   userData = { ...userDoc.data() as User, id: userDoc.id };
                 }
               }
@@ -123,10 +173,14 @@ const App: React.FC = () => {
               setAuth({ user: null, isAuthenticated: false });
               await signOut(firebaseAuth);
             }
-          } catch (error) {
+          } catch (error: any) {
             console.error("Error fetching user data:", error);
-            setAuth({ user: null, isAuthenticated: false });
-            await signOut(firebaseAuth);
+            if (error.message?.includes('Quota limit exceeded') || error.message?.includes('Quota exceeded')) {
+              handleAsyncError(error, OperationType.GET, 'users');
+            } else {
+              setAuth({ user: null, isAuthenticated: false });
+              await signOut(firebaseAuth);
+            }
           }
         }
       } else {
@@ -143,27 +197,9 @@ const App: React.FC = () => {
 
     let unsubs: Unsubscribe[] = [];
 
-    const handleAsyncError = (error: any, op: OperationType, path: string) => {
-      try {
-        handleFirestoreError(error, op, path);
-      } catch (e) {
-        setAsyncError(e as Error);
-      }
-    };
-
-    // Public/Login-required listeners (for everyone including anonymous)
-    const setupPublicListeners = () => {
-      const unsubConfig = onSnapshot(doc(db, 'config', 'supervisor'), (docSnap) => {
-        if (docSnap.exists()) {
-          setSupervisorConfig(docSnap.data() as SupervisorConfig);
-        }
-      }, (error) => handleAsyncError(error, OperationType.GET, 'config/supervisor'));
-      unsubs.push(unsubConfig);
-    };
-
     // Private listeners (only for authenticated users with roles)
     const setupPrivateListeners = () => {
-      const unsubPosts = onSnapshot(query(collection(db, 'posts'), limit(20)), (snapshot) => {
+      const unsubPosts = onSnapshot(query(collection(db, 'posts'), limit(15)), (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Post));
         setPosts(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       }, (error) => handleAsyncError(error, OperationType.LIST, 'posts'));
@@ -174,7 +210,7 @@ const App: React.FC = () => {
         where('academicYear', '==', currentAcademicYear),
         where('semester', '==', currentSemester),
         where('isArchived', '==', false),
-        limit(50)
+        limit(30)
       );
 
       const unsubLessons = onSnapshot(qLessons, (snapshot) => {
@@ -185,13 +221,13 @@ const App: React.FC = () => {
 
       let qProjects;
       if (auth.user?.role === UserRole.SUPERVISOR || auth.user?.role === UserRole.TEMP_SUPERVISOR) {
-        qProjects = query(collection(db, 'projects'), where('academicYear', '==', currentAcademicYear), limit(30));
+        qProjects = query(collection(db, 'projects'), where('academicYear', '==', currentAcademicYear), limit(20));
       } else {
         qProjects = query(
           collection(db, 'projects'), 
           where('academicYear', '==', currentAcademicYear),
           where('assignedTeacherIds', 'array-contains', auth.user?.id),
-          limit(30)
+          limit(20)
         );
       }
 
@@ -202,7 +238,7 @@ const App: React.FC = () => {
       unsubs.push(unsubProjects);
 
       const unsubNotifications = onSnapshot(
-        query(collection(db, 'notifications'), where('userId', '==', auth.user?.id), limit(50)), 
+        query(collection(db, 'notifications'), where('userId', '==', auth.user?.id), limit(30)), 
         (snapshot) => {
           const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Notification));
           setNotifications(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
@@ -216,7 +252,7 @@ const App: React.FC = () => {
           where('recipientId', '==', auth.user?.id),
           where('senderId', '==', auth.user?.id)
         ),
-        limit(50)
+        limit(30)
       );
 
       const unsubMessages = onSnapshot(qMessages, (snapshot) => {
@@ -226,13 +262,13 @@ const App: React.FC = () => {
       unsubs.push(unsubMessages);
 
       if (auth.user?.role === UserRole.SUPERVISOR || auth.user?.role === UserRole.TEMP_SUPERVISOR) {
-        const unsubTeachers = onSnapshot(query(collection(db, 'users'), limit(100)), (snapshot) => {
+        const unsubTeachers = onSnapshot(query(collection(db, 'users'), limit(60)), (snapshot) => {
           const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
           setTeachers(list);
         }, (error) => handleAsyncError(error, OperationType.LIST, 'users'));
         unsubs.push(unsubTeachers);
 
-        const unsubReset = onSnapshot(query(collection(db, 'resetRequests'), limit(20)), (snapshot) => {
+        const unsubReset = onSnapshot(query(collection(db, 'resetRequests'), limit(15)), (snapshot) => {
           const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as ResetRequest));
           setResetRequests(list);
         }, (error) => handleAsyncError(error, OperationType.LIST, 'resetRequests'));
@@ -240,7 +276,6 @@ const App: React.FC = () => {
       }
     };
 
-    setupPublicListeners();
     if (auth.isAuthenticated) {
       setupPrivateListeners();
     }

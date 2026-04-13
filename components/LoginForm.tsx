@@ -4,7 +4,7 @@ import { GraduationCap } from 'lucide-react';
 import { UserRole, User, SupervisorConfig } from '../types';
 import { auth, db } from '../src/firebase';
 import { sendPasswordResetEmail, GoogleAuthProvider, OAuthProvider, signInWithPopup } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, getDocFromCache } from 'firebase/firestore';
 
 interface LoginFormProps {
   onLogin: (user: User) => void;
@@ -56,8 +56,18 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, teachers, onForgotPasswo
         
         // If not in local list (because it's not loaded yet), fetch it
         if (!foundInTeachers) {
-          const userDoc = await getDoc(doc(db, 'users', employeeId));
-          if (userDoc.exists()) {
+          let userDoc;
+          try {
+            userDoc = await getDoc(doc(db, 'users', employeeId));
+          } catch (err: any) {
+            if (err.message?.includes('Quota') || err.code === 'resource-exhausted') {
+              userDoc = await getDocFromCache(doc(db, 'users', employeeId)).catch(() => null);
+            } else {
+              throw err;
+            }
+          }
+          
+          if (userDoc && userDoc.exists()) {
             foundInTeachers = { ...userDoc.data() as User, id: userDoc.id };
           }
         }
@@ -91,8 +101,18 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, teachers, onForgotPasswo
       
       // If not in local list, fetch it
       if (!foundUser) {
-        const userDoc = await getDoc(doc(db, 'users', employeeId));
-        if (userDoc.exists()) {
+        let userDoc;
+        try {
+          userDoc = await getDoc(doc(db, 'users', employeeId));
+        } catch (err: any) {
+          if (err.message?.includes('Quota') || err.code === 'resource-exhausted') {
+            userDoc = await getDocFromCache(doc(db, 'users', employeeId)).catch(() => null);
+          } else {
+            throw err;
+          }
+        }
+        
+        if (userDoc && userDoc.exists()) {
           foundUser = { ...userDoc.data() as User, id: userDoc.id };
         }
       }
@@ -108,9 +128,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, teachers, onForgotPasswo
       } else {
         setError('كلمة المرور غير صحيحة');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Login error:", err);
-      setError('حدث خطأ أثناء محاولة تسجيل الدخول. يرجى المحاولة مرة أخرى.');
+      if (err.message?.includes('Quota limit exceeded') || err.message?.includes('Quota exceeded')) {
+        setError('تم تجاوز حصة الاستخدام اليومية لخدمة قاعدة البيانات. يرجى المحاولة مرة أخرى غداً.');
+      } else {
+        setError('حدث خطأ أثناء محاولة تسجيل الدخول. يرجى المحاولة مرة أخرى.');
+      }
     } finally {
       setIsLoggingIn(false);
     }
