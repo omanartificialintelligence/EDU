@@ -4,9 +4,6 @@ import {
   User, Project, Post, ProjectSubmission, Attachment, ResetRequest, 
   LessonMaterial, LessonComment, UserRole, SupervisorConfig, Notification, AuditLog, Message 
 } from '../types';
-import { db, auth, storage, handleFirestoreError, OperationType } from '../src/firebase';
-import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, deleteDoc, arrayUnion, getDoc, setDoc } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import SettingsPage from './SettingsPage';
 import { 
   LayoutDashboard, Users, Rocket, Palette, Archive, Bell, 
@@ -14,7 +11,7 @@ import {
   Clock, Shield, MessageSquare, Pin, FileText, Download, Calendar,
   TrendingUp, Award, Activity, Settings, Share2, Send, Trash2,
   Phone, Hash, BookOpen, GraduationCap, User as UserIcon,
-  FileIcon, Link as LinkIcon, Video, Music, Image as ImageIcon, ChevronDown, ChevronUp, GripVertical, Eye, ListTodo, Edit, Play
+  FileIcon, Link as LinkIcon, Video, Music, Image as ImageIcon, ChevronDown, ChevronUp, GripVertical, Eye, ListTodo, Edit
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -72,10 +69,9 @@ interface SupervisorDashboardProps {
   academicYear: string;
   semester: string;
   onSwitchToTeacherView?: () => void;
-  onUpdateUserPreferences?: (preferences: any) => void;
 }
 
-const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({ 
+const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ 
   user, teachers, posts, projects, lessonMaterials, resetRequests,
   messages, onSendMessage, onMarkMessageAsRead,
   onAddPost, onDeletePost, onTogglePinPost,
@@ -88,8 +84,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
   notifications, onMarkNotificationAsRead,
   onLogout,
   supervisorConfig, academicYear, semester,
-  onSwitchToTeacherView,
-  onUpdateUserPreferences
+  onSwitchToTeacherView
 }) => {
   const AVAILABLE_GRADES = ['الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع'];
   const AVAILABLE_SUBJECTS = ['لغة عربية', 'تربية إسلامية'];
@@ -107,8 +102,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
   const [newLessonSemester, setNewLessonSemester] = useState(semester);
   const [newLessonDescription, setNewLessonDescription] = useState('');
   const [newLessonAttachments, setNewLessonAttachments] = useState<Attachment[]>([]);
-  const [isUploadingLesson, setIsUploadingLesson] = useState(false);
-  const [lessonUploadProgress, setLessonUploadProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // تنظيف تلقائي: حذف المعلمات اللاتي ليس لديهن صفوف دراسية (غير مسجلات) أو بيانات غير صحيحة
@@ -150,8 +143,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
   const [messageAttachment, setMessageAttachment] = useState<string | null>(null);
   const [messageAttachmentName, setMessageAttachmentName] = useState<string>('');
   const [messageAttachmentType, setMessageAttachmentType] = useState<'image' | 'file'>('file');
-  const [isUploadingMessage, setIsUploadingMessage] = useState(false);
-  const [messageUploadProgress, setMessageUploadProgress] = useState(0);
   const [editingTeacher, setEditingTeacher] = useState<User | null>(null);
   const [editTeacherName, setEditTeacherName] = useState('');
   const [editTeacherId, setEditTeacherId] = useState('');
@@ -203,8 +194,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
   const [attachmentLessonId, setAttachmentLessonId] = useState<string>('new');
   const [attachmentNewLessonTitle, setAttachmentNewLessonTitle] = useState('');
   const [attachmentFiles, setAttachmentFiles] = useState<Attachment[]>([]);
-  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
-  const [attachmentUploadProgress, setAttachmentUploadProgress] = useState(0);
   const [attachmentTeacherId, setAttachmentTeacherId] = useState('');
   const [isZipping, setIsZipping] = useState(false);
 
@@ -278,7 +267,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
     }
   };
 
-  const handleAddAttachment = async () => {
+  const handleAddAttachment = () => {
     if (!attachmentTeacherId) {
       alert('يرجى اختيار المعلمة');
       return;
@@ -294,56 +283,50 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
 
     setIsSubmitting(true);
 
-    try {
-      const selectedTeacher = teachers.find(t => t.id === attachmentTeacherId);
-      const teacherName = selectedTeacher ? selectedTeacher.name : user.name;
-      const teacherId = selectedTeacher ? selectedTeacher.id : user.id;
+    const selectedTeacher = teachers.find(t => t.id === attachmentTeacherId);
+    const teacherName = selectedTeacher ? selectedTeacher.name : user.name;
+    const teacherId = selectedTeacher ? selectedTeacher.id : user.id;
 
-      if (attachmentLessonId === 'new') {
-        // Create new lesson with attachments
-        const newMaterial: LessonMaterial = {
-          id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-          teacherId: teacherId,
-          teacherName: teacherName,
-          lessonTitle: attachmentNewLessonTitle,
-          description: 'تم إضافة المرفقات بواسطة المشرف',
-          attachments: attachmentFiles,
-          comments: [],
-          createdAt: new Date().toISOString(),
-          academicYear: academicYear,
-          semester: attachmentSemester,
-          grade: attachmentGrade,
-          subject: attachmentSubject,
-          status: 'approved',
-          isActive: true,
-          isModelLesson: false,
-          tags: [attachmentSubject, attachmentGrade]
+    if (attachmentLessonId === 'new') {
+      // Create new lesson with attachments
+      const newMaterial: LessonMaterial = {
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        teacherId: teacherId,
+        teacherName: teacherName,
+        lessonTitle: attachmentNewLessonTitle,
+        description: 'تم إضافة المرفقات بواسطة المشرف',
+        attachments: attachmentFiles,
+        comments: [],
+        createdAt: new Date().toISOString(),
+        academicYear: academicYear,
+        semester: attachmentSemester,
+        grade: attachmentGrade,
+        subject: attachmentSubject,
+        status: 'approved',
+        isActive: true,
+        isModelLesson: false,
+        tags: [attachmentSubject, attachmentGrade]
+      };
+      onAddLessonMaterial(newMaterial);
+    } else {
+      // Add to existing lesson
+      const lesson = lessonMaterials.find(l => l.id === attachmentLessonId);
+      if (lesson) {
+        const updatedMaterial: LessonMaterial = {
+          ...lesson,
+          attachments: [...lesson.attachments, ...attachmentFiles]
         };
-        await onAddLessonMaterial(newMaterial);
-      } else {
-        // Add to existing lesson
-        const lesson = lessonMaterials.find(l => l.id === attachmentLessonId);
-        if (lesson) {
-          const updatedMaterial: LessonMaterial = {
-            ...lesson,
-            attachments: [...lesson.attachments, ...attachmentFiles]
-          };
-          await onUpdateLessonMaterial(updatedMaterial);
-        }
+        onUpdateLessonMaterial(updatedMaterial);
       }
-
-      setIsAddAttachmentModalOpen(false);
-      setAttachmentFiles([]);
-      setAttachmentNewLessonTitle('');
-      setAttachmentLessonId('new');
-      setAttachmentTeacherId('');
-      alert('تم إضافة المرفقات بنجاح');
-    } catch (error) {
-      console.error("Error adding attachment:", error);
-      alert('حدث خطأ أثناء إضافة المرفقات. يرجى المحاولة مرة أخرى.');
-    } finally {
-      setIsSubmitting(false);
     }
+
+    setIsSubmitting(false);
+    setIsAddAttachmentModalOpen(false);
+    setAttachmentFiles([]);
+    setAttachmentNewLessonTitle('');
+    setAttachmentLessonId('new');
+    setAttachmentTeacherId('');
+    alert('تم إضافة المرفقات بنجاح');
   };
 
   // Add Teacher State
@@ -491,13 +474,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
     }
   }, [viewingLesson]);
 
-  const defaultWidgets = ['stats', 'charts', 'quickActions', 'recentActivity'];
-  const [dashboardWidgets, setDashboardWidgets] = useState<string[]>(
-    Array.from(new Set(user?.preferences?.dashboardWidgets || defaultWidgets))
-  );
-  const [hiddenWidgets, setHiddenWidgets] = useState<string[]>(
-    defaultWidgets.filter(w => !Array.from(new Set(user?.preferences?.dashboardWidgets || defaultWidgets)).includes(w))
-  );
+  const [dashboardWidgets, setDashboardWidgets] = useState<string[]>(['stats', 'charts', 'quickActions', 'recentActivity']);
   const [isCustomizingDashboard, setIsCustomizingDashboard] = useState(false);
 
   const moveWidget = (index: number, direction: 'up' | 'down') => {
@@ -506,26 +483,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
     if (targetIndex < 0 || targetIndex >= newWidgets.length) return;
     [newWidgets[index], newWidgets[targetIndex]] = [newWidgets[targetIndex], newWidgets[index]];
     setDashboardWidgets(newWidgets);
-  };
-
-  const toggleWidgetVisibility = (widgetId: string) => {
-    if (dashboardWidgets.includes(widgetId)) {
-      setDashboardWidgets(prev => prev.filter(w => w !== widgetId));
-      setHiddenWidgets(prev => Array.from(new Set([...prev, widgetId])));
-    } else {
-      setHiddenWidgets(prev => prev.filter(w => w !== widgetId));
-      setDashboardWidgets(prev => Array.from(new Set([...prev, widgetId])));
-    }
-  };
-
-  const saveDashboardPreferences = () => {
-    if (onUpdateUserPreferences) {
-      onUpdateUserPreferences({
-        ...user?.preferences,
-        dashboardWidgets
-      });
-    }
-    setIsCustomizingDashboard(false);
   };
 
   const allSubjects = [
@@ -562,8 +519,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
   const [newProjectStartDate, setNewProjectStartDate] = useState('');
   const [newProjectEndDate, setNewProjectEndDate] = useState('');
   const [newProjectAttachments, setNewProjectAttachments] = useState<Attachment[]>([]);
-  const [isUploadingProject, setIsUploadingProject] = useState(false);
-  const [projectUploadProgress, setProjectUploadProgress] = useState(0);
 
 
 
@@ -723,17 +678,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
 
     onUpdateLessonMaterial(updatedLesson);
     setCommentText('');
-
-    if (lesson.teacherId !== user.id) {
-      onAddNotification({
-        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        userId: lesson.teacherId,
-        message: `أضافت المشرفة ${user.name} تعليقاً على درسك: ${lesson.lessonTitle}`,
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        type: 'comment',
-      });
-    }
   };
 
   const handleSaveSupervisorNotes = async () => {
@@ -744,24 +688,12 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
     };
     await onUpdateLessonMaterial(updatedLesson);
     setViewingLesson(updatedLesson);
-    
-    if (viewingLesson.teacherId !== user.id) {
-      onAddNotification({
-        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        userId: viewingLesson.teacherId,
-        message: `أضافت المشرفة ${user.name} ملاحظات على درسك: ${viewingLesson.lessonTitle}`,
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        type: 'comment',
-      });
-    }
-    
     alert('تم حفظ الملاحظات بنجاح');
   };
 
   const handleAddLesson = async () => {
-    if (!newLessonTitle) {
-      alert('يرجى إدخال عنوان الدرس');
+    if (!newLessonTitle || !newLessonDescription) {
+      alert('يرجى إكمال جميع الحقول');
       return;
     }
 
@@ -772,7 +704,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
         const updatedMaterial: LessonMaterial = {
           ...editingLesson,
           lessonTitle: newLessonTitle,
-          description: newLessonDescription || `درس: ${newLessonTitle}`,
+          description: newLessonDescription,
           attachments: newLessonAttachments,
           grade: newLessonGrade,
           semester: newLessonSemester,
@@ -787,7 +719,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
           teacherId: user.id,
           teacherName: user.name,
           lessonTitle: newLessonTitle,
-          description: newLessonDescription || `درس: ${newLessonTitle}`,
+          description: newLessonDescription,
           attachments: newLessonAttachments,
           comments: [],
           createdAt: new Date().toISOString(),
@@ -796,7 +728,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
           grade: newLessonGrade,
           subject: newLessonSubject,
           status: 'approved',
-          isActive: true,
           isModelLesson: false,
           tags: [newLessonSubject, newLessonGrade]
         };
@@ -870,8 +801,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
   const [newPostContent, setNewPostContent] = useState('');
   const [newPostIsPinned, setNewPostIsPinned] = useState(false);
   const [newPostAttachments, setNewPostAttachments] = useState<Attachment[]>([]);
-  const [isUploadingPost, setIsUploadingPost] = useState(false);
-  const [postUploadProgress, setPostUploadProgress] = useState(0);
 
   const isMainSupervisor = user.role === UserRole.SUPERVISOR;
   const isTempSupervisor = user.role === UserRole.TEMP_SUPERVISOR;
@@ -1176,9 +1105,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                   </div>
                   <div className="max-h-80 overflow-y-auto">
                     {notifications.length > 0 ? (
-                      notifications.map((notification) => (
+                      notifications.map((notification, index) => (
                         <motion.div 
-                          key={`notif-${notification.id}`} 
+                          key={notification.id} 
                           variants={{
                             hidden: { opacity: 0, y: 10 },
                             visible: { opacity: 1, y: 0 },
@@ -1236,7 +1165,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                     <p className="text-slate-500 font-bold text-sm">مرحباً بك في لوحة تحكم المشرف</p>
                   </div>
                   <button 
-                    onClick={() => isCustomizingDashboard ? saveDashboardPreferences() : setIsCustomizingDashboard(true)}
+                    onClick={() => setIsCustomizingDashboard(!isCustomizingDashboard)}
                     className={cn(
                       "px-6 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2",
                       isCustomizingDashboard 
@@ -1251,7 +1180,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
 
                 <div className="space-y-8">
                   {dashboardWidgets.map((widgetId, index) => (
-                    <div key={`${widgetId}-${index}`} className="relative group">
+                    <div key={widgetId} className="relative group">
                       {isCustomizingDashboard && (
                         <div className="absolute -right-12 top-0 bottom-0 flex flex-col justify-center gap-2 z-10">
                           <button 
@@ -1270,13 +1199,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                             className="p-2 bg-white rounded-lg shadow-md border border-slate-100 text-slate-400 hover:text-indigo-600 disabled:opacity-30 transition-all hover:scale-110"
                           >
                             <ChevronDown className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => toggleWidgetVisibility(widgetId)}
-                            className="p-2 bg-white rounded-lg shadow-md border border-rose-100 text-rose-400 hover:text-rose-600 transition-all hover:scale-110 mt-2"
-                            title="إخفاء"
-                          >
-                            <X className="w-4 h-4" />
                           </button>
                         </div>
                       )}
@@ -1350,7 +1272,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                                 { label: 'تسجيل معلمة', icon: Users, color: 'amber', action: () => setActiveTab('teachers') },
                               ].map((btn, i) => (
                                 <button 
-                                  key={btn.label} 
+                                  key={`${btn.label}-${i}`} 
                                   onClick={btn.action}
                                   className={cn(
                                     "p-6 rounded-3xl border border-slate-100 flex flex-col items-center gap-4 transition-all hover:shadow-lg hover:-translate-y-1",
@@ -1374,8 +1296,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                               آخر النشاطات
                             </h3>
                             <div className="space-y-4">
-                              {lessonMaterials.slice(0, 5).map((lesson) => (
-                                <div key={`recent-lesson-${lesson.id}`} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                              {lessonMaterials.slice(0, 5).map((lesson, idx) => (
+                                <div key={lesson.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                                   <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-indigo-600 shadow-sm">
                                       <BookOpen className="w-5 h-5" />
@@ -1405,35 +1327,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                     </div>
                   ))}
                 </div>
-
-                {isCustomizingDashboard && hiddenWidgets.length > 0 && (
-                  <div className="mt-8 p-6 bg-slate-50 rounded-3xl border border-slate-200 border-dashed">
-                    <h3 className="font-black text-sm text-slate-500 mb-4 flex items-center gap-2">
-                      <Plus className="w-4 h-4" />
-                      عناصر مخفية
-                    </h3>
-                    <div className="flex flex-wrap gap-3">
-                      {hiddenWidgets.map(widgetId => {
-                        const widgetLabels: Record<string, string> = {
-                          'stats': 'الإحصائيات السريعة',
-                          'charts': 'الرسوم البيانية',
-                          'quickActions': 'الإجراءات السريعة',
-                          'recentActivity': 'آخر النشاطات'
-                        };
-                        return (
-                          <button
-                            key={`${widgetId}-hidden`}
-                            onClick={() => toggleWidgetVisibility(widgetId)}
-                            className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:border-indigo-300 hover:text-indigo-600 transition-all flex items-center gap-2 shadow-sm"
-                          >
-                            <Plus className="w-3 h-3" />
-                            {widgetLabels[widgetId] || widgetId}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
               </motion.div>
             )}
 
@@ -1548,7 +1441,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                                   onChange={(e) => setCurrentAssignmentGrade(e.target.value)} 
                                   className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-transparent shadow-sm focus:border-indigo-500 font-bold text-sm outline-none appearance-none cursor-pointer"
                                 >
-                                  {AVAILABLE_GRADES.map((g, idx) => <option key={`grade-select-1-${g}-${idx}`} value={g}>{g}</option>)}
+                                  {AVAILABLE_GRADES.map((g) => <option key={`grade-select-1-${g}`} value={g}>{g}</option>)}
                                 </select>
                                 <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                                   <Filter className="w-4 h-4" />
@@ -1572,7 +1465,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                                     !user.tempPermissions?.allowedSubjects || 
                                     user.tempPermissions.allowedSubjects.length === 0 || 
                                     user.tempPermissions.allowedSubjects.includes(s)
-                                  ).map((s, idx) => <option key={`subject-select-1-${s}-${idx}`} value={s}>{s}</option>)}
+                                  ).map((s) => <option key={`subject-select-1-${s}`} value={s}>{s}</option>)}
                                 </select>
                                 <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                                   <Filter className="w-4 h-4" />
@@ -1603,7 +1496,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                                 <motion.div 
                                   initial={{ opacity: 0, scale: 0.9 }}
                                   animate={{ opacity: 1, scale: 1 }}
-                                  key={`new-assignment-${assignment.grade}-${assignment.subject}`} 
+                                  key={`new-assignment-${assignment.grade}-${assignment.subject}-${idx}`} 
                                   className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm group hover:border-indigo-200 transition-all"
                                 >
                                   <div className="w-2 h-2 rounded-full bg-indigo-500" />
@@ -1677,8 +1570,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                     </div>
                   </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="teachers-grid-container">
-                  {filteredTeachers.map((teacher) => (
-                    <div key={`teacher-card-${teacher.id}`} className="bg-white p-5 rounded-[1.5rem] shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-200 transition-all duration-300 group relative overflow-hidden">
+                  {filteredTeachers.map((teacher, i) => (
+                    <div key={teacher.id} className="bg-white p-5 rounded-[1.5rem] shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-200 transition-all duration-300 group relative overflow-hidden">
                       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                       
                       <div className="flex items-start justify-between mb-6">
@@ -1930,7 +1823,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
 
                                   <div className="flex -space-x-2 space-x-reverse">
                                     {uniqueTeachers.slice(0, 5).map((teacher, i) => (
-                                      <div key={`teacher-avatar-${grade}-${subject.name}-${teacher}`} className="w-8 h-8 rounded-full bg-white border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm" title={teacher}>
+                                      <div key={`teacher-avatar-${grade}-${subject.name}-${i}`} className="w-8 h-8 rounded-full bg-white border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm" title={teacher}>
                                         {teacher.charAt(0)}
                                       </div>
                                     ))}
@@ -1968,7 +1861,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                                 <span className="text-[10px] font-bold text-slate-400">المعلمة المسؤولة:</span>
                                 <div className="flex flex-wrap gap-1">
                                   {filteredTeachers.filter(t => t.assignments?.some(a => a.subject === viewingSubject && a.grade === activeGradeTab)).map((t, i) => (
-                                    <span key={`responsible-teacher-${t.id}`} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[10px] font-black">
+                                    <span key={`responsible-teacher-${t.id}-${i}`} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[10px] font-black">
                                       {t.name}
                                     </span>
                                   ))}
@@ -1993,7 +1886,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                           const Icon = fileInfo.icon;
                           
                           return (
-                            <div key={`material-${material.id}`} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
+                            <div key={material.id} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
                               <div className="p-6 flex-1">
                                 <div className="flex justify-between items-start mb-4">
                                   <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border relative", fileInfo.bg, fileInfo.color, "border-slate-50")}>
@@ -2059,7 +1952,11 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                                       <button 
                                         key={`${material.id}-${attachment.url}-${attachment.name}-${idx}`}
                                         onClick={() => {
-                                          setPreviewAttachment(attachment);
+                                          if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
+                                            setPreviewAttachment(attachment);
+                                          } else {
+                                            downloadFile(attachment.url, attachment.name || `${material.lessonTitle}.bin`);
+                                          }
                                         }}
                                         className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-slate-700 rounded-lg hover:bg-indigo-50 hover:text-indigo-700 transition-all font-bold text-[10px] border border-slate-100"
                                       >
@@ -2110,7 +2007,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                                         )}
                                         {material.comments && material.comments.length > 0 ? (
                                           material.comments.map((comment, index) => (
-                                            <div key={`material-comment-${material.id}-${comment.id}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                            <div key={`material-comment-${comment.id}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                                               <div className="flex justify-between items-center mb-2">
                                                 <span className="text-xs font-black text-slate-900">{comment.authorName}</span>
                                                 <span className="text-[10px] font-bold text-slate-400">
@@ -2177,38 +2074,34 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
             {/* Add Attachment Modal */}
             <AnimatePresence>
               {isAddAttachmentModalOpen && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4"
+                  onClick={() => setIsAddAttachmentModalOpen(false)}
+                >
                   <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4"
-                    onClick={() => { if (!isSubmitting) setIsAddAttachmentModalOpen(false); }}
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    onClick={e => e.stopPropagation()}
+                    className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden"
                   >
-                    <motion.div
-                      initial={{ scale: 0.9, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.9, opacity: 0 }}
-                      onClick={e => e.stopPropagation()}
-                      className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden"
-                    >
-                      <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center">
-                            <Plus className="w-6 h-6" />
-                          </div>
-                          <div>
-                            <h3 className="text-xl font-black text-slate-900">إضافة مرفق جديد</h3>
-                            <p className="text-slate-500 font-bold text-xs">أضيفي ملفات ومرفقات للدروس</p>
-                          </div>
+                    <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center">
+                          <Plus className="w-6 h-6" />
                         </div>
-                        <button 
-                          onClick={() => { if (!isSubmitting) setIsAddAttachmentModalOpen(false); }} 
-                          disabled={isSubmitting}
-                          className="p-2 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors text-slate-400 disabled:opacity-50"
-                        >
-                          <X className="w-6 h-6" />
-                        </button>
+                        <div>
+                          <h3 className="text-xl font-black text-slate-900">إضافة مرفق جديد</h3>
+                          <p className="text-slate-500 font-bold text-xs">أضيفي ملفات ومرفقات للدروس</p>
+                        </div>
                       </div>
+                      <button onClick={() => setIsAddAttachmentModalOpen(false)} className="p-2 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors text-slate-400">
+                        <X className="w-6 h-6" />
+                      </button>
+                    </div>
 
                     <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
                       <div className="space-y-2">
@@ -2220,7 +2113,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                         >
                           <option value="">اختر المعلمة...</option>
                           {[user, ...filteredTeachers.filter(t => t.id !== user.id)].map((t, idx) => (
-                            <option key={`teacher-option-${t.id}`} value={t.id}>{t.name}</option>
+                            <option key={`teacher-option-${t.id}-${idx}`} value={t.id}>{t.name}</option>
                           ))}
                         </select>
                       </div>
@@ -2233,7 +2126,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                             onChange={e => setAttachmentGrade(e.target.value)}
                             className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
                           >
-                            {AVAILABLE_GRADES.map((g, idx) => <option key={`grade-select-2-${g}-${idx}`} value={g}>{g}</option>)}
+                            {AVAILABLE_GRADES.map((g) => <option key={`grade-select-2-${g}`} value={g}>{g}</option>)}
                           </select>
                         </div>
                         <div className="space-y-2">
@@ -2243,7 +2136,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                             onChange={e => setAttachmentSubject(e.target.value)}
                             className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
                           >
-                            {AVAILABLE_SUBJECTS.map((s, idx) => <option key={`subject-select-2-${s}-${idx}`} value={s}>{s}</option>)}
+                            {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-2-${s}`} value={s}>{s}</option>)}
                           </select>
                         </div>
                       </div>
@@ -2257,6 +2150,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                         >
                           <option value="الفصل الدراسي الأول">الفصل الدراسي الأول</option>
                           <option value="الفصل الدراسي الثاني">الفصل الدراسي الثاني</option>
+                          <option value="الفصل الأول">الفصل الأول</option>
+                          <option value="الفصل الثاني">الفصل الثاني</option>
                         </select>
                       </div>
 
@@ -2280,44 +2175,15 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                             type="file" 
                             multiple
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            onChange={async (e) => {
+                            onChange={(e) => {
                               if (e.target.files) {
                                 const files = Array.from(e.target.files);
-                                setIsUploadingAttachment(true);
-                                setAttachmentUploadProgress(0);
-
-                                const newAttachments: Attachment[] = [];
-                                let completed = 0;
-
-                                for (const file of files) {
-                                  const storageRef = ref(storage, `attachments/${Date.now()}_${file.name}`);
-                                  const uploadTask = uploadBytesResumable(storageRef, file);
-
-                                  await new Promise<void>((resolve, reject) => {
-                                    uploadTask.on('state_changed',
-                                      (snapshot) => {
-                                        const progress = ((completed + (snapshot.bytesTransferred / snapshot.totalBytes)) / files.length) * 100;
-                                        setAttachmentUploadProgress(progress);
-                                      },
-                                      (error) => {
-                                        console.error("فشل الرفع:", error);
-                                        reject(error);
-                                      },
-                                      async () => {
-                                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                                        newAttachments.push({
-                                          type: 'file' as const,
-                                          url: downloadURL,
-                                          name: file.name
-                                        });
-                                        completed++;
-                                        resolve();
-                                      }
-                                    );
-                                  });
-                                }
+                                const newAttachments = files.map(file => ({
+                                  type: 'file' as const,
+                                  url: URL.createObjectURL(file), // In a real app, upload to server
+                                  name: file.name
+                                }));
                                 setAttachmentFiles(prev => [...prev, ...newAttachments]);
-                                setIsUploadingAttachment(false);
                               }
                             }}
                           />
@@ -2327,15 +2193,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                           <p className="font-black text-slate-900 text-sm">اسحبي الملفات هنا أو اضغطي للرفع</p>
                           <p className="text-slate-400 text-xs font-bold mt-2">PDF, Word, Images, PowerPoint</p>
                         </div>
-
-                        {isUploadingAttachment && (
-                          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden mt-4">
-                            <div 
-                              className="bg-indigo-500 h-full transition-all duration-300" 
-                              style={{ width: `${attachmentUploadProgress}%` }}
-                            />
-                          </div>
-                        )}
 
                         {attachmentFiles.length > 0 && (
                           <div className="space-y-2 mt-4">
@@ -2360,46 +2217,27 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                       </div>
                     </div>
 
-                    <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex flex-col gap-4">
-                      {isSubmitting && (
-                        <div className="space-y-2 mb-2">
-                          <div className="flex justify-between items-center text-[10px] font-black text-indigo-600">
-                            <span>جاري حفظ المرفقات...</span>
-                            <span>يرجى عدم إغلاق النافذة</span>
-                          </div>
-                          <div className="w-full h-1.5 bg-indigo-100 rounded-full overflow-hidden">
-                            <motion.div 
-                              initial={{ x: '-100%' }}
-                              animate={{ x: '100%' }}
-                              transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-                              className="w-full h-full bg-indigo-600"
-                            />
-                          </div>
-                        </div>
-                      )}
-                      <div className="flex gap-4">
-                        <button 
-                          onClick={() => { if (!isSubmitting) setIsAddAttachmentModalOpen(false); }}
-                          disabled={isSubmitting}
-                          className="flex-1 py-4 rounded-2xl font-black text-sm text-slate-500 hover:bg-slate-100 transition-all disabled:opacity-50"
-                        >
-                          إلغاء
-                        </button>
-                        <button 
-                          onClick={handleAddAttachment}
-                          disabled={isSubmitting}
-                          className="flex-[2] bg-indigo-600 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 hover:shadow-indigo-600/40 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                        >
-                          {isSubmitting ? (
-                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <>
-                              <CheckCircle className="w-5 h-5" />
-                              حفظ المرفقات
-                            </>
-                          )}
-                        </button>
-                      </div>
+                    <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex gap-4">
+                      <button 
+                        onClick={() => setIsAddAttachmentModalOpen(false)}
+                        className="flex-1 py-4 rounded-2xl font-black text-sm text-slate-500 hover:bg-slate-100 transition-all"
+                      >
+                        إلغاء
+                      </button>
+                      <button 
+                        onClick={handleAddAttachment}
+                        disabled={isSubmitting}
+                        className="flex-[2] bg-indigo-600 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 hover:shadow-indigo-600/40 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                      >
+                        {isSubmitting ? (
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <CheckCircle className="w-5 h-5" />
+                            حفظ المرفقات
+                          </>
+                        )}
+                      </button>
                     </div>
                   </motion.div>
                 </motion.div>
@@ -2496,55 +2334,18 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                           id="post-file-upload"
                           multiple
                           className="hidden"
-                          onChange={async (e) => {
+                          onChange={(e) => {
                             if (e.target.files) {
                               const files = Array.from(e.target.files);
-                              setIsUploadingPost(true);
-                              setPostUploadProgress(0);
-
-                              const newAtts: Attachment[] = [];
-                              let completed = 0;
-
-                              for (const file of files) {
-                                const storageRef = ref(storage, `posts/${Date.now()}_${file.name}`);
-                                const uploadTask = uploadBytesResumable(storageRef, file);
-
-                                await new Promise<void>((resolve, reject) => {
-                                  uploadTask.on('state_changed',
-                                    (snapshot) => {
-                                      const progress = ((completed + (snapshot.bytesTransferred / snapshot.totalBytes)) / files.length) * 100;
-                                      setPostUploadProgress(progress);
-                                    },
-                                    (error) => {
-                                      console.error("فشل الرفع:", error);
-                                      reject(error);
-                                    },
-                                    async () => {
-                                      const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                                      newAtts.push({
-                                        type: 'file' as const,
-                                        url: downloadURL,
-                                        name: file.name
-                                      });
-                                      completed++;
-                                      resolve();
-                                    }
-                                  );
-                                });
-                              }
+                              const newAtts = files.map(file => ({
+                                type: 'file' as const,
+                                url: URL.createObjectURL(file),
+                                name: file.name
+                              }));
                               setNewPostAttachments([...newPostAttachments, ...newAtts]);
-                              setIsUploadingPost(false);
                             }
                           }}
                         />
-                        {isUploadingPost && (
-                          <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden mt-2">
-                            <div 
-                              className="bg-indigo-500 h-full transition-all duration-300" 
-                              style={{ width: `${postUploadProgress}%` }}
-                            />
-                          </div>
-                        )}
                         {newPostAttachments.length > 0 && (
                           <div className="flex flex-wrap gap-2">
                             {newPostAttachments.map((att, idx) => (
@@ -2581,8 +2382,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                 </div>
 
                 <div className="space-y-6">
-                  {filteredPosts.map((post) => (
-                    <div key={`post-${post.id}`} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden">
+                  {filteredPosts.map((post, index) => (
+                    <div key={post.id} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden">
                       {post.isPinned && (
                         <div className="absolute top-0 left-0 w-full h-1.5 bg-indigo-500" />
                       )}
@@ -2609,16 +2410,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                       {post.attachments.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                           {post.attachments.map((att, i) => (
-                            <div key={`post-att-${post.id}-${att.url}-${i}`} className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-500 flex items-center gap-2">
-                              <FileText className="w-3 h-3" /> <span className="truncate max-w-[150px]">{att.name}</span>
-                              <div className="flex items-center gap-1 mr-2 border-r border-slate-200 pr-2">
-                                  <button onClick={() => setPreviewAttachment(att)} className="p-1 hover:bg-slate-200 rounded text-slate-500" title="معاينة">
-                                    <Eye className="w-3 h-3" />
-                                  </button>
-                                <button onClick={() => downloadFile(att.url, att.name)} className="p-1 hover:bg-slate-200 rounded text-slate-500" title="تنزيل">
-                                  <Download className="w-3 h-3" />
-                                </button>
-                              </div>
+                            <div key={`post-att-${post.id}-${i}`} className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-500 flex items-center gap-2">
+                              <FileText className="w-3 h-3" /> {att.name}
                             </div>
                           ))}
                         </div>
@@ -2646,7 +2439,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                     <div className="flex flex-col gap-2">
                       {availableArchiveYears.map((year, idx) => (
                         <button 
-                          key={`archive-year-${year}`}
+                          key={`archive-year-${year}-${idx}`}
                           onClick={() => {
                             setSelectedArchiveYear(year);
                             setSelectedArchiveSemester(getSemesterForYear(year));
@@ -2677,7 +2470,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                       <div className="flex flex-wrap gap-2 p-1.5 bg-slate-50 rounded-2xl">
                         {AVAILABLE_GRADES.map((grade, idx) => (
                           <button
-                            key={`archive-grade-${grade}`}
+                            key={`archive-grade-${grade}-${idx}`}
                             onClick={() => {
                               setSelectedArchiveGrade(grade);
                               setSelectedArchiveSubject(null);
@@ -2695,7 +2488,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
 
                       {selectedArchiveGrade && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
-                          {allSubjects.map((subject, idx) => (
+                          {allSubjects.map((subject) => (
                             <div 
                               key={`${selectedArchiveGrade}-${subject.name}`}
                               onClick={() => {
@@ -2719,7 +2512,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
 
                               {selectedArchiveSubject === subject.name && (
                                 <div className="mt-6 flex flex-wrap gap-3 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-                                  {['الفصل الدراسي الأول', 'الفصل الدراسي الثاني'].map((sem, idx) => {
+                                  {['الفصل الأول', 'الفصل الثاني', 'الفصل الدراسي الأول', 'الفصل الدراسي الثاني'].map((sem, idx) => {
                                     // Only show semesters that actually have materials in the archive for this selection
                                     const hasMaterials = lessonMaterials.some(m => 
                                       m.academicYear === selectedArchiveYear && 
@@ -2732,7 +2525,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
 
                                     return (
                                       <button
-                                        key={`archive-sem-${sem}`}
+                                        key={`archive-sem-${sem}-${idx}`}
                                         onClick={() => setSelectedArchiveSemester(sem)}
                                         className={cn(
                                           "flex-1 min-w-[120px] py-3 rounded-xl text-xs font-black transition-all border-2",
@@ -2746,7 +2539,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                                     );
                                   })}
                                   {/* Show a message if no materials are found for any semester */}
-                                  {!['الفصل الدراسي الأول', 'الفصل الدراسي الثاني'].some(sem => 
+                                  {!['الفصل الأول', 'الفصل الثاني', 'الفصل الدراسي الأول', 'الفصل الدراسي الثاني'].some(sem => 
                                     lessonMaterials.some(m => 
                                       m.academicYear === selectedArchiveYear && 
                                       m.grade === selectedArchiveGrade && 
@@ -2802,7 +2595,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                           const Icon = fileInfo.icon;
                           
                           return (
-                            <div key={`archive-lesson-${lesson.id}`} className="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-white hover:shadow-md transition-all">
+                            <div key={`archive-lesson-${lesson.id}-${idx}`} className="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-white hover:shadow-md transition-all">
                               <div className="flex items-center gap-4">
                                 <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shadow-sm", fileInfo.bg, fileInfo.color)}>
                                   <Icon className="w-6 h-6" />
@@ -2823,9 +2616,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                               {lesson.attachments.map((attachment, idx) => (
                                 <button 
                                   key={`${lesson.id}-${attachment.url}-${attachment.name}-${idx}`}
-                                  onClick={() => {
-                                    setPreviewAttachment(attachment);
-                                  }}
+                                  onClick={() => downloadFile(attachment.url, attachment.name || lesson.lessonTitle)}
                                   className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm"
                                   title={`تحميل ${attachment.name || `مرفق ${idx + 1}`}`}
                                 >
@@ -2882,7 +2673,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           {projects.filter(p => p.academicYear === selectedArchiveYear).length > 0 ? (
                             projects.filter(p => p.academicYear === selectedArchiveYear).map((project, idx) => (
-                              <div key={`archive-project-${project.id}`} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
+                              <div key={`archive-project-${project.id}-${idx}`} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
                                 <div className="flex justify-between items-start mb-4">
                                   <div>
                                     <h4 className="font-bold text-lg text-slate-900">{project.name}</h4>
@@ -2932,7 +2723,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                         <div className="grid grid-cols-1 gap-4">
                           {posts.filter(p => p.academicYear === selectedArchiveYear).length > 0 ? (
                             posts.filter(p => p.academicYear === selectedArchiveYear).map((post, idx) => (
-                              <div key={`archive-post-${post.id}`} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex justify-between items-start">
+                              <div key={`archive-post-${post.id}-${idx}`} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex justify-between items-start">
                                 <div>
                                   <h4 className="font-bold text-slate-900 mb-1">{post.title}</h4>
                                   <p className="text-xs text-slate-500 mb-2">{new Date(post.createdAt).toLocaleDateString('ar-OM')}</p>
@@ -2986,7 +2777,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                 <div className="flex flex-col gap-6 max-h-[70vh] overflow-y-auto snap-y snap-mandatory pr-2 custom-scrollbar focus:outline-none" tabIndex={0}>
                   {filteredProjects.map((project, index) => (
                     <motion.div 
-                      key={`project-card-${project.id}`}
+                      key={project.id}
                       initial={{ opacity: 0, y: 50 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
@@ -3086,7 +2877,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                           <h4 className="font-black text-slate-800 mb-3 text-sm">مهام المشروع المطلوبة:</h4>
                           <ul className="space-y-2">
                             {viewingProject.tasks.map((task, i) => (
-                                  <li key={`proj-task-${viewingProject.id}-${i}`} className="flex items-start gap-2 text-sm text-slate-600">
+                                  <li key={`proj-task-${viewingProject.id}-${task}`} className="flex items-start gap-2 text-sm text-slate-600">
                                     <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold mt-0.5 shrink-0">
                                       {i + 1}
                                     </span>
@@ -3145,9 +2936,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                                     {submission.files.map((file, i) => (
                                       <button 
                                         key={`sub-file-${file.name}-${i}`}
-                                        onClick={() => {
-                                          setPreviewAttachment({url: file.url, type: file.type, name: file.name});
-                                        }}
+                                        onClick={() => downloadFile(file.url, file.name)}
                                         className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:text-indigo-600 hover:border-indigo-200 transition-all"
                                       >
                                         <Download className="w-4 h-4" />
@@ -3245,7 +3034,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                         return true;
                       }).map((msg, index) => (
                         <div 
-                          key={`msg-${msg.id}`}
+                          key={msg.id}
                           className={cn(
                             "flex flex-col max-w-[75%]",
                             msg.senderId === user.id ? "mr-auto items-end" : "ml-auto items-start"
@@ -3314,24 +3103,12 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                           if (fileInput) fileInput.value = '';
                         }
                       }}
-                      className="flex gap-3 relative"
+                      className="flex gap-3"
                     >
-                      {isUploadingMessage && (
-                        <div className="absolute bottom-full left-0 w-full bg-white p-2 border border-slate-100 rounded-lg mb-2 shadow-sm">
-                          <div className="text-xs font-bold text-slate-500 mb-1">جاري الرفع...</div>
-                          <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
-                            <div 
-                              className="bg-indigo-500 h-full transition-all duration-300" 
-                              style={{ width: `${messageUploadProgress}%` }}
-                            />
-                          </div>
-                        </div>
-                      )}
                       <button
                         type="button"
                         onClick={() => document.getElementById('sup-msg-file-upload')?.click()}
-                        disabled={isUploadingMessage}
-                        className="p-4 bg-slate-100 text-slate-500 rounded-2xl hover:bg-slate-200 transition-all disabled:opacity-50"
+                        className="p-4 bg-slate-100 text-slate-500 rounded-2xl hover:bg-slate-200 transition-all"
                       >
                         <Plus className="w-6 h-6" />
                       </button>
@@ -3344,29 +3121,11 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                           if (file) {
                             setMessageAttachmentName(file.name);
                             setMessageAttachmentType(file.type.startsWith('image/') ? 'image' : 'file');
-                            setIsUploadingMessage(true);
-                            setMessageUploadProgress(0);
-
-                            const storageRef = ref(storage, `messages/${Date.now()}_${file.name}`);
-                            const uploadTask = uploadBytesResumable(storageRef, file);
-
-                            uploadTask.on('state_changed', 
-                              (snapshot) => {
-                                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                                setMessageUploadProgress(progress);
-                              }, 
-                              (error) => { 
-                                console.error("فشل الرفع:", error);
-                                alert('حدث خطأ أثناء رفع الملف.');
-                                setIsUploadingMessage(false);
-                              }, 
-                              () => {
-                                getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-                                  setMessageAttachment(downloadURL);
-                                  setIsUploadingMessage(false);
-                                });
-                              }
-                            );
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setMessageAttachment(reader.result as string);
+                            };
+                            reader.readAsDataURL(file);
                           }
                         }}
                       />
@@ -3458,7 +3217,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                             <h6 className="font-bold text-slate-700 text-xs mb-3">المواد المسموح بمتابعتها (اتركه فارغاً للسماح بالكل)</h6>
                             <div className="flex flex-wrap gap-2">
                               {AVAILABLE_SUBJECTS.map((subject, idx) => (
-                                <label key={`subject-filter-${subject}`} className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
+                                <label key={`subject-filter-${subject}-${idx}`} className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
                                   <input 
                                     type="checkbox" 
                                     checked={tempPermSubjects.includes(subject)}
@@ -3485,9 +3244,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                     <section className="space-y-6">
                       <h4 className="font-black text-slate-800 text-sm border-r-4 border-red-500 pr-4">المشرفين المؤقتين الحاليين</h4>
                       <div className="space-y-4">
-                        {teachers.filter(t => t.role === UserRole.TEMP_SUPERVISOR).map((supervisor, sIdx) => {
+                        {teachers.filter(t => t.role === UserRole.TEMP_SUPERVISOR).map((supervisor) => {
                           return (
-                            <div key={`supervisor-card-${supervisor.id}`} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-slate-50 rounded-xl border border-slate-100 gap-4">
+                            <div key={`supervisor-${supervisor.id}`} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-slate-50 rounded-xl border border-slate-100 gap-4">
                               <div>
                                 <span className="font-bold text-slate-700 block">{supervisor.name}</span>
                                 <span className="text-xs text-slate-500 font-mono mt-1 block">الرقم الوظيفي: {supervisor.code}</span>
@@ -3508,7 +3267,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                                   <div className="flex flex-wrap gap-1 mt-1">
                                     <span className="text-[10px] text-slate-500">المواد:</span>
                                     {supervisor.tempPermissions.allowedSubjects.map((s, index) => (
-                                      <span key={`${supervisor.id}-${s}-${index}`} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">{s}</span>
+                                      <span key={`${supervisor.id}-${s}`} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">{s}</span>
                                     ))}
                                   </div>
                                 )}
@@ -3811,142 +3570,53 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
       {/* Add Lesson Modal */}
       <AnimatePresence>
         {isAddLessonModalOpen && (
-          <div 
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
-            onClick={() => { if (!isSubmitting) { setIsAddLessonModalOpen(false); setEditingLesson(null); } }}
-          >
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              onClick={e => e.stopPropagation()}
               className="bg-white w-full max-w-lg rounded-[2rem] shadow-2xl p-8 border border-slate-100"
             >
               <h3 className="text-xl font-black text-slate-900 mb-6">{editingLesson ? 'تعديل الدرس' : 'إضافة درس جديد'}</h3>
               <div className="space-y-4">
-                <input type="text" placeholder="عنوان الدرس" value={newLessonTitle} onChange={e => setNewLessonTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" disabled={isSubmitting} />
-                <select value={newLessonGrade} onChange={e => setNewLessonGrade(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" disabled={isSubmitting}>
-                  {AVAILABLE_GRADES.map((g, idx) => <option key={`grade-select-3-${g}-${idx}`} value={g}>{g}</option>)}
+                <input type="text" placeholder="عنوان الدرس" value={newLessonTitle} onChange={e => setNewLessonTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" />
+                <select value={newLessonGrade} onChange={e => setNewLessonGrade(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm">
+                  {AVAILABLE_GRADES.map((g) => <option key={`grade-select-3-${g}`} value={g}>{g}</option>)}
                 </select>
-                <select value={newLessonSemester} onChange={e => setNewLessonSemester(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" disabled={isSubmitting}>
-                  <option value="الفصل الدراسي الأول">الفصل الدراسي الأول</option>
-                  <option value="الفصل الدراسي الثاني">الفصل الدراسي الثاني</option>
+                <select value={newLessonSemester} onChange={e => setNewLessonSemester(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm">
+                  <option value="الفصل الأول">الفصل الأول</option>
+                  <option value="الفصل الثاني">الفصل الثاني</option>
                 </select>
-                <select value={newLessonSubject} onChange={e => setNewLessonSubject(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" disabled={isSubmitting}>
-                  {AVAILABLE_SUBJECTS.map((s, idx) => <option key={`subject-select-3-${s}-${idx}`} value={s}>{s}</option>)}
+                <select value={newLessonSubject} onChange={e => setNewLessonSubject(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm">
+                  {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-3-${s}`} value={s}>{s}</option>)}
                 </select>
-                <textarea placeholder="وصف الدرس" value={newLessonDescription} onChange={e => setNewLessonDescription(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" rows={4} disabled={isSubmitting} />
+                <textarea placeholder="وصف الدرس" value={newLessonDescription} onChange={e => setNewLessonDescription(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" rows={4} />
                 
                 <div className="space-y-2 mt-4">
                   <p className="text-xs font-bold text-slate-500">المرفقات:</p>
                   {newLessonAttachments.map((att, i) => (
                     <div key={`new-lesson-att-${att.name}-${i}`} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
                       {att.name}
-                      <button onClick={() => setNewLessonAttachments(newLessonAttachments.filter((_, idx) => idx !== i))} className="text-red-500" disabled={isSubmitting}>حذف</button>
+                      <button onClick={() => setNewLessonAttachments(newLessonAttachments.filter((_, idx) => idx !== i))} className="text-red-500">حذف</button>
                     </div>
                   ))}
-                  {!isSubmitting && (
-                    <div className="flex flex-col gap-2">
-                      <div className="flex gap-2">
-                        <input type="text" placeholder="اسم المرفق" id="newAttName" className="flex-1 px-3 py-2 rounded-lg bg-slate-50 border-none font-bold text-xs" />
-                        <input type="text" placeholder="رابط المرفق" id="newAttUrl" className="flex-1 px-3 py-2 rounded-lg bg-slate-50 border-none font-bold text-xs" />
-                        <button onClick={() => {
-                          const nameInput = document.getElementById('newAttName') as HTMLInputElement;
-                          const urlInput = document.getElementById('newAttUrl') as HTMLInputElement;
-                          if (nameInput.value && urlInput.value) {
-                            setNewLessonAttachments([...newLessonAttachments, { name: nameInput.value, url: urlInput.value, type: 'link' }]);
-                            nameInput.value = '';
-                            urlInput.value = '';
-                          }
-                        }} className="px-3 py-2 rounded-lg bg-indigo-600 text-white font-black text-xs">+</button>
-                      </div>
-                      <div className="flex gap-2 mt-2">
-                        <input 
-                          type="file" 
-                          id="lesson-file-upload"
-                          multiple
-                          className="hidden"
-                          onChange={async (e) => {
-                            if (e.target.files) {
-                              const files = Array.from(e.target.files);
-                              setIsUploadingLesson(true);
-                              setLessonUploadProgress(0);
-
-                              const newAtts: Attachment[] = [];
-                              let completed = 0;
-
-                              for (const file of files) {
-                                const storageRef = ref(storage, `lessons/${Date.now()}_${file.name}`);
-                                const uploadTask = uploadBytesResumable(storageRef, file);
-
-                                await new Promise<void>((resolve, reject) => {
-                                  uploadTask.on('state_changed',
-                                    (snapshot) => {
-                                      const progress = ((completed + (snapshot.bytesTransferred / snapshot.totalBytes)) / files.length) * 100;
-                                      setLessonUploadProgress(progress);
-                                    },
-                                    (error) => {
-                                      console.error("فشل الرفع:", error);
-                                      reject(error);
-                                    },
-                                    async () => {
-                                      const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                                      newAtts.push({
-                                        type: 'file' as const,
-                                        url: downloadURL,
-                                        name: file.name
-                                      });
-                                      completed++;
-                                      resolve();
-                                    }
-                                  );
-                                });
-                              }
-                              setNewLessonAttachments([...newLessonAttachments, ...newAtts]);
-                              setIsUploadingLesson(false);
-                            }
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => document.getElementById('lesson-file-upload')?.click()}
-                          disabled={isUploadingLesson}
-                          className="w-full py-2 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs hover:bg-slate-200 transition-all disabled:opacity-50"
-                        >
-                          رفع ملفات
-                        </button>
-                      </div>
-                      {isUploadingLesson && (
-                        <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden mt-2">
-                          <div 
-                            className="bg-indigo-500 h-full transition-all duration-300" 
-                            style={{ width: `${lessonUploadProgress}%` }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <div className="flex gap-2">
+                    <input type="text" placeholder="اسم المرفق" id="newAttName" className="flex-1 px-3 py-2 rounded-lg bg-slate-50 border-none font-bold text-xs" />
+                    <input type="text" placeholder="رابط المرفق" id="newAttUrl" className="flex-1 px-3 py-2 rounded-lg bg-slate-50 border-none font-bold text-xs" />
+                    <button onClick={() => {
+                      const nameInput = document.getElementById('newAttName') as HTMLInputElement;
+                      const urlInput = document.getElementById('newAttUrl') as HTMLInputElement;
+                      if (nameInput.value && urlInput.value) {
+                        setNewLessonAttachments([...newLessonAttachments, { name: nameInput.value, url: urlInput.value, type: 'link' }]);
+                        nameInput.value = '';
+                        urlInput.value = '';
+                      }
+                    }} className="px-3 py-2 rounded-lg bg-indigo-600 text-white font-black text-xs">+</button>
+                  </div>
                 </div>
 
-                {isSubmitting && (
-                  <div className="space-y-2 mt-4">
-                    <div className="flex justify-between items-center text-[10px] font-black text-indigo-600">
-                      <span>جاري حفظ الدرس...</span>
-                      <span>يرجى عدم إغلاق النافذة</span>
-                    </div>
-                    <div className="w-full h-1.5 bg-indigo-100 rounded-full overflow-hidden">
-                      <motion.div 
-                        initial={{ x: '-100%' }}
-                        animate={{ x: '100%' }}
-                        transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-                        className="w-full h-full bg-indigo-600"
-                      />
-                    </div>
-                  </div>
-                )}
-
                 <div className="flex gap-3 mt-6">
-                  <button onClick={() => { if (!isSubmitting) { setIsAddLessonModalOpen(false); setEditingLesson(null); } }} disabled={isSubmitting} className="flex-1 px-4 py-3 rounded-xl bg-slate-100 text-slate-600 font-black text-xs hover:bg-slate-200 disabled:opacity-50">إلغاء</button>
+                  <button onClick={() => { setIsAddLessonModalOpen(false); setEditingLesson(null); }} className="flex-1 px-4 py-3 rounded-xl bg-slate-100 text-slate-600 font-black text-xs hover:bg-slate-200">إلغاء</button>
                   <button onClick={handleAddLesson} disabled={isSubmitting} className="flex-1 px-4 py-3 rounded-xl bg-indigo-600 text-white font-black text-xs hover:bg-indigo-700 disabled:opacity-50">{editingLesson ? 'حفظ التعديلات' : 'حفظ الدرس'}</button>
                 </div>
               </div>
@@ -4067,56 +3737,19 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                       id="project-file-upload"
                       multiple
                       className="hidden"
-                      onChange={async (e) => {
+                      onChange={(e) => {
                         if (e.target.files) {
                           const files = Array.from(e.target.files);
-                          setIsUploadingProject(true);
-                          setProjectUploadProgress(0);
-
-                          const newAtts: Attachment[] = [];
-                          let completed = 0;
-
-                          for (const file of files) {
-                            const storageRef = ref(storage, `projects/${Date.now()}_${file.name}`);
-                            const uploadTask = uploadBytesResumable(storageRef, file);
-
-                            await new Promise<void>((resolve, reject) => {
-                              uploadTask.on('state_changed',
-                                (snapshot) => {
-                                  const progress = ((completed + (snapshot.bytesTransferred / snapshot.totalBytes)) / files.length) * 100;
-                                  setProjectUploadProgress(progress);
-                                },
-                                (error) => {
-                                  console.error("فشل الرفع:", error);
-                                  reject(error);
-                                },
-                                async () => {
-                                  const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                                  newAtts.push({
-                                    type: 'file' as const,
-                                    url: downloadURL,
-                                    name: file.name
-                                  });
-                                  completed++;
-                                  resolve();
-                                }
-                              );
-                            });
-                          }
+                          const newAtts = files.map(file => ({
+                            type: 'file' as const,
+                            url: URL.createObjectURL(file),
+                            name: file.name
+                          }));
                           setNewProjectAttachments([...newProjectAttachments, ...newAtts]);
-                          setIsUploadingProject(false);
                         }
                       }}
                     />
                   </div>
-                  {isUploadingProject && (
-                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden mt-2">
-                      <div 
-                        className="bg-indigo-500 h-full transition-all duration-300" 
-                        style={{ width: `${projectUploadProgress}%` }}
-                      />
-                    </div>
-                  )}
                   {newProjectAttachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {newProjectAttachments.map((att, idx) => (
@@ -4204,7 +3837,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                   <label className="text-sm font-black text-slate-700">تعيين المعلمات</label>
                   <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-100">
                     {[user, ...filteredTeachers.filter(t => t.id !== user.id)].map((teacher, idx) => (
-                      <label key={`teacher-select-${teacher.id}`} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-indigo-500 transition-all">
+                      <label key={`teacher-select-${teacher.id}-${idx}`} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-indigo-500 transition-all">
                         <input 
                           type="checkbox"
                           checked={newProjectTeachers.includes(teacher.id)}
@@ -4317,7 +3950,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                         onChange={(e) => setEditAssignmentGrade(e.target.value)} 
                         className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-transparent shadow-sm focus:border-indigo-500 font-bold text-sm outline-none"
                       >
-                        {AVAILABLE_GRADES.map((g, idx) => <option key={`grade-select-4-${g}-${idx}`} value={g}>{g}</option>)}
+                        {AVAILABLE_GRADES.map((g) => <option key={`grade-select-4-${g}`} value={g}>{g}</option>)}
                       </select>
                     </div>
 
@@ -4328,7 +3961,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                         onChange={(e) => setEditAssignmentSubject(e.target.value)} 
                         className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-transparent shadow-sm focus:border-indigo-500 font-bold text-sm outline-none"
                       >
-                        {AVAILABLE_SUBJECTS.map((s, idx) => <option key={`subject-select-4-${s}-${idx}`} value={s}>{s}</option>)}
+                        {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-4-${s}`} value={s}>{s}</option>)}
                       </select>
                     </div>
 
@@ -4349,7 +3982,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
 
                   <div className="flex flex-wrap gap-3 mt-4">
                     {editTeacherAssignments.map((assignment, idx) => (
-                      <div key={`edit-assignment-${assignment.grade}-${assignment.subject}`} className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
+                      <div key={`edit-assignment-${assignment.grade}-${assignment.subject}-${idx}`} className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
                         <span className="font-bold text-xs text-slate-700">{assignment.grade} • {assignment.subject}</span>
                         <button 
                           type="button" 
@@ -4450,74 +4083,31 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                       <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
                       المرفقات والمصادر ({viewingLesson.attachments.length})
                     </h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {viewingLesson.attachments.map((attachment, idx) => {
                         const attachInfo = getAttachmentIcon(attachment);
                         const AttachIcon = attachInfo.icon;
-                        const isImage = attachment.type === 'image' || attachment.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)$/);
-                        const isVideo = attachment.type === 'video' || attachment.name.toLowerCase().match(/\.(mp4|mov|avi|webm)$/);
-                        const isPdf = attachment.name.toLowerCase().endsWith('.pdf');
-
                         return (
-                          <div 
+                          <button 
                             key={`preview-att-${attachment.url}-${idx}`}
-                            className="group relative bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg transition-all"
+                            onClick={() => {
+                              if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
+                                setPreviewAttachment(attachment);
+                              } else {
+                                downloadFile(attachment.url, attachment.name || `مرفق-${idx + 1}`);
+                              }
+                            }}
+                            className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 hover:border-indigo-200 hover:shadow-md transition-all group text-right"
                           >
-                            <div className="aspect-video w-full bg-slate-50 flex items-center justify-center overflow-hidden relative">
-                              {isImage ? (
-                                <img 
-                                  src={attachment.url} 
-                                  alt={attachment.name} 
-                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                  referrerPolicy="no-referrer"
-                                />
-                              ) : isVideo ? (
-                                <div className="w-full h-full flex items-center justify-center bg-slate-900">
-                                  <Video className="w-8 h-8 text-white/50" />
-                                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
-                                    <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
-                                      <Play className="w-5 h-5 text-white fill-current" />
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : isPdf ? (
-                                <div className="w-full h-full flex flex-col items-center justify-center bg-red-50 group-hover:bg-red-100 transition-colors">
-                                  <FileText className="w-10 h-10 text-red-500" />
-                                  <span className="mt-2 text-[10px] font-black text-red-600 bg-white px-2 py-0.5 rounded-full shadow-sm">PDF</span>
-                                </div>
-                              ) : (
-                                <div className={cn("w-full h-full flex flex-col items-center justify-center", attachInfo.bg)}>
-                                  <AttachIcon className={cn("w-10 h-10", attachInfo.color)} />
-                                  <span className={cn("mt-2 text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm bg-white", attachInfo.color)}>
-                                    {(attachment.type || 'FILE').toUpperCase()}
-                                  </span>
-                                </div>
-                              )}
-                              
-                              {/* Overlay Actions */}
-                              <div className="absolute inset-0 bg-indigo-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                                <button 
-                                  onClick={() => setPreviewAttachment(attachment)}
-                                  className="p-2.5 bg-white text-indigo-600 rounded-xl hover:scale-110 transition-transform shadow-lg"
-                                  title="عرض"
-                                >
-                                  <Eye className="w-5 h-5" />
-                                </button>
-                                <button 
-                                  onClick={() => downloadFile(attachment.url, attachment.name)}
-                                  className="p-2.5 bg-white text-emerald-600 rounded-xl hover:scale-110 transition-transform shadow-lg"
-                                  title="تحميل"
-                                >
-                                  <Download className="w-5 h-5" />
-                                </button>
-                              </div>
+                            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", attachInfo.bg, attachInfo.color)}>
+                              <AttachIcon className="w-5 h-5" />
                             </div>
-                            <div className="p-3">
-                              <p className="text-[10px] font-black text-slate-700 truncate text-center" title={attachment.name}>
-                                {attachment.name || `مرفق ${idx + 1}`}
-                              </p>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-black text-slate-900 truncate">{attachment.name || `مرفق ${idx + 1}`}</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">{attachment.type}</p>
                             </div>
-                          </div>
+                            <Download className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition-colors" />
+                          </button>
                         );
                       })}
                     </div>
@@ -4531,7 +4121,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
                         التعليقات والملاحظات
                       </h4>
                       <div className="space-y-3">
-                        {viewingLesson.comments.map((comment, index) => (
+                        {viewingLesson.comments.map((comment) => (
                           <div key={`lesson-comment-${comment.id}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
                             <div className="flex justify-between items-center mb-2">
                               <span className="text-xs font-black text-amber-700">{comment.authorName}</span>
@@ -4709,6 +4299,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = React.memo(({
       </AnimatePresence>
     </div>
   );
-});
+};
 
 export default SupervisorDashboard;

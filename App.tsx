@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { UserRole, User, AuthState, Project, Post, ResetRequest, LessonMaterial, LessonComment, SupervisorConfig, Notification, Message, Attachment, ProjectSubmission } from './types';
+import React, { useState, useEffect, useRef } from 'react';
+import { UserRole, User, AuthState, Project, Post, ResetRequest, LessonMaterial, LessonComment, SupervisorConfig, Notification, Message, Attachment } from './types';
 import LoginForm from './components/LoginForm';
 import TeacherDashboard from './components/TeacherDashboardV2';
 import SupervisorDashboard from './components/SupervisorDashboard';
@@ -8,7 +8,6 @@ import ChangePasswordForm from './components/ChangePasswordForm';
 import { db, handleFirestoreError, OperationType } from './src/firebase';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield } from 'lucide-react';
-import ErrorBoundary from './src/components/ErrorBoundary';
 import { 
   collection, 
   onSnapshot, 
@@ -20,12 +19,7 @@ import {
   where, 
   getDocs,
   getDoc,
-  getDocFromCache,
-  getDocsFromCache,
-  Unsubscribe,
-  or,
-  limit,
-  orderBy
+  Unsubscribe
 } from 'firebase/firestore';
 import { auth as firebaseAuth, googleProvider, microsoftProvider } from './src/firebase';
 import { 
@@ -52,7 +46,6 @@ const App: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [resetRequests, setResetRequests] = useState<ResetRequest[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [asyncError, setAsyncError] = useState<Error | null>(null);
   const [supervisorConfig, setSupervisorConfig] = useState<SupervisorConfig>({ 
     mainPassword: 'admin', 
     backupPassword: 'admin', 
@@ -61,47 +54,12 @@ const App: React.FC = () => {
     archiveYears: ['2024-2025', '2023-2024']
   });
 
-  const currentAcademicYear = supervisorConfig.academicYear;
-  const currentSemester = supervisorConfig.semester;
-
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false);
   const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
 
-  // Bridge async errors to ErrorBoundary
-  if (asyncError) throw asyncError;
-
-  const handleAsyncError = (error: any, op: OperationType, path: string) => {
-    try {
-      handleFirestoreError(error, op, path);
-    } catch (e) {
-      setAsyncError(e as Error);
-    }
-  };
-
-  // 1. Config Listener (Separate to avoid redundant re-subscriptions)
-  useEffect(() => {
-    if (!isAuthReady) return;
-    
-    const unsubConfig = onSnapshot(doc(db, 'config', 'supervisor'), (docSnap) => {
-      if (docSnap.exists()) {
-        setSupervisorConfig(docSnap.data() as SupervisorConfig);
-      }
-    }, (error) => {
-      // If it's a quota error, don't crash the app, just log it.
-      // The user will see the default config.
-      if (error.message.includes('Quota limit exceeded') || error.message.includes('Quota exceeded')) {
-        console.error("Firestore Quota Exceeded for config/supervisor. Using default config.");
-      } else {
-        handleAsyncError(error, OperationType.GET, 'config/supervisor');
-      }
-    });
-    
-    return () => unsubConfig();
-  }, [isAuthReady]);
-
-  // 2. Firebase Auth Listener
+  // Firebase Auth Listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
       console.log("Auth state changed, user:", user);
@@ -123,19 +81,10 @@ const App: React.FC = () => {
             let userData: User | null = null;
             
             // 1. محاولة البحث بالبريد الإلكتروني
-            const q = query(collection(db, 'users'), where('email', '==', user.email), limit(1));
-            let snap;
-            try {
-              snap = await getDocs(q);
-            } catch (e: any) {
-              if (e.message?.includes('Quota') || e.code === 'resource-exhausted') {
-                snap = await getDocsFromCache(q).catch(() => ({ empty: true, docs: [] }));
-              } else {
-                throw e;
-              }
-            }
+            const q = query(collection(db, 'users'), where('email', '==', user.email));
+            const snap = await getDocs(q);
             
-            if (snap && !snap.empty) {
+            if (!snap.empty) {
               userData = { ...snap.docs[0].data() as User, id: snap.docs[0].id };
             } else {
               // 2. محاولة البحث بالمعرف (ID) إذا كان البريد الإلكتروني يتبع النمط ID@moe.om أو ID@app.com
@@ -143,18 +92,8 @@ const App: React.FC = () => {
               const emailParts = email.split('@');
               if (emailParts.length === 2 && (emailParts[1] === 'moe.om' || emailParts[1] === 'app.com')) {
                 const userId = emailParts[0];
-                let userDoc;
-                try {
-                  userDoc = await getDoc(doc(db, 'users', userId));
-                } catch (e: any) {
-                  if (e.message?.includes('Quota') || e.code === 'resource-exhausted') {
-                    userDoc = await getDocFromCache(doc(db, 'users', userId)).catch(() => ({ exists: () => false }));
-                  } else {
-                    throw e;
-                  }
-                }
-                
-                if (userDoc && userDoc.exists()) {
+                const userDoc = await getDoc(doc(db, 'users', userId));
+                if (userDoc.exists()) {
                   userData = { ...userDoc.data() as User, id: userDoc.id };
                 }
               }
@@ -174,14 +113,10 @@ const App: React.FC = () => {
               setAuth({ user: null, isAuthenticated: false });
               await signOut(firebaseAuth);
             }
-          } catch (error: any) {
+          } catch (error) {
             console.error("Error fetching user data:", error);
-            if (error.message?.includes('Quota limit exceeded') || error.message?.includes('Quota exceeded')) {
-              handleAsyncError(error, OperationType.GET, 'users');
-            } else {
-              setAuth({ user: null, isAuthenticated: false });
-              await signOut(firebaseAuth);
-            }
+            setAuth({ user: null, isAuthenticated: false });
+            await signOut(firebaseAuth);
           }
         }
       } else {
@@ -198,87 +133,64 @@ const App: React.FC = () => {
 
     let unsubs: Unsubscribe[] = [];
 
+    // Public/Login-required listeners (for everyone including anonymous)
+    const setupPublicListeners = () => {
+      const unsubConfig = onSnapshot(doc(db, 'config', 'supervisor'), (docSnap) => {
+        if (docSnap.exists()) {
+          setSupervisorConfig(docSnap.data() as SupervisorConfig);
+        }
+      }, (error) => handleFirestoreError(error, OperationType.GET, 'config/supervisor'));
+      unsubs.push(unsubConfig);
+
+      const unsubTeachers = onSnapshot(collection(db, 'users'), (snapshot) => {
+        const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
+        setTeachers(list);
+      }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
+      unsubs.push(unsubTeachers);
+      
+      const unsubPosts = onSnapshot(collection(db, 'posts'), (snapshot) => {
+        const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Post));
+        setPosts(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      }, (error) => handleFirestoreError(error, OperationType.LIST, 'posts'));
+      unsubs.push(unsubPosts);
+    };
+
     // Private listeners (only for authenticated users with roles)
     const setupPrivateListeners = () => {
-      const unsubPosts = onSnapshot(query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(50)), (snapshot) => {
-        const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Post));
-        setPosts(list);
-      }, (error) => handleAsyncError(error, OperationType.LIST, 'posts'));
-      unsubs.push(unsubPosts);
-
-      const qLessons = query(
-        collection(db, 'lessonMaterials'),
-        where('academicYear', '==', currentAcademicYear),
-        where('semester', '==', currentSemester),
-        where('isArchived', '==', false),
-        orderBy('createdAt', 'desc'),
-        limit(100)
-      );
-
-      const unsubLessons = onSnapshot(qLessons, (snapshot) => {
+      const unsubLessons = onSnapshot(collection(db, 'lessonMaterials'), (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as LessonMaterial));
         setLessonMaterials(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-      }, (error) => handleAsyncError(error, OperationType.LIST, 'lessonMaterials'));
+      }, (error) => handleFirestoreError(error, OperationType.LIST, 'lessonMaterials'));
       unsubs.push(unsubLessons);
 
-      let qProjects;
-      if (auth.user?.role === UserRole.SUPERVISOR || auth.user?.role === UserRole.TEMP_SUPERVISOR) {
-        qProjects = query(collection(db, 'projects'), where('academicYear', '==', currentAcademicYear), limit(20));
-      } else {
-        qProjects = query(
-          collection(db, 'projects'), 
-          where('academicYear', '==', currentAcademicYear),
-          where('assignedTeacherIds', 'array-contains', auth.user?.id),
-          limit(20)
-        );
-      }
-
-      const unsubProjects = onSnapshot(qProjects, (snapshot) => {
+      const unsubProjects = onSnapshot(collection(db, 'projects'), (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Project));
         setProjects(list);
-      }, (error) => handleAsyncError(error, OperationType.LIST, 'projects'));
+      }, (error) => handleFirestoreError(error, OperationType.LIST, 'projects'));
       unsubs.push(unsubProjects);
 
-      const unsubNotifications = onSnapshot(
-        query(collection(db, 'notifications'), where('userId', '==', auth.user?.id), orderBy('createdAt', 'desc'), limit(50)), 
-        (snapshot) => {
-          const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Notification));
-          setNotifications(list);
-        }, (error) => handleAsyncError(error, OperationType.LIST, 'notifications'));
+      const unsubNotifications = onSnapshot(collection(db, 'notifications'), (snapshot) => {
+        const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Notification));
+        setNotifications(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      }, (error) => handleFirestoreError(error, OperationType.LIST, 'notifications'));
       unsubs.push(unsubNotifications);
 
-      const qMessages = query(
-        collection(db, 'messages'),
-        or(
-          where('recipientId', '==', 'ALL'),
-          where('recipientId', '==', auth.user?.id),
-          where('senderId', '==', auth.user?.id)
-        ),
-        orderBy('createdAt', 'asc'),
-        limit(100)
-      );
-
-      const unsubMessages = onSnapshot(qMessages, (snapshot) => {
+      const unsubMessages = onSnapshot(collection(db, 'messages'), (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Message));
         setMessages(list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
-      }, (error) => handleAsyncError(error, OperationType.LIST, 'messages'));
+      }, (error) => handleFirestoreError(error, OperationType.LIST, 'messages'));
       unsubs.push(unsubMessages);
 
       if (auth.user?.role === UserRole.SUPERVISOR || auth.user?.role === UserRole.TEMP_SUPERVISOR) {
-        const unsubTeachers = onSnapshot(query(collection(db, 'users'), limit(60)), (snapshot) => {
-          const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
-          setTeachers(list);
-        }, (error) => handleAsyncError(error, OperationType.LIST, 'users'));
-        unsubs.push(unsubTeachers);
-
-        const unsubReset = onSnapshot(query(collection(db, 'resetRequests'), limit(15)), (snapshot) => {
+        const unsubReset = onSnapshot(collection(db, 'resetRequests'), (snapshot) => {
           const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as ResetRequest));
           setResetRequests(list);
-        }, (error) => handleAsyncError(error, OperationType.LIST, 'resetRequests'));
+        }, (error) => handleFirestoreError(error, OperationType.LIST, 'resetRequests'));
         unsubs.push(unsubReset);
       }
     };
 
+    setupPublicListeners();
     if (auth.isAuthenticated) {
       setupPrivateListeners();
     }
@@ -286,7 +198,7 @@ const App: React.FC = () => {
     return () => {
       unsubs.forEach(unsub => unsub());
     };
-  }, [isAuthReady, auth.isAuthenticated, auth.user?.role, currentAcademicYear, currentSemester]);
+  }, [isAuthReady, auth.isAuthenticated, auth.user?.role]);
 
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
@@ -299,7 +211,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSendMessage = useCallback(async (text: string, recipientId: string = 'ALL', attachments: Attachment[] = []) => {
+  const handleSendMessage = async (text: string, recipientId: string = 'ALL', attachments: Attachment[] = []) => {
     if (auth.user) {
       const messageData: Message = {
         id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -321,15 +233,15 @@ const App: React.FC = () => {
         handleFirestoreError(error, OperationType.WRITE, `messages/${messageData.id}`);
       }
     }
-  }, [auth.user]);
+  };
 
-  const handleMarkMessageAsRead = useCallback(async (messageId: string) => {
+  const handleMarkMessageAsRead = async (messageId: string) => {
     try {
       await updateDoc(doc(db, 'messages', messageId), { isRead: true });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `messages/${messageId}`);
     }
-  }, []);
+  };
 
   const handleCleanupOrphanedLessons = async () => {
     const teacherIds = new Set(teachers.map(t => t.id));
@@ -353,6 +265,9 @@ const App: React.FC = () => {
     }
   };
 
+  const currentAcademicYear = supervisorConfig.academicYear || "2025-2026";
+  const currentSemester = supervisorConfig.semester || "الفصل الأول";
+
   const [showChangePassword, setShowChangePassword] = useState(false);
 
   useEffect(() => {
@@ -363,48 +278,33 @@ const App: React.FC = () => {
     const currentSemester = supervisorConfig.semester;
     
     if (currentYear && currentSemester) {
-      const lessonsToArchive = lessonMaterials.filter(m => 
-        (m.academicYear !== currentYear || m.semester !== currentSemester) && !m.isArchived
-      );
-      
-      if (lessonsToArchive.length > 0) {
-        console.log(`Archiving ${lessonsToArchive.length} lessons due to year/semester mismatch`);
-        lessonsToArchive.forEach(async (m) => {
+      lessonMaterials.forEach(async (m) => {
+        if ((m.academicYear !== currentYear || m.semester !== currentSemester) && !m.isArchived) {
           try {
             await updateDoc(doc(db, 'lessonMaterials', m.id), { isArchived: true });
           } catch (error) {
             handleFirestoreError(error, OperationType.UPDATE, `lessonMaterials/${m.id}`);
           }
-        });
-      }
-
-      const projectsToArchive = projects.filter(p => 
-        (p.academicYear !== currentYear || p.semester !== currentSemester) && !p.isArchived
-      );
-
-      if (projectsToArchive.length > 0) {
-        projectsToArchive.forEach(async (p) => {
+        }
+      });
+      projects.forEach(async (p) => {
+        if ((p.academicYear !== currentYear || p.semester !== currentSemester) && !p.isArchived) {
           try {
             await updateDoc(doc(db, 'projects', p.id), { isArchived: true });
           } catch (error) {
             handleFirestoreError(error, OperationType.UPDATE, `projects/${p.id}`);
           }
-        });
-      }
-
-      const postsToArchive = posts.filter(p => 
-        (p.academicYear !== currentYear || p.semester !== currentSemester) && !p.isArchived
-      );
-
-      if (postsToArchive.length > 0) {
-        postsToArchive.forEach(async (p) => {
+        }
+      });
+      posts.forEach(async (p) => {
+        if ((p.academicYear !== currentYear || p.semester !== currentSemester) && !p.isArchived) {
           try {
             await updateDoc(doc(db, 'posts', p.id), { isArchived: true });
           } catch (error) {
             handleFirestoreError(error, OperationType.UPDATE, `posts/${p.id}`);
           }
-        });
-      }
+        }
+      });
     }
   }, [supervisorConfig, lessonMaterials, projects, posts]);
 
@@ -570,22 +470,19 @@ const App: React.FC = () => {
     setShowChangePassword(false);
   };
 
-  const handleAddLessonMaterial = useCallback(async (material: LessonMaterial) => {
-    console.log("Attempting to save lesson:", material);
+  const handleAddLessonMaterial = async (material: LessonMaterial) => {
     try {
       const cleanMaterial = { ...material } as any;
       Object.keys(cleanMaterial).forEach(key => {
         if (cleanMaterial[key] === undefined) delete cleanMaterial[key];
       });
       await setDoc(doc(db, 'lessonMaterials', material.id), cleanMaterial);
-      console.log("Lesson saved successfully:", material.id);
     } catch (error) {
-      console.error("Error saving lesson:", error);
       handleFirestoreError(error, OperationType.WRITE, `lessonMaterials/${material.id}`);
     }
-  }, []);
+  };
 
-  const handleUpdateLessonMaterial = useCallback(async (updated: LessonMaterial) => {
+  const handleUpdateLessonMaterial = async (updated: LessonMaterial) => {
     try {
       const cleanMaterial = { ...updated } as any;
       Object.keys(cleanMaterial).forEach(key => {
@@ -595,7 +492,7 @@ const App: React.FC = () => {
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `lessonMaterials/${updated.id}`);
     }
-  }, []);
+  };
 
   const handleSoftDeleteLesson = async (id: string) => {
     try {
@@ -744,442 +641,484 @@ const App: React.FC = () => {
     }
   };
 
-  const handleUpdateUserPreferences = async (preferences: any) => {
-    if (auth.user) {
-      try {
-        await updateDoc(doc(db, 'users', auth.user.id), { preferences });
-        setAuth(prev => ({
-          ...prev,
-          user: prev.user ? { ...prev.user, preferences } : null
-        }));
-      } catch (error) {
-        handleFirestoreError(error, OperationType.UPDATE, `users/${auth.user.id}`);
-      }
-    }
-  };
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 font-['Tajawal']">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-slate-500 font-bold">جاري الاتصال بالنظام...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const handleAddPost = async (post: Post) => {
-    try {
-      const cleanPost = { ...post } as any;
-      Object.keys(cleanPost).forEach(key => {
-        if (cleanPost[key] === undefined) delete cleanPost[key];
-      });
-      await setDoc(doc(db, 'posts', post.id), cleanPost);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `posts/${post.id}`);
-    }
-  };
-
-  const handleDeletePost = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, 'posts', id));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `posts/${id}`);
-    }
-  };
-
-  const handleTogglePinPost = async (id: string) => {
-    const post = posts.find(p => p.id === id);
-    if (post) {
-      try {
-        await updateDoc(doc(db, 'posts', id), { isPinned: !post.isPinned });
-      } catch (error) {
-        handleFirestoreError(error, OperationType.UPDATE, `posts/${id}`);
-      }
-    }
-  };
-
-  const handleAddTeacher = async (id: string, name: string, email?: string, phoneNumber?: string, assignments?: { grade: string; subject: string }[]) => {
-    const newTeacher: User = {
-      id,
-      name,
-      email,
-      phoneNumber,
-      assignments,
-      role: UserRole.TEACHER,
-      code: id,
-      password: Math.random().toString(36).substring(2, 10),
-      isActive: true,
-      joinedAt: new Date().getFullYear().toString(),
-      mustChangePassword: true
-    };
-    try {
-      const cleanTeacher = { ...newTeacher } as any;
-      Object.keys(cleanTeacher).forEach(key => {
-        if (cleanTeacher[key] === undefined) delete cleanTeacher[key];
-      });
-      await setDoc(doc(db, 'users', id), cleanTeacher);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${id}`);
-    }
-  };
-
-  const handleUpdateTeacher = async (originalId: string, teacher: User) => {
-    try {
-      const cleanTeacher = { ...teacher } as any;
-      Object.keys(cleanTeacher).forEach(key => {
-        if (cleanTeacher[key] === undefined) delete cleanTeacher[key];
-      });
-      if (originalId !== teacher.id) {
-        await deleteDoc(doc(db, 'users', originalId));
-      }
-      await setDoc(doc(db, 'users', teacher.id), cleanTeacher);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `users/${teacher.id}`);
-    }
-  };
-
-  const handleAddProject = async (project: Project) => {
-    try {
-      const cleanProject = { ...project } as any;
-      Object.keys(cleanProject).forEach(key => {
-        if (cleanProject[key] === undefined) delete cleanProject[key];
-      });
-      await setDoc(doc(db, 'projects', project.id), cleanProject);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `projects/${project.id}`);
-    }
-  };
-
-  const handleDeleteProject = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, 'projects', id));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `projects/${id}`);
-    }
-  };
-
-  const handleAddTempSupervisor = async (user: User) => {
-    try {
-      const cleanUser = { ...user } as any;
-      Object.keys(cleanUser).forEach(key => {
-        if (cleanUser[key] === undefined) delete cleanUser[key];
-      });
-      await setDoc(doc(db, 'users', user.id), cleanUser);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${user.id}`);
-    }
-  };
-
-  const handleUpdateSecurity = async (config: SupervisorConfig) => {
-    try {
-      await setDoc(doc(db, 'config', 'supervisor'), config);
-      setSupervisorConfig(config);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'config/supervisor');
-    }
-  };
-
-  const handleUpdateProjectSubmission = async (pid: string, sub: ProjectSubmission) => {
-    try {
-      await updateDoc(doc(db, 'projects', pid), {
-        [`submissions.${sub.teacherId}`]: sub
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `projects/${pid}`);
-    }
-  };
-
-  const userNotifications = useMemo(() => 
-    notifications.filter(n => n.userId === auth.user?.id),
-    [notifications, auth.user?.id]
-  );
-
-  const renderContent = () => {
-    if (!isAuthReady) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 font-['Tajawal']">
-          <div className="text-center space-y-4">
-            <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-            <p className="text-slate-500 font-bold">جاري الاتصال بالنظام...</p>
+  if (isPasswordChangeRequired) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-['Tajawal']" dir="rtl">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-10 border border-slate-100"
+        >
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-black text-slate-900">تغيير كلمة المرور</h2>
+            <p className="text-slate-500 text-sm font-bold mt-2">يرجى تغيير كلمة المرور الافتراضية</p>
           </div>
-        </div>
-      );
-    }
 
-    if (isPasswordChangeRequired) {
-      return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-['Tajawal']" dir="rtl">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-10 border border-slate-100"
+          <form 
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const newPassword = formData.get('newPassword') as string;
+              const confirmPassword = formData.get('confirmPassword') as string;
+
+              if (newPassword !== confirmPassword) return alert('كلمات المرور غير متطابقة');
+              if (newPassword.length < 8) return alert('يجب أن تكون كلمة المرور 8 أحرف على الأقل');
+
+              try {
+                await setDoc(doc(db, 'config', 'supervisor'), {
+                  ...supervisorConfig,
+                  mainPassword: newPassword,
+                  backupPassword: newPassword
+                });
+                setIsPasswordChangeRequired(false);
+                setAuth({ user: { id: '16115506', name: 'رحمه بنت حمد الشرجيه', role: UserRole.SUPERVISOR, code: '16115506', password: newPassword, isActive: true, joinedAt: '2026' }, isAuthenticated: true });
+                alert('تم تغيير كلمة المرور بنجاح');
+              } catch (error) {
+                handleFirestoreError(error, OperationType.WRITE, 'config/supervisor');
+              }
+            }}
+            className="space-y-6"
           >
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-black text-slate-900">تغيير كلمة المرور</h2>
-              <p className="text-slate-500 text-sm font-bold mt-2">يرجى تغيير كلمة المرور الافتراضية</p>
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">كلمة المرور الجديدة</label>
+              <input name="newPassword" type="password" required className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" placeholder="••••••••" />
             </div>
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">تأكيد كلمة المرور</label>
+              <input name="confirmPassword" type="password" required className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" placeholder="••••••••" />
+            </div>
+            <button type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all">تغيير كلمة المرور والدخول</button>
+          </form>
+        </motion.div>
+      </div>
+    );
+  }
 
-            <form 
-              onSubmit={async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                const newPassword = formData.get('newPassword') as string;
-                const confirmPassword = formData.get('confirmPassword') as string;
+  if (isFirstTimeSetup) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-['Tajawal']" dir="rtl">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-10 border border-slate-100"
+        >
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-4">
+              <Shield className="w-10 h-10" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-900">إعداد المشرفة العامة</h2>
+            <p className="text-slate-500 text-sm font-bold mt-2">يرجى إدخال بيانات المشرفة المسؤولة عن النظام</p>
+          </div>
 
-                if (newPassword !== confirmPassword) return alert('كلمات المرور غير متطابقة');
-                if (newPassword.length < 8) return alert('يجب أن تكون كلمة المرور 8 أحرف على الأقل');
+          <form 
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const name = formData.get('name') as string;
+              const code = formData.get('code') as string;
+              const password = formData.get('password') as string;
 
-                try {
-                  await setDoc(doc(db, 'config', 'supervisor'), {
-                    ...supervisorConfig,
-                    mainPassword: newPassword,
-                    backupPassword: newPassword
-                  });
-                  setIsPasswordChangeRequired(false);
-                  setAuth({ user: { id: '16115506', name: 'رحمه بنت حمد الشرجيه', role: UserRole.SUPERVISOR, code: '16115506', password: newPassword, isActive: true, joinedAt: '2026' }, isAuthenticated: true });
-                  alert('تم تغيير كلمة المرور بنجاح');
-                } catch (error) {
-                  handleFirestoreError(error, OperationType.WRITE, 'config/supervisor');
-                }
-              }}
-              className="space-y-6"
-            >
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">كلمة المرور الجديدة</label>
-                <input name="newPassword" type="password" required className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" placeholder="••••••••" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">تأكيد كلمة المرور</label>
-                <input name="confirmPassword" type="password" required className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" placeholder="••••••••" />
-              </div>
-              <button type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all">تغيير كلمة المرور والدخول</button>
-            </form>
-          </motion.div>
-        </div>
-      );
-    }
+              if (!name || !code || !password) return alert('يرجى إكمال جميع الحقول');
+              if (password.length < 8) return alert('يجب أن تكون كلمة المرور 8 أحرف على الأقل');
 
-    if (isFirstTimeSetup) {
-      return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-['Tajawal']" dir="rtl">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-10 border border-slate-100"
+              const adminUser: User = {
+                id: code,
+                code: code,
+                name: name,
+                password: password,
+                role: UserRole.SUPERVISOR,
+                isActive: true,
+                joinedAt: currentAcademicYear
+              };
+
+              try {
+                await setDoc(doc(db, 'users', code), adminUser);
+                await setDoc(doc(db, 'config', 'supervisor'), {
+                  ...supervisorConfig,
+                  mainPassword: password,
+                  backupPassword: password
+                });
+                setAuth({ user: adminUser, isAuthenticated: true });
+                setIsFirstTimeSetup(false);
+                alert('تم إعداد حساب المشرفة بنجاح');
+              } catch (error) {
+                handleFirestoreError(error, OperationType.WRITE, 'users/admin');
+              }
+            }}
+            className="space-y-6"
           >
-            <div className="text-center mb-8">
-              <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-4">
-                <Shield className="w-10 h-10" />
-              </div>
-              <h2 className="text-2xl font-black text-slate-900">إعداد المشرفة العامة</h2>
-              <p className="text-slate-500 text-sm font-bold mt-2">يرجى إدخال بيانات المشرفة المسؤولة عن النظام</p>
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">اسم المشرفة</label>
+              <input name="name" type="text" required className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" placeholder="الاسم الكامل" />
             </div>
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">الرقم الوظيفي (كود الدخول)</label>
+              <input name="code" type="text" required className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" placeholder="مثلاً: 12345" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">كلمة المرور الجديدة</label>
+              <input name="password" type="password" required className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" placeholder="••••••••" />
+            </div>
+            <button type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all">إتمام الإعداد والدخول</button>
+          </form>
+        </motion.div>
+      </div>
+    );
+  }
 
-            <form 
-              onSubmit={async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                const name = formData.get('name') as string;
-                const code = formData.get('code') as string;
-                const password = formData.get('password') as string;
+  if (!auth.isAuthenticated) {
+    return <LoginForm 
+      onLogin={handleLogin} 
+      teachers={teachers} 
+      onForgotPassword={handleForgotPasswordRequest}
+      onUpdateSupervisorConfig={(config) => setSupervisorConfig(prev => ({ ...prev, ...config }))}
+      supervisorConfig={supervisorConfig}
+      currentYear={currentAcademicYear}
+      currentSemester={currentSemester}
+    />;
+  }
 
-                if (!name || !code || !password) return alert('يرجى إكمال جميع الحقول');
-                if (password.length < 8) return alert('يجب أن تكون كلمة المرور 8 أحرف على الأقل');
+  if (showChangePassword) {
+    return <ChangePasswordForm 
+      onPasswordChanged={handlePasswordChanged} 
+      onLogout={handleLogout} 
+      currentPassword={auth.user?.password}
+    />;
+  }
 
-                const adminUser: User = {
-                  id: code,
-                  code: code,
-                  name: name,
-                  password: password,
-                  role: UserRole.SUPERVISOR,
-                  isActive: true,
-                  joinedAt: currentAcademicYear
-                };
-
-                try {
-                  await setDoc(doc(db, 'users', code), adminUser);
-                  await setDoc(doc(db, 'config', 'supervisor'), {
-                    ...supervisorConfig,
-                    mainPassword: password,
-                    backupPassword: password
-                  });
-                  setAuth({ user: adminUser, isAuthenticated: true });
-                  setIsFirstTimeSetup(false);
-                  alert('تم إعداد حساب المشرفة بنجاح');
-                } catch (error) {
-                  handleFirestoreError(error, OperationType.WRITE, 'users/admin');
-                }
-              }}
-              className="space-y-6"
-            >
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">اسم المشرفة</label>
-                <input name="name" type="text" required className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" placeholder="الاسم الكامل" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">الرقم الوظيفي (كود الدخول)</label>
-                <input name="code" type="text" required className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" placeholder="مثلاً: 12345" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">كلمة المرور الجديدة</label>
-                <input name="password" type="password" required className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" placeholder="••••••••" />
-              </div>
-              <button type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all">إتمام الإعداد والدخول</button>
-            </form>
-          </motion.div>
-        </div>
-      );
-    }
-
-    if (!auth.isAuthenticated) {
-      return <LoginForm 
-        onLogin={handleLogin} 
-        teachers={teachers} 
-        onForgotPassword={handleForgotPasswordRequest}
-        onUpdateSupervisorConfig={(config) => setSupervisorConfig(prev => ({ ...prev, ...config }))}
-        supervisorConfig={supervisorConfig}
-        currentYear={currentAcademicYear}
-        currentSemester={currentSemester}
-      />;
-    }
-
-    if (showChangePassword) {
-      return <ChangePasswordForm 
-        onPasswordChanged={handlePasswordChanged} 
-        onLogout={handleLogout} 
-        currentPassword={auth.user?.password}
-      />;
-    }
-
-    // Full-page layout for Supervisor
-    if (auth.user?.role === UserRole.SUPERVISOR || auth.user?.role === UserRole.TEMP_SUPERVISOR) {
-      if (isPreviewMode) {
-        return (
-          <TeacherDashboard 
-            user={auth.user} 
-            posts={posts}
-            projects={projects}
-            lessonMaterials={lessonMaterials}
-            messages={messages}
-            onSendMessage={handleSendMessage}
-            onMarkMessageAsRead={handleMarkMessageAsRead}
-            onAddMaterial={handleAddLessonMaterial}
-            onUpdateMaterial={handleUpdateLessonMaterial}
-            onDeleteMaterial={handleDeletePermanentlyLesson}
-            updateProjectSubmission={handleUpdateProjectSubmission}
-            currentYear={currentAcademicYear}
-            semester={currentSemester}
-            notifications={userNotifications}
-            onMarkAsRead={handleMarkNotificationAsRead}
-            onAddNotification={handleAddNotification}
-            onSwitchBackToSupervisorView={() => setIsPreviewMode(false)}
-          />
-        );
-      }
+  // Full-page layout for Supervisor
+  if (auth.user?.role === UserRole.SUPERVISOR || auth.user?.role === UserRole.TEMP_SUPERVISOR) {
+    if (isPreviewMode) {
       return (
-        <SupervisorDashboard 
-          user={auth.user}
-          teachers={teachers}
+        <TeacherDashboard 
+          user={auth.user} 
           posts={posts}
           projects={projects}
           lessonMaterials={lessonMaterials}
-          resetRequests={resetRequests}
           messages={messages}
-          onUpdateUserPreferences={handleUpdateUserPreferences}
           onSendMessage={handleSendMessage}
           onMarkMessageAsRead={handleMarkMessageAsRead}
-          onAddPost={handleAddPost}
-          onDeletePost={handleDeletePost}
-          onTogglePinPost={handleTogglePinPost}
-          onAddTeacher={handleAddTeacher}
-          onSoftDeleteTeacher={handleSoftDeleteTeacher}
-          onRestoreTeacher={handleRestoreTeacher}
-          onDeletePermanentlyTeacher={handleDeletePermanentlyTeacher}
-          onUpdateTeacher={handleUpdateTeacher}
-          onResetPassword={handleResetPassword}
-          onAddProject={handleAddProject}
-          onDeleteProject={handleDeleteProject}
-          onDeletePermanentlyProject={handleDeletePermanentlyProject}
-          onUpdateProjectSubmission={handleUpdateProjectSubmission}
-          onAddTempSupervisor={handleAddTempSupervisor}
-          onDeleteTempSupervisor={handleDeleteTempSupervisor}
-          onUpdateSecurity={handleUpdateSecurity}
-          onUpdateLessonMaterial={handleUpdateLessonMaterial}
-          onAddLessonMaterial={handleAddLessonMaterial}
-          onSoftDeleteLesson={handleSoftDeleteLesson}
-          onRestoreLesson={handleRestoreLesson}
-          onDeletePermanentlyLesson={handleDeletePermanentlyLesson}
-          onDeletePermanentlyPost={handleDeletePermanentlyPost}
-          onAddNotification={handleAddNotification}
-          onCleanupOrphanedLessons={handleCleanupOrphanedLessons}
-          notifications={userNotifications}
-          onMarkNotificationAsRead={handleMarkNotificationAsRead}
-          onLogout={handleLogout}
-          supervisorConfig={supervisorConfig}
-          academicYear={currentAcademicYear}
+          onAddMaterial={handleAddLessonMaterial}
+          onUpdateMaterial={handleUpdateLessonMaterial}
+          updateProjectSubmission={async (pid, sub) => {
+            try {
+              const project = projects.find(p => p.id === pid);
+              if (project) {
+                const updatedSubmissions = { ...project.submissions, [auth.user!.id]: sub };
+                await updateDoc(doc(db, 'projects', pid), { submissions: updatedSubmissions });
+              }
+            } catch (error) {
+              handleFirestoreError(error, OperationType.UPDATE, `projects/${pid}`);
+            }
+          }}
+          currentYear={currentAcademicYear}
           semester={currentSemester}
-          onSwitchToTeacherView={() => setIsPreviewMode(true)}
+          notifications={notifications.filter(n => n.userId === auth.user?.id)}
+          onMarkAsRead={handleMarkNotificationAsRead}
+          onSwitchBackToSupervisorView={() => setIsPreviewMode(false)}
         />
       );
     }
-
     return (
-      <div className="min-h-screen bg-[#f8fafc] font-['Tajawal'] antialiased">
-        <nav className="bg-white/90 backdrop-blur-md text-slate-900 shadow-sm sticky top-0 z-[100] border-b border-slate-100 h-20 flex items-center">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-3 sm:gap-4">
-                <div className="bg-gradient-to-tr from-emerald-600 to-teal-600 p-2 sm:p-2.5 rounded-xl sm:rounded-2xl shadow-lg shadow-emerald-100">
-                  <span className="text-xl sm:text-2xl">📋</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-sm sm:text-xl font-black tracking-tight text-slate-900 leading-none mb-1">{APP_TITLE}</span>
-                  <span className="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    المجال الأول - {currentAcademicYear}
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 sm:gap-4 md:gap-6">
-                <div className="hidden sm:flex flex-col items-end text-left">
-                  <span className="text-sm font-black text-slate-800">{auth.user?.name}</span>
-                  <span className="text-[10px] font-bold text-emerald-500 uppercase">
-                    عضو هيئة التدريس
-                  </span>
-                </div>
-                <button 
-                  onClick={handleLogout}
-                  className="bg-slate-50 text-slate-600 hover:bg-red-50 hover:text-red-600 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black transition-all active:scale-95 border border-slate-100"
-                >
-                  خروج
-                </button>
-              </div>
-            </div>
-          </div>
-        </nav>
+      <SupervisorDashboard 
+        user={auth.user}
+        teachers={teachers}
+        posts={posts}
+        projects={projects}
+        lessonMaterials={lessonMaterials}
+        resetRequests={resetRequests}
+        messages={messages}
+        onSendMessage={handleSendMessage}
+        onMarkMessageAsRead={handleMarkMessageAsRead}
+        onAddPost={async (p) => {
+          try {
+            const cleanPost = { ...p } as any;
+            Object.keys(cleanPost).forEach(key => {
+              if (cleanPost[key] === undefined) delete cleanPost[key];
+            });
+            await setDoc(doc(db, 'posts', p.id), cleanPost);
+          } catch (error) {
+            handleFirestoreError(error, OperationType.WRITE, `posts/${p.id}`);
+          }
+        }}
+        onDeletePost={async (id) => {
+          try {
+            await deleteDoc(doc(db, 'posts', id));
+          } catch (error) {
+            handleFirestoreError(error, OperationType.DELETE, `posts/${id}`);
+          }
+        }}
+        onTogglePinPost={async (id) => {
+          const post = posts.find(p => p.id === id);
+          if (post) {
+            try {
+              await updateDoc(doc(db, 'posts', id), { isPinned: !post.isPinned });
+            } catch (error) {
+              handleFirestoreError(error, OperationType.UPDATE, `posts/${id}`);
+            }
+          }
+        }}
+        onAddTeacher={async (id, name, email, phone, assignments) => {
+          if (teachers.some(t => t.id === id)) {
+            alert('عذراً، هذا الرقم الوظيفي مسجل مسبقاً');
+            return;
+          }
+          const defaultPass = `Moe@12345`;
+          const teacherEmail = `${id}@moe.om`;
+          
+          try {
+            // 1. Create Auth Account
+            await createUserWithEmailAndPassword(firebaseAuth, teacherEmail, defaultPass);
+            
+            // 2. Create Firestore Doc
+            const newTeacher: any = { 
+              id, 
+              code: id, 
+              name, 
+              role: UserRole.TEACHER, 
+              password: defaultPass, 
+              mustChangePassword: true, 
+              isActive: true, 
+              joinedAt: currentAcademicYear, 
+              auditLogs: [{
+                id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+                userId: id,
+                userName: name,
+                action: 'تم إنشاء الحساب',
+                timestamp: new Date().toISOString()
+              }]
+            };
+            newTeacher.email = email || teacherEmail;
+            if (phone) newTeacher.phoneNumber = phone;
+            if (assignments && assignments.length > 0) newTeacher.assignments = assignments;
 
-        <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-          <TeacherDashboard 
-            user={auth.user!} 
-            posts={posts}
-            projects={projects}
-            lessonMaterials={lessonMaterials}
-            messages={messages}
-            onSendMessage={handleSendMessage}
-            onMarkMessageAsRead={handleMarkMessageAsRead}
-            onAddMaterial={handleAddLessonMaterial}
-            onUpdateMaterial={handleUpdateLessonMaterial}
-            onDeleteMaterial={handleDeletePermanentlyLesson}
-            updateProjectSubmission={handleUpdateProjectSubmission}
-            currentYear={currentAcademicYear}
-            semester={currentSemester}
-            notifications={userNotifications}
-            onMarkAsRead={handleMarkNotificationAsRead}
-            onAddNotification={handleAddNotification}
-          />
-        </main>
+            await setDoc(doc(db, 'users', id), newTeacher as User);
+            alert('تم إنشاء حساب المعلمة بنجاح في النظام');
+          } catch (error: any) {
+            console.error("Error adding teacher:", error);
+            if (error.code === 'auth/email-already-in-use') {
+              alert('البريد الإلكتروني مستخدم مسبقاً');
+            } else {
+              alert("حدث خطأ أثناء إضافة المعلمة: " + (error.message || String(error)));
+            }
+            handleFirestoreError(error, OperationType.WRITE, `users/${id}`);
+          }
+        }}
+        onSoftDeleteTeacher={handleSoftDeleteTeacher}
+        onRestoreTeacher={handleRestoreTeacher}
+        onDeletePermanentlyTeacher={handleDeletePermanentlyTeacher}
+        onUpdateTeacher={async (originalId, updatedTeacher) => {
+          try {
+            const cleanTeacher = { ...updatedTeacher } as any;
+            Object.keys(cleanTeacher).forEach(key => {
+              if (cleanTeacher[key] === undefined) {
+                delete cleanTeacher[key];
+              }
+            });
 
-        <footer className="py-8 text-center text-slate-400 text-[10px] font-bold border-t border-slate-100 mt-12 bg-white/50">
-          جميع الحقوق محفوظة - {APP_TITLE} © {currentAcademicYear}
-        </footer>
-      </div>
+            if (originalId !== updatedTeacher.id) {
+              if (teachers.some(t => t.id === updatedTeacher.id)) {
+                alert('عذراً، الرقم الوظيفي الجديد مسجل مسبقاً لمستخدم آخر');
+                return;
+              }
+              // Create new doc with new ID
+              await setDoc(doc(db, 'users', updatedTeacher.id), cleanTeacher);
+              // Delete old doc
+              await deleteDoc(doc(db, 'users', originalId));
+
+              // Update lessonMaterials
+              const lessonsToUpdate = lessonMaterials.filter(m => m.teacherId === originalId);
+              for (const lesson of lessonsToUpdate) {
+                await updateDoc(doc(db, 'lessonMaterials', lesson.id), { 
+                  teacherId: updatedTeacher.id, 
+                  teacherName: updatedTeacher.name 
+                });
+              }
+
+              // Update projects
+              const projectsToUpdate = projects.filter(p => p.assignedTeacherIds.includes(originalId));
+              for (const project of projectsToUpdate) {
+                const updatedIds = project.assignedTeacherIds.map(id => id === originalId ? updatedTeacher.id : id);
+                await updateDoc(doc(db, 'projects', project.id), { assignedTeacherIds: updatedIds });
+              }
+            } else {
+              await setDoc(doc(db, 'users', originalId), cleanTeacher);
+              // Update name in lessons if changed
+              const oldTeacher = teachers.find(t => t.id === originalId);
+              if (oldTeacher && oldTeacher.name !== updatedTeacher.name) {
+                const lessonsToUpdate = lessonMaterials.filter(m => m.teacherId === originalId);
+                for (const lesson of lessonsToUpdate) {
+                  await updateDoc(doc(db, 'lessonMaterials', lesson.id), { teacherName: updatedTeacher.name });
+                }
+              }
+            }
+
+            if (auth.user?.id === originalId) {
+              setAuth(prev => ({ ...prev, user: cleanTeacher as User }));
+            }
+          } catch (error) {
+            handleFirestoreError(error, OperationType.UPDATE, `users/${originalId}`);
+          }
+        }}
+        onResetPassword={handleResetPassword}
+        onAddProject={async (p) => {
+          try {
+            const cleanProject = { ...p } as any;
+            Object.keys(cleanProject).forEach(key => {
+              if (cleanProject[key] === undefined) delete cleanProject[key];
+            });
+            await setDoc(doc(db, 'projects', p.id), cleanProject);
+          } catch (error) {
+            handleFirestoreError(error, OperationType.WRITE, `projects/${p.id}`);
+          }
+        }}
+        onDeleteProject={async (id) => {
+          try {
+            await deleteDoc(doc(db, 'projects', id));
+          } catch (error) {
+            handleFirestoreError(error, OperationType.DELETE, `projects/${id}`);
+          }
+        }}
+        onDeletePermanentlyProject={handleDeletePermanentlyProject}
+        onUpdateProjectSubmission={async (pid, sub) => {
+          try {
+            const project = projects.find(p => p.id === pid);
+            if (project) {
+              await updateDoc(doc(db, 'projects', pid), {
+                [`submissions.${sub.teacherId}`]: sub
+              });
+            }
+          } catch (error) {
+            handleFirestoreError(error, OperationType.UPDATE, `projects/${pid}`);
+          }
+        }}
+        onAddTempSupervisor={async (u) => {
+          try {
+            const cleanUser = { ...u } as any;
+            Object.keys(cleanUser).forEach(key => {
+              if (cleanUser[key] === undefined) delete cleanUser[key];
+            });
+            await setDoc(doc(db, 'users', u.id), cleanUser);
+          } catch (error) {
+            handleFirestoreError(error, OperationType.WRITE, `users/${u.id}`);
+          }
+        }}
+        onDeleteTempSupervisor={handleDeleteTempSupervisor}
+        onUpdateSecurity={async (newConfig) => {
+          try {
+            await setDoc(doc(db, 'config', 'supervisor'), { ...supervisorConfig, ...newConfig });
+          } catch (error) {
+            handleFirestoreError(error, OperationType.WRITE, 'config/supervisor');
+          }
+        }}
+        onUpdateLessonMaterial={handleUpdateLessonMaterial}
+        onAddLessonMaterial={handleAddLessonMaterial}
+        onSoftDeleteLesson={handleSoftDeleteLesson}
+        onRestoreLesson={handleRestoreLesson}
+        onDeletePermanentlyLesson={handleDeletePermanentlyLesson}
+        onDeletePermanentlyPost={handleDeletePermanentlyPost}
+        onAddNotification={handleAddNotification}
+        onCleanupOrphanedLessons={handleCleanupOrphanedLessons}
+        notifications={notifications.filter(n => n.userId === auth.user?.id)}
+        onMarkNotificationAsRead={handleMarkNotificationAsRead}
+        onLogout={handleLogout}
+        supervisorConfig={supervisorConfig}
+        academicYear={currentAcademicYear}
+        semester={currentSemester}
+        onSwitchToTeacherView={() => setIsPreviewMode(true)}
+      />
     );
-  };
+  }
 
   return (
-    <ErrorBoundary>
-      {renderContent()}
-    </ErrorBoundary>
+    <div className="min-h-screen bg-[#f8fafc] font-['Tajawal'] antialiased">
+      <nav className="bg-white/90 backdrop-blur-md text-slate-900 shadow-sm sticky top-0 z-[100] border-b border-slate-100 h-20 flex items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="bg-gradient-to-tr from-emerald-600 to-teal-600 p-2 sm:p-2.5 rounded-xl sm:rounded-2xl shadow-lg shadow-emerald-100">
+                <span className="text-xl sm:text-2xl">📋</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm sm:text-xl font-black tracking-tight text-slate-900 leading-none mb-1">{APP_TITLE}</span>
+                <span className="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  المجال الأول - {currentAcademicYear}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 sm:gap-4 md:gap-6">
+              <div className="hidden sm:flex flex-col items-end text-left">
+                <span className="text-sm font-black text-slate-800">{auth.user?.name}</span>
+                <span className="text-[10px] font-bold text-emerald-500 uppercase">
+                  عضو هيئة التدريس
+                </span>
+              </div>
+              <button 
+                onClick={handleLogout}
+                className="bg-slate-50 text-slate-600 hover:bg-red-50 hover:text-red-600 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black transition-all active:scale-95 border border-slate-100"
+              >
+                خروج
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <TeacherDashboard 
+          user={auth.user!} 
+          posts={posts}
+          projects={projects}
+          lessonMaterials={lessonMaterials}
+          messages={messages}
+          onSendMessage={handleSendMessage}
+          onMarkMessageAsRead={handleMarkMessageAsRead}
+          onAddMaterial={async (m) => {
+            const material = { ...m, status: 'pending', isModelLesson: false } as any;
+            Object.keys(material).forEach(key => {
+              if (material[key] === undefined) delete material[key];
+            });
+            try {
+              await setDoc(doc(db, 'lessonMaterials', material.id), material);
+            } catch (error) {
+              handleFirestoreError(error, OperationType.WRITE, `lessonMaterials/${material.id}`);
+            }
+          }}
+          onUpdateMaterial={handleUpdateLessonMaterial}
+          updateProjectSubmission={async (pid, sub) => {
+            try {
+              const project = projects.find(p => p.id === pid);
+              if (project) {
+                await updateDoc(doc(db, 'projects', pid), {
+                  [`submissions.${sub.teacherId}`]: sub
+                });
+              }
+            } catch (error) {
+              handleFirestoreError(error, OperationType.UPDATE, `projects/${pid}`);
+            }
+          }}
+          currentYear={currentAcademicYear}
+          semester={currentSemester}
+          notifications={notifications.filter(n => n.userId === auth.user?.id)}
+          onMarkAsRead={handleMarkNotificationAsRead}
+        />
+      </main>
+
+      <footer className="py-8 text-center text-slate-400 text-[10px] font-bold border-t border-slate-100 mt-12 bg-white/50">
+        جميع الحقوق محفوظة - {APP_TITLE} © {currentAcademicYear}
+      </footer>
+    </div>
   );
 };
 

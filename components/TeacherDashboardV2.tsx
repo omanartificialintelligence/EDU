@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { User, Project, Post, LessonMaterial, LessonComment, Notification, ProjectSubmission, Message, Attachment } from '../types';
-import { db, auth, storage, handleFirestoreError, OperationType } from '../src/firebase';
-import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, deleteDoc, arrayUnion, getDoc, setDoc } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { 
   LayoutDashboard, BookOpen, FolderOpen, Search, Bell, ChevronDown, 
   Plus, FileText, ExternalLink, Play, Image as ImageIcon, XCircle, Eye,
@@ -29,18 +26,16 @@ interface TeacherDashboardV2Props {
   onAddMaterial: (material: LessonMaterial) => void;
   onUpdateMaterial: (material: LessonMaterial) => void;
   updateProjectSubmission: (projectId: string, submission: ProjectSubmission) => void;
-  onDeleteMaterial: (id: string) => void;
   currentYear: string;
   semester: string;
   notifications: Notification[];
   onMarkAsRead: (id: string) => void;
-  onAddNotification?: (notification: Notification) => void;
   onSwitchBackToSupervisorView?: () => void;
 }
 
-const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
-  user, posts, lessonMaterials, onAddMaterial, onUpdateMaterial, onDeleteMaterial, notifications,
-  messages, onSendMessage, onMarkMessageAsRead, projects, updateProjectSubmission, onMarkAsRead, onAddNotification, currentYear, semester,
+const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
+  user, posts, lessonMaterials, onAddMaterial, onUpdateMaterial, notifications,
+  messages, onSendMessage, onMarkMessageAsRead, projects, updateProjectSubmission, onMarkAsRead, currentYear, semester,
   onSwitchBackToSupervisorView
 }) => {
   // Dynamic Grades and Subjects based on Assignments
@@ -73,8 +68,6 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
   const [viewingLesson, setViewingLesson] = useState<LessonMaterial | null>(null);
   const [viewingPost, setViewingPost] = useState<Post | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
     if (editingLesson) {
@@ -84,56 +77,14 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
     }
   }, [editingLesson]);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const files = Array.from(e.target.files);
-      setIsUploading(true);
-      setUploadProgress(0);
-
-      const uploadedAttachments: Attachment[] = [];
-      let completedCount = 0;
-
-      for (const file of files) {
-        try {
-          const storageRef = ref(storage, `uploads/${Date.now()}_${file.name}`);
-          const uploadTask = uploadBytesResumable(storageRef, file);
-
-          await new Promise<void>((resolve, reject) => {
-            uploadTask.on('state_changed', 
-              (snapshot) => {
-                const fileProgress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                const totalProgress = ((completedCount * 100) + fileProgress) / files.length;
-                setUploadProgress(totalProgress);
-              }, 
-              (error) => { 
-                console.error("فشل الرفع:", error);
-                reject(error);
-              }, 
-              async () => {
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                const newAttachment: Attachment = {
-                  type: (newLessonType as any) || (file.type.startsWith('image/') ? 'image' : 
-                         file.type.startsWith('video/') ? 'video' : 
-                         file.type.startsWith('audio/') ? 'audio' : 'file'),
-                  url: downloadURL,
-                  name: file.name
-                };
-                uploadedAttachments.push(newAttachment);
-                completedCount++;
-                resolve();
-              }
-            );
-          });
-        } catch (error) {
-          console.error("Error uploading file:", error);
-        }
-      }
-
-      setNewLessonAttachments(prev => [...prev, ...uploadedAttachments]);
-      setIsUploading(false);
-      setUploadProgress(0);
-      setNewLessonType(null);
-      e.target.value = '';
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = () => {
+        setNewLessonUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -146,12 +97,6 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
   const [submissionNote, setSubmissionNote] = useState('');
   const [projectFilter, setProjectFilter] = useState<'all' | 'pending' | 'submitted' | 'completed'>('all');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-
-  const [isUploadingSubmission, setIsUploadingSubmission] = useState(false);
-  const [submissionUploadProgress, setSubmissionUploadProgress] = useState(0);
-
-  const [isUploadingMessage, setIsUploadingMessage] = useState(false);
-  const [messageUploadProgress, setMessageUploadProgress] = useState(0);
 
   const getAttachmentIcon = (attachment: Attachment) => {
     const fileName = (attachment.name || '').toLowerCase();
@@ -285,14 +230,9 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
     setNewLessonAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleAddLesson = async () => {
-    if (!newLessonTitle || !selectedSubject || !selectedGrade) {
-      alert('يرجى إكمال جميع الحقول المطلوبة (العنوان، الصف، المادة)');
-      return;
-    }
-
-    if (isUploading) {
-      alert('يرجى الانتظار حتى ينتهي رفع الملفات');
+  const handleAddLesson = () => {
+    if (!newLessonTitle || !selectedSubject) {
+      alert('يرجى إكمال جميع الحقول المطلوبة');
       return;
     }
 
@@ -303,51 +243,46 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
 
     setIsSubmitting(true);
     
-    try {
-      if (editingLesson) {
-        const updatedMaterial: LessonMaterial = {
-          ...editingLesson,
-          lessonTitle: newLessonTitle,
-          description: `درس: ${newLessonTitle}`,
-          attachments: newLessonAttachments,
-          grade: selectedGrade,
-          subject: selectedSubject,
-          tags: [selectedSubject, selectedGrade]
-        };
-        await onUpdateMaterial(updatedMaterial);
-        alert('تم تحديث الدرس بنجاح.');
-      } else {
-        const newMaterial: LessonMaterial = {
-          id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-          teacherId: user.id,
-          teacherName: user.name,
-          lessonTitle: newLessonTitle,
-          description: `درس: ${newLessonTitle}`,
-          attachments: newLessonAttachments,
-          comments: [],
-          createdAt: new Date().toISOString(),
-          academicYear: currentYear,
-          semester: semester,
-          grade: selectedGrade,
-          subject: selectedSubject,
-          status: 'pending',
-          isActive: true,
-          isModelLesson: false,
-          tags: [selectedSubject, selectedGrade]
-        };
-        await onAddMaterial(newMaterial);
-        alert('تمت إضافة الدرس بنجاح وسيتم مراجعته من قبل المشرفة.');
-      }
-      setIsUploadModalOpen(false);
-      setEditingLesson(null);
-      setNewLessonTitle('');
-      setNewLessonAttachments([]);
-    } catch (error) {
-      console.error("Error saving lesson:", error);
-      alert('حدث خطأ أثناء حفظ الدرس. يرجى المحاولة مرة أخرى.');
-    } finally {
-      setIsSubmitting(false);
+    if (editingLesson) {
+      const updatedMaterial: LessonMaterial = {
+        ...editingLesson,
+        lessonTitle: newLessonTitle,
+        description: `درس: ${newLessonTitle}`,
+        attachments: newLessonAttachments,
+        grade: selectedGrade,
+        subject: selectedSubject,
+        tags: [selectedSubject, selectedGrade]
+      };
+      onUpdateMaterial(updatedMaterial);
+      alert('تم تحديث الدرس بنجاح.');
+    } else {
+      const newMaterial: LessonMaterial = {
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        teacherId: user.id,
+        teacherName: user.name,
+        lessonTitle: newLessonTitle,
+        description: `درس: ${newLessonTitle}`,
+        attachments: newLessonAttachments,
+        comments: [],
+        createdAt: new Date().toISOString(),
+        academicYear: currentYear,
+        semester: semester,
+        grade: selectedGrade,
+        subject: selectedSubject,
+        status: 'pending',
+        isActive: true,
+        isModelLesson: false,
+        tags: [selectedSubject, selectedGrade]
+      };
+      onAddMaterial(newMaterial);
+      alert('تمت إضافة الدرس بنجاح وسيتم مراجعته من قبل المشرفة.');
     }
+
+    setIsSubmitting(false);
+    setIsUploadModalOpen(false);
+    setEditingLesson(null);
+    setNewLessonTitle('');
+    setNewLessonAttachments([]);
   };
 
   const downloadFile = (url: string, filename: string) => {
@@ -382,17 +317,6 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
 
     onUpdateMaterial(updatedMaterial);
     setCommentText('');
-
-    if (material.teacherId !== user.id && onAddNotification) {
-      onAddNotification({
-        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        userId: material.teacherId,
-        message: `أضافت المعلمة ${user.name} تعليقاً على درسك: ${material.lessonTitle}`,
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        type: 'comment',
-      });
-    }
   };
 
   const getFileIcon = (material: LessonMaterial) => {
@@ -566,7 +490,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
                   </div>
                   <div className="max-h-80 overflow-y-auto">
                     {notifications.length > 0 ? (
-                      notifications.map((notification) => (
+                      notifications.map((notification, index) => (
                         <div 
                           key={`notif-${notification.id}`} 
                           className={cn(
@@ -660,7 +584,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
               <div className="flex overflow-x-auto pb-2 sm:pb-0 items-center gap-2 sm:gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm w-full sm:w-fit scrollbar-hide">
                 {grades.map((grade, i) => (
                   <button
-                    key={`grade-select-${grade}-${i}`}
+                    key={`grade-select-${grade}`}
                     onClick={() => { setSelectedGrade(grade); setViewingSubject(null); }}
                     className={cn(
                       "px-4 sm:px-8 py-2.5 sm:py-3 rounded-[12px] text-xs sm:text-sm font-bold transition-all duration-200 whitespace-nowrap",
@@ -698,7 +622,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
 
                     return (
                       <div 
-                        key={`subject-select-${subject.name}-${i}`} 
+                        key={`subject-select-${subject.name}`} 
                         className={cn(
                           "relative p-8 rounded-[24px] border-2 transition-all duration-300 overflow-hidden group hover:shadow-xl",
                           subject.bg, subject.border
@@ -851,9 +775,13 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
                               <div className="flex flex-wrap gap-2">
                                 {material.attachments.map((attachment, idx) => (
                                   <button 
-                                    key={`att-${material.id}-${attachment.name}-${idx}`}
+                                    key={`${material.id}-${attachment.url}-${attachment.name}-${idx}`}
                                     onClick={() => {
-                                      setPreviewAttachment(attachment);
+                                      if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
+                                        setPreviewAttachment(attachment);
+                                      } else {
+                                        downloadFile(attachment.url, `${attachment.name || material.lessonTitle}.bin`);
+                                      }
                                     }}
                                     className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-slate-700 rounded-lg hover:bg-indigo-50 hover:text-indigo-700 transition-all font-bold text-[10px] border border-slate-100"
                                   >
@@ -899,7 +827,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
                                     <div className="space-y-3">
                                       {material.comments && material.comments.length > 0 ? (
                                         material.comments.map((comment, index) => (
-                                          <div key={`material-comment-${material.id}-${comment.id}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                          <div key={`material-comment-${comment.id}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                                             <div className="flex justify-between items-center mb-2">
                                               <span className="text-xs font-black text-slate-900">{comment.authorName}</span>
                                               <span className="text-[10px] font-bold text-slate-400">
@@ -991,7 +919,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
                 <div className="flex bg-slate-100 p-1 rounded-xl w-fit">
                   {(['all', 'pending', 'submitted', 'completed'] as const).map((filter, idx) => (
                     <button
-                      key={`project-filter-${filter}`}
+                      key={`project-filter-${filter}-${idx}`}
                       onClick={() => setProjectFilter(filter)}
                       className={cn(
                         "px-4 py-2 rounded-lg text-sm font-bold transition-all",
@@ -1075,7 +1003,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
                             <span className="text-xs font-bold text-slate-500">فريق العمل:</span>
                             <div className="flex -space-x-2 space-x-reverse">
                               {project.assignedTeacherIds.map((teacherId, i) => (
-                                <div key={`teacher-${project.id}-${teacherId}-${i}`} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600" title={teacherId === user.id ? 'أنا' : 'زميلة'}>
+                                <div key={`teacher-${project.id}-${teacherId}`} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600" title={teacherId === user.id ? 'أنا' : 'زميلة'}>
                                   {teacherId === user.id ? 'أنا' : 'ز'}
                                 </div>
                               ))}
@@ -1173,7 +1101,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
                           </h4>
                           <ul className="space-y-3">
                             {selectedProject.tasks.map((task, i) => (
-                              <li key={`proj-task-${selectedProject.id}-${i}`} className="flex items-start gap-3 text-sm text-slate-600">
+                              <li key={`proj-task-${selectedProject.id}-${task}-${i}`} className="flex items-start gap-3 text-sm text-slate-600">
                                 <span className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold mt-0.5 shrink-0">
                                   {i + 1}
                                 </span>
@@ -1243,48 +1171,17 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
-                                  setIsUploadingSubmission(true);
-                                  setSubmissionUploadProgress(0);
-
-                                  const storageRef = ref(storage, `submissions/${Date.now()}_${file.name}`);
-                                  const uploadTask = uploadBytesResumable(storageRef, file);
-
-                                  uploadTask.on('state_changed', 
-                                    (snapshot) => {
-                                      const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                                      setSubmissionUploadProgress(progress);
-                                    }, 
-                                    (error) => { 
-                                      console.error("فشل الرفع:", error);
-                                      alert('حدث خطأ أثناء رفع الملف.');
-                                      setIsUploadingSubmission(false);
-                                    }, 
-                                    () => {
-                                      getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-                                        setSubmissionFiles(prev => [...prev, {
-                                          type: file.type.startsWith('image/') ? 'image' : 'file',
-                                          url: downloadURL,
-                                          name: file.name,
-                                          comment: ''
-                                        }]);
-                                        setIsUploadingSubmission(false);
-                                      });
-                                    }
-                                  );
+                                  setSubmissionFiles(prev => [...prev, {
+                                    type: file.type.startsWith('image/') ? 'image' : 'file',
+                                    url: URL.createObjectURL(file),
+                                    name: file.name,
+                                    comment: ''
+                                  }]);
                                 }
                               }}
                             />
                           </label>
                         </div>
-
-                        {isUploadingSubmission && (
-                          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden mt-2">
-                            <div 
-                              className="bg-indigo-500 h-full transition-all duration-300" 
-                              style={{ width: `${submissionUploadProgress}%` }}
-                            />
-                          </div>
-                        )}
 
                         {isAddingLink && (
                           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3 animate-in fade-in slide-in-from-top-2">
@@ -1381,7 +1278,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
                         {lesson.attachments.map((att, idx) => {
                           const { icon: AttIcon, color: AttColor } = getAttachmentIcon(att);
                           return (
-                            <div key={`lesson-att-${lesson.id}-${att.name}-${idx}`} className="flex items-center justify-between text-xs p-2 bg-slate-50 rounded-lg">
+                            <div key={`att-${lesson.id}-${idx}`} className="flex items-center justify-between text-xs p-2 bg-slate-50 rounded-lg">
                               <div className="flex items-center gap-2">
                                 <AttIcon className={cn("w-4 h-4", AttColor)} />
                                 <span className="font-bold text-slate-700">{att.name}</span>
@@ -1498,24 +1395,12 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
                         if (fileInput) fileInput.value = '';
                       }
                     }}
-                    className="flex gap-2 relative"
+                    className="flex gap-2"
                   >
-                    {isUploadingMessage && (
-                      <div className="absolute bottom-full left-0 w-full bg-white p-2 border border-slate-100 rounded-lg mb-2 shadow-sm">
-                        <div className="text-xs font-bold text-slate-500 mb-1">جاري الرفع...</div>
-                        <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
-                          <div 
-                            className="bg-blue-500 h-full transition-all duration-300" 
-                            style={{ width: `${messageUploadProgress}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
                     <button
                       type="button"
                       onClick={() => document.getElementById('msg-file-upload')?.click()}
-                      disabled={isUploadingMessage}
-                      className="p-3 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-200 transition-all disabled:opacity-50"
+                      className="p-3 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-200 transition-all"
                     >
                       <Plus className="w-5 h-5" />
                     </button>
@@ -1528,30 +1413,11 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
                         if (file) {
                           setMessageAttachmentName(file.name);
                           setMessageAttachmentType(file.type.startsWith('image/') ? 'image' : 'file');
-                          
-                          setIsUploadingMessage(true);
-                          setMessageUploadProgress(0);
-
-                          const storageRef = ref(storage, `messages/${Date.now()}_${file.name}`);
-                          const uploadTask = uploadBytesResumable(storageRef, file);
-
-                          uploadTask.on('state_changed', 
-                            (snapshot) => {
-                              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                              setMessageUploadProgress(progress);
-                            }, 
-                            (error) => { 
-                              console.error("فشل الرفع:", error);
-                              alert('حدث خطأ أثناء رفع الملف.');
-                              setIsUploadingMessage(false);
-                            }, 
-                            () => {
-                              getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-                                setMessageAttachment(downloadURL);
-                                setIsUploadingMessage(false);
-                              });
-                            }
-                          );
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setMessageAttachment(reader.result as string);
+                          };
+                          reader.readAsDataURL(file);
                         }
                       }}
                     />
@@ -1580,22 +1446,11 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
       {/* Multimedia Upload Hub Modal */}
       <AnimatePresence>
         {isUploadModalOpen && (
-          <div 
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
-            onClick={() => {
-              if (!isSubmitting) {
-                setIsUploadModalOpen(false);
-                setEditingLesson(null);
-                setNewLessonTitle('');
-                setNewLessonAttachments([]);
-              }
-            }}
-          >
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              onClick={e => e.stopPropagation()}
               className="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden border border-slate-100"
             >
               <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
@@ -1607,21 +1462,18 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
                 </div>
                 <button 
                   onClick={() => {
-                    if (!isSubmitting) {
-                      setIsUploadModalOpen(false);
-                      setEditingLesson(null);
-                      setNewLessonTitle('');
-                      setNewLessonAttachments([]);
-                    }
+                    setIsUploadModalOpen(false);
+                    setEditingLesson(null);
+                    setNewLessonTitle('');
+                    setNewLessonAttachments([]);
                   }} 
-                  disabled={isSubmitting}
-                  className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400 hover:text-slate-600 disabled:opacity-50"
+                  className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400 hover:text-slate-600"
                 >
                   <XCircle className="w-7 h-7" />
                 </button>
               </div>
 
-              <div className="p-8 bg-slate-50/50 space-y-6 pb-32">
+              <div className="p-8 bg-slate-50/50 space-y-6">
                 <div className="space-y-2">
                   <label className="text-sm font-black text-slate-700 block">عنوان الدرس</label>
                   <input 
@@ -1640,7 +1492,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
                         <label className="text-sm font-black text-slate-700 block">المرفقات المضافة</label>
                         <div className="space-y-2">
                           {newLessonAttachments.map((att, idx) => (
-                            <div key={`new-lesson-att-modal-${att.name}-${idx}`} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                            <div key={`new-lesson-att-${att.name}-${idx}`} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center">
                                   {att.type === 'link' ? <LinkIcon className="w-5 h-5 text-indigo-500" /> : 
@@ -1664,7 +1516,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {uploadOptions.map((type, idx) => (
                         <button
-                          key={`upload-option-${type.id}`}
+                          key={`upload-option-${type.id}-${idx}`}
                           onClick={() => setNewLessonType(type.id)}
                           className={cn(
                             "flex flex-col items-center justify-center p-6 rounded-[24px] border-2 transition-all group bg-white hover:shadow-md",
@@ -1703,27 +1555,16 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
                         className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-sm"
                       />
                     ) : newLessonType !== 'text' ? (
-                      <div className="space-y-2">
-                        <input 
-                          type="file" 
-                          onChange={handleFileSelect}
-                          disabled={isUploading}
-                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-sm disabled:opacity-50"
-                        />
-                        {isUploading && (
-                          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                            <div 
-                              className="bg-blue-500 h-full transition-all duration-300" 
-                              style={{ width: `${uploadProgress}%` }}
-                            />
-                          </div>
-                        )}
-                      </div>
+                      <input 
+                        type="file" 
+                        onChange={handleFileSelect}
+                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-sm"
+                      />
                     ) : null}
 
                     <button 
                       onClick={handleAddAttachment}
-                      disabled={!newLessonUrl || isUploading}
+                      disabled={!newLessonUrl}
                       className="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       تأكيد إضافة المرفق
@@ -1731,80 +1572,13 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
                   </div>
                 )}
 
-                {isSubmitting && (
-                  <div className="mt-4 space-y-2">
-                    <div className="flex justify-between items-center text-[10px] font-black text-blue-600">
-                      <span>جاري حفظ البيانات والمرفقات...</span>
-                      <span>يرجى عدم إغلاق النافذة</span>
-                    </div>
-                    <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
-                      <motion.div 
-                        initial={{ x: '-100%' }}
-                        animate={{ x: '100%' }}
-                        transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-                        className="w-full h-full bg-blue-600"
-                      />
-                    </div>
-                  </div>
-                )}
-
                 <button 
                   onClick={handleAddLesson}
-                  disabled={isSubmitting || isUploading || !newLessonTitle || newLessonAttachments.length === 0}
+                  disabled={isSubmitting || !newLessonTitle || newLessonAttachments.length === 0}
                   className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4"
                 >
-                  {isSubmitting ? 'جاري النشر...' : isUploading ? 'جاري رفع المرفقات...' : 'نشر الدرس الآن'}
+                  {isSubmitting ? 'جاري النشر...' : 'نشر الدرس الآن'}
                 </button>
-              </div>
-
-              {/* Save Attachment Bar */}
-              <div className="absolute bottom-0 left-0 right-0 p-6 bg-white border-t border-slate-100 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] flex items-center justify-between z-10">
-                <div className="flex items-center gap-4">
-                  <div className="flex -space-x-2">
-                    {newLessonAttachments.slice(0, 3).map((att, i) => {
-                      const { icon: Icon, color } = getAttachmentIcon(att);
-                      return (
-                        <div key={`bar-att-${att.name}-${i}`} className={cn("w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shadow-sm", color)}>
-                          <Icon className="w-4 h-4" />
-                        </div>
-                      );
-                    })}
-                    {newLessonAttachments.length > 3 && (
-                      <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-black text-slate-500 shadow-sm">
-                        +{newLessonAttachments.length - 3}
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-xs font-black text-slate-900">
-                      {newLessonAttachments.length} مرفقات مضافة
-                    </p>
-                    <p className="text-[10px] font-bold text-slate-400">
-                      {isSubmitting ? 'جاري الحفظ...' : 'جاهز للنشر'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setIsUploadModalOpen(false);
-                      setEditingLesson(null);
-                      setNewLessonTitle('');
-                      setNewLessonAttachments([]);
-                    }}
-                    disabled={isSubmitting}
-                    className="px-6 py-3 rounded-xl text-slate-500 font-bold text-sm hover:bg-slate-50 transition-all"
-                  >
-                    إلغاء
-                  </button>
-                  <button
-                    onClick={handleAddLesson}
-                    disabled={isSubmitting || isUploading || !newLessonTitle || newLessonAttachments.length === 0}
-                    className="px-8 py-3 bg-blue-600 text-white rounded-xl font-black text-sm shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all disabled:opacity-50"
-                  >
-                    {isSubmitting ? 'جاري الحفظ...' : isUploading ? 'جاري الرفع...' : 'حفظ ونشر'}
-                  </button>
-                </div>
               </div>
 
               <div className="px-8 py-6 bg-blue-50/50 border-t border-blue-100 flex items-start gap-3">
@@ -1846,17 +1620,19 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
                         const iconInfo = getAttachmentIcon(att);
                         const Icon = iconInfo.icon;
                         return (
-                          <div key={`post-att-${viewingPost.id}-${att.url}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                          <div key={`${att.url}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                             <div className="flex items-center gap-3">
                               <div className={cn("p-2 rounded-lg", iconInfo.bg, iconInfo.color)}>
                                 <Icon className="w-4 h-4" />
                               </div>
                               <span className="text-xs font-bold text-slate-700 truncate max-w-[120px]">{att.name}</span>
                             </div>
-                              <div className="flex gap-2">
+                            <div className="flex gap-2">
+                              {(att.type === 'image' || att.type === 'video' || att.type === 'link') && (
                                 <button onClick={() => setPreviewAttachment(att)} className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-500">
                                   <Eye className="w-4 h-4" />
                                 </button>
+                              )}
                               <button onClick={() => {
                                 const link = document.createElement('a');
                                 link.href = att.url;
@@ -1938,74 +1714,31 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
                       <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
                       المرفقات والمصادر ({viewingLesson.attachments.length})
                     </h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {viewingLesson.attachments.map((attachment, idx) => {
                         const attachInfo = getAttachmentIcon(attachment);
                         const AttachIcon = attachInfo.icon;
-                        const isImage = attachment.type === 'image' || attachment.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)$/);
-                        const isVideo = attachment.type === 'video' || attachment.name.toLowerCase().match(/\.(mp4|mov|avi|webm)$/);
-                        const isPdf = attachment.name.toLowerCase().endsWith('.pdf');
-
                         return (
-                          <div 
+                          <button 
                             key={`preview-att-${attachment.url}-${idx}`}
-                            className="group relative bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg transition-all"
+                            onClick={() => {
+                              if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
+                                setPreviewAttachment(attachment);
+                              } else {
+                                downloadFile(attachment.url, attachment.name || `مرفق-${idx + 1}`);
+                              }
+                            }}
+                            className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 hover:border-indigo-200 hover:shadow-md transition-all group text-right"
                           >
-                            <div className="aspect-video w-full bg-slate-50 flex items-center justify-center overflow-hidden relative">
-                              {isImage ? (
-                                <img 
-                                  src={attachment.url} 
-                                  alt={attachment.name} 
-                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                  referrerPolicy="no-referrer"
-                                />
-                              ) : isVideo ? (
-                                <div className="w-full h-full flex items-center justify-center bg-slate-900">
-                                  <Video className="w-8 h-8 text-white/50" />
-                                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
-                                    <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
-                                      <Play className="w-5 h-5 text-white fill-current" />
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : isPdf ? (
-                                <div className="w-full h-full flex flex-col items-center justify-center bg-red-50 group-hover:bg-red-100 transition-colors">
-                                  <FileText className="w-10 h-10 text-red-500" />
-                                  <span className="mt-2 text-[10px] font-black text-red-600 bg-white px-2 py-0.5 rounded-full shadow-sm">PDF</span>
-                                </div>
-                              ) : (
-                                <div className={cn("w-full h-full flex flex-col items-center justify-center", attachInfo.bg)}>
-                                  <AttachIcon className={cn("w-10 h-10", attachInfo.color)} />
-                                  <span className={cn("mt-2 text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm bg-white", attachInfo.color)}>
-                                    {(attachment.type || 'FILE').toUpperCase()}
-                                  </span>
-                                </div>
-                              )}
-                              
-                              {/* Overlay Actions */}
-                              <div className="absolute inset-0 bg-indigo-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                                <button 
-                                  onClick={() => setPreviewAttachment(attachment)}
-                                  className="p-2.5 bg-white text-indigo-600 rounded-xl hover:scale-110 transition-transform shadow-lg"
-                                  title="عرض"
-                                >
-                                  <Eye className="w-5 h-5" />
-                                </button>
-                                <button 
-                                  onClick={() => downloadFile(attachment.url, attachment.name)}
-                                  className="p-2.5 bg-white text-emerald-600 rounded-xl hover:scale-110 transition-transform shadow-lg"
-                                  title="تحميل"
-                                >
-                                  <Download className="w-5 h-5" />
-                                </button>
-                              </div>
+                            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", attachInfo.bg, attachInfo.color)}>
+                              <AttachIcon className="w-5 h-5" />
                             </div>
-                            <div className="p-3">
-                              <p className="text-[10px] font-black text-slate-700 truncate text-center" title={attachment.name}>
-                                {attachment.name || `مرفق ${idx + 1}`}
-                              </p>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-black text-slate-900 truncate">{attachment.name || `مرفق ${idx + 1}`}</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">{attachment.type}</p>
                             </div>
-                          </div>
+                            <Download className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition-colors" />
+                          </button>
                         );
                       })}
                     </div>
@@ -2019,7 +1752,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
                         التعليقات والملاحظات
                       </h4>
                       <div className="space-y-3">
-                        {viewingLesson.comments.map((comment, index) => (
+                        {viewingLesson.comments.map((comment) => (
                           <div key={`lesson-comment-${comment.id}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
                             <div className="flex justify-between items-center mb-2">
                               <span className="text-xs font-black text-amber-700">{comment.authorName}</span>
@@ -2102,6 +1835,6 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = React.memo(({
       </AnimatePresence>
     </div>
   );
-});
+};
 
 export default TeacherDashboardV2;

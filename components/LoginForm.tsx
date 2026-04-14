@@ -2,9 +2,8 @@
 import React, { useState } from 'react';
 import { GraduationCap } from 'lucide-react';
 import { UserRole, User, SupervisorConfig } from '../types';
-import { auth, db } from '../src/firebase';
+import { auth } from '../src/firebase';
 import { sendPasswordResetEmail, GoogleAuthProvider, OAuthProvider, signInWithPopup } from 'firebase/auth';
-import { doc, getDoc, getDocFromCache } from 'firebase/firestore';
 
 interface LoginFormProps {
   onLogin: (user: User) => void;
@@ -28,9 +27,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, teachers, onForgotPasswo
   const [newBackupPass, setNewBackupPass] = useState('');
   const [forgotError, setForgotError] = useState('');
 
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanCode = code.trim();
     const cleanPass = password.trim();
@@ -40,103 +37,49 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, teachers, onForgotPasswo
       return;
     }
 
-    setIsLoggingIn(true);
-    setError('');
+    // Determine if input is email or ID
+    const isEmail = cleanCode.includes('@');
+    const employeeId = isEmail ? cleanCode.split('@')[0] : cleanCode;
 
-    try {
-      // Determine if input is email or ID
-      const isEmail = cleanCode.includes('@');
-      const employeeId = isEmail ? cleanCode.split('@')[0] : cleanCode;
+    // Supervisor Login Check
+    const isSupervisor = employeeId === '16115506';
+    
+    if (isSupervisor) {
+      const foundInTeachers = teachers.find(t => t.id === employeeId);
+      const isValidSupervisor = 
+        (employeeId === '16115506' && cleanPass === 'rahmah@moe.om') ||
+        (supervisorConfig.mainPassword && cleanPass === supervisorConfig.mainPassword) ||
+        (supervisorConfig.backupPassword && cleanPass === supervisorConfig.backupPassword) ||
+        (foundInTeachers && cleanPass === foundInTeachers.password);
 
-      // Supervisor Login Check
-      const isSupervisor = employeeId === '16115506';
-      
-      if (isSupervisor) {
-        let foundInTeachers = teachers.find(t => t.id === employeeId);
-        
-        // If not in local list (because it's not loaded yet), fetch it
-        if (!foundInTeachers) {
-          let userDoc;
-          try {
-            userDoc = await getDoc(doc(db, 'users', employeeId));
-          } catch (err: any) {
-            if (err.message?.includes('Quota') || err.code === 'resource-exhausted') {
-              userDoc = await getDocFromCache(doc(db, 'users', employeeId)).catch(() => null);
-            } else {
-              throw err;
-            }
-          }
-          
-          if (userDoc && userDoc.exists()) {
-            foundInTeachers = { ...userDoc.data() as User, id: userDoc.id };
-          }
-        }
-
-        const isValidSupervisor = 
-          (employeeId === '16115506' && cleanPass === 'rahmah@moe.om') ||
-          (supervisorConfig.mainPassword && cleanPass === supervisorConfig.mainPassword) ||
-          (supervisorConfig.backupPassword && cleanPass === supervisorConfig.backupPassword) ||
-          (foundInTeachers && cleanPass === foundInTeachers.password);
-
-        if (isValidSupervisor) {
-          onLogin(foundInTeachers || { 
-            id: employeeId, 
-            name: 'رحمه بنت حمد الشرجيه', 
-            role: UserRole.SUPERVISOR, 
-            code: employeeId,
-            password: cleanPass,
-            isActive: true,
-            joinedAt: '2026'
-          });
-          return;
-        } else {
-          setError('كلمة مرور المشرفة غير صحيحة');
-          setIsLoggingIn(false);
-          return;
-        }
-      }
-
-      // Teacher & Temp Supervisor Check
-      let foundUser = teachers.find(t => t.id === employeeId);
-      
-      // If not in local list, fetch it
-      if (!foundUser) {
-        let userDoc;
-        try {
-          userDoc = await getDoc(doc(db, 'users', employeeId));
-        } catch (err: any) {
-          if (err.message?.includes('Quota') || err.code === 'resource-exhausted') {
-            userDoc = await getDocFromCache(doc(db, 'users', employeeId)).catch(() => null);
-          } else {
-            throw err;
-          }
-        }
-        
-        if (userDoc && userDoc.exists()) {
-          foundUser = { ...userDoc.data() as User, id: userDoc.id };
-        }
-      }
-
-      if (!foundUser) {
-        setError('المستخدم غير مسجل في النظام');
-        setIsLoggingIn(false);
+      if (isValidSupervisor) {
+        onLogin(foundInTeachers || { 
+          id: employeeId, 
+          name: 'رحمه بنت حمد الشرجيه', 
+          role: UserRole.SUPERVISOR, 
+          code: employeeId,
+          password: cleanPass,
+          isActive: true,
+          joinedAt: '2026'
+        });
+        return;
+      } else {
+        setError('كلمة مرور المشرفة غير صحيحة');
         return;
       }
+    }
 
-      if (cleanPass === foundUser.password) {
-        onLogin(foundUser);
-      } else {
-        setError('كلمة المرور غير صحيحة');
-      }
-    } catch (err: any) {
-      console.error("Login error:", err);
-      if (err.message?.includes('Quota limit exceeded') || err.message?.includes('Quota exceeded')) {
-        setError('تم تجاوز حصة الاستخدام اليومية لخدمة قاعدة البيانات. يرجى المحاولة مرة أخرى غداً.');
-      } else {
-        setError('حدث خطأ أثناء محاولة تسجيل الدخول. يرجى المحاولة مرة أخرى.');
-      }
-    } finally {
-      setIsLoggingIn(false);
+    // Teacher & Temp Supervisor Check
+    const foundUser = teachers.find(t => t.id === employeeId);
+    if (!foundUser) {
+      setError('المستخدم غير مسجل في النظام');
+      return;
+    }
+
+    if (cleanPass === foundUser.password) {
+      onLogin(foundUser);
+    } else {
+      setError('كلمة المرور غير صحيحة');
     }
   };
 
@@ -224,7 +167,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, teachers, onForgotPasswo
           <h1 className="text-xl sm:text-2xl font-black text-slate-800 mb-1 sm:mb-2 tracking-tight">{supervisorConfig.schoolName || 'مدرسة الخضراء للتعليم الأساسي 1-8'}</h1>
           <p className="text-slate-500 font-bold text-[10px] sm:text-sm mb-1">بوابة الدخول الموحدة للمجال الأول</p>
           <p className="text-[8px] sm:text-[10px] font-black text-emerald-600 bg-emerald-50 inline-block px-3 py-1 rounded-full">
-            {currentYear || '2025-2026'} | {currentSemester || 'الفصل الدراسي الأول'}
+            {currentYear || '2025-2026'} | {currentSemester || 'الفصل الأول'}
           </p>
         </div>
 
@@ -240,18 +183,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, teachers, onForgotPasswo
           
           {error && <div className="bg-red-50 text-red-600 text-[10px] sm:text-xs font-black p-3 sm:p-4 rounded-xl sm:rounded-2xl text-center animate-pulse">{error}</div>}
           
-          <button 
-            type="submit" 
-            disabled={isLoggingIn}
-            className="w-full bg-slate-900 text-white py-4 sm:py-5 rounded-xl sm:rounded-2xl font-black text-base sm:text-lg hover:bg-emerald-600 shadow-xl shadow-emerald-100 active:scale-95 transition-all mt-2 sm:mt-4 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {isLoggingIn ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                جاري التحقق...
-              </>
-            ) : 'تسجيل الدخول'}
-          </button>
+          <button type="submit" className="w-full bg-slate-900 text-white py-4 sm:py-5 rounded-xl sm:rounded-2xl font-black text-base sm:text-lg hover:bg-emerald-600 shadow-xl shadow-emerald-100 active:scale-95 transition-all mt-2 sm:mt-4">تسجيل الدخول</button>
         </form>
         
         <div className="text-center pt-2">

@@ -1,44 +1,12 @@
 
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, OAuthProvider, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { getStorage } from 'firebase/storage';
-import { 
-  initializeFirestore, 
-  persistentLocalCache, 
-  persistentMultipleTabManager,
-  doc, 
-  getDocFromServer,
-  terminate,
-  clearIndexedDbPersistence
-} from 'firebase/firestore';
+import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
-
-// Initialize Firestore with modern persistence (Multi-tab support)
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager()
-  })
-}, firebaseConfig.firestoreDatabaseId);
-
+export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
-export const storage = getStorage(app);
-
-/**
- * Clears Firestore persistence and reloads the page.
- * Useful for recovering from corrupted local state or internal assertion errors.
- */
-export async function resetFirestorePersistence() {
-  try {
-    await terminate(db);
-    await clearIndexedDbPersistence(db);
-    window.location.reload();
-  } catch (error) {
-    console.error("Error resetting Firestore persistence:", error);
-    window.location.reload();
-  }
-}
 
 // Set persistence to local
 setPersistence(auth, browserLocalPersistence).catch((error) => {
@@ -103,14 +71,14 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 }
 
 // Validate connection to Firestore
-// async function testConnection() {
-//   try {
-//     await getDocFromServer(doc(db, 'test', 'connection'));
-//     console.log("Firebase connected successfully.");
-//   } catch (error) {
-//     if (error instanceof Error && error.message.includes('the client is offline')) {
-//       console.error("Please check your Firebase configuration. The client is offline.");
-//     }
-//   }
-// }
-// testConnection();
+async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, 'test', 'connection'));
+    console.log("Firebase connected successfully.");
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.error("Please check your Firebase configuration. The client is offline.");
+    }
+  }
+}
+testConnection();

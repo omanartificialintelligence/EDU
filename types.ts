@@ -42,9 +42,6 @@ export interface User {
   supervisoryVisitDate?: string; // وقت الزيارة الإشرافية
   tempPermissions?: TempPermissions; // For Temp Supervisors
   auditLogs?: AuditLog[];
-  preferences?: {
-    dashboardWidgets?: string[];
-  };
 }
 
 export interface SupervisorConfig {
