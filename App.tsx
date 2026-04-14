@@ -826,6 +826,7 @@ const App: React.FC = () => {
           semester={currentSemester}
           notifications={notifications.filter(n => n.userId === auth.user?.id)}
           onMarkAsRead={handleMarkNotificationAsRead}
+          onAddNotification={handleAddNotification}
           onSwitchBackToSupervisorView={() => setIsPreviewMode(false)}
         />
       );
@@ -1112,6 +1113,7 @@ const App: React.FC = () => {
           semester={currentSemester}
           notifications={notifications.filter(n => n.userId === auth.user?.id)}
           onMarkAsRead={handleMarkNotificationAsRead}
+          onAddNotification={handleAddNotification}
         />
       </main>
 

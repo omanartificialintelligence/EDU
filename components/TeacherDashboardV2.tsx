@@ -30,12 +30,13 @@ interface TeacherDashboardV2Props {
   semester: string;
   notifications: Notification[];
   onMarkAsRead: (id: string) => void;
+  onAddNotification?: (notification: Notification) => void;
   onSwitchBackToSupervisorView?: () => void;
 }
 
 const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   user, posts, lessonMaterials, onAddMaterial, onUpdateMaterial, notifications,
-  messages, onSendMessage, onMarkMessageAsRead, projects, updateProjectSubmission, onMarkAsRead, currentYear, semester,
+  messages, onSendMessage, onMarkMessageAsRead, projects, updateProjectSubmission, onMarkAsRead, onAddNotification, currentYear, semester,
   onSwitchBackToSupervisorView
 }) => {
   // Dynamic Grades and Subjects based on Assignments
@@ -317,6 +318,17 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
 
     onUpdateMaterial(updatedMaterial);
     setCommentText('');
+
+    if (material.teacherId !== user.id && onAddNotification) {
+      onAddNotification({
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        userId: material.teacherId,
+        message: `أضافت المعلمة ${user.name} تعليقاً على درسك: ${material.lessonTitle}`,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        type: 'comment',
+      });
+    }
   };
 
   const getFileIcon = (material: LessonMaterial) => {

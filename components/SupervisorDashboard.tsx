@@ -678,6 +678,17 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
     onUpdateLessonMaterial(updatedLesson);
     setCommentText('');
+
+    if (lesson.teacherId !== user.id) {
+      onAddNotification({
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        userId: lesson.teacherId,
+        message: `أضافت المشرفة ${user.name} تعليقاً على درسك: ${lesson.lessonTitle}`,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        type: 'comment',
+      });
+    }
   };
 
   const handleSaveSupervisorNotes = async () => {
@@ -688,6 +699,18 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     };
     await onUpdateLessonMaterial(updatedLesson);
     setViewingLesson(updatedLesson);
+    
+    if (viewingLesson.teacherId !== user.id) {
+      onAddNotification({
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        userId: viewingLesson.teacherId,
+        message: `أضافت المشرفة ${user.name} ملاحظات على درسك: ${viewingLesson.lessonTitle}`,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        type: 'comment',
+      });
+    }
+    
     alert('تم حفظ الملاحظات بنجاح');
   };
 
