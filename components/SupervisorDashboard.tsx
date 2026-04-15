@@ -23,6 +23,8 @@ import { twMerge } from 'tailwind-merge';
 import { exportTeachersCSV, exportLessonsCSV, exportProjectsCSV, exportToPDF } from '../src/services/exportService';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
+import { storage } from '../src/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -2209,6 +2211,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   const reader = new FileReader();
                                   reader.onload = () => {
                                     setAttachmentFiles(prev => [...prev, {
+                                      id: Date.now().toString() + Math.random().toString(),
                                       type: 'file' as const,
                                       url: reader.result as string,
                                       name: file.name
@@ -2377,6 +2380,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 const reader = new FileReader();
                                 reader.onload = () => {
                                   setNewPostAttachments(prev => [...prev, {
+                                    id: Date.now().toString() + Math.random().toString(),
                                     type: 'file' as const,
                                     url: reader.result as string,
                                     name: file.name
@@ -3132,6 +3136,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         e.preventDefault();
                         if (newMessageText.trim() || messageAttachment) {
                           const attachments = messageAttachment ? [{
+                            id: Date.now().toString() + Math.random().toString(),
                             type: messageAttachmentType,
                             url: messageAttachment,
                             name: messageAttachmentName
@@ -3636,7 +3641,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 <div className="space-y-2 mt-4">
                   <p className="text-xs font-bold text-slate-500">المرفقات:</p>
                   {newLessonAttachments.map((att, i) => (
-                    <div key={`new-lesson-att-${att.name}-${i}`} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
+                    <div key={att.id} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
                       {att.name}
                       <button onClick={() => setNewLessonAttachments(newLessonAttachments.filter((_, idx) => idx !== i))} className="text-red-500">حذف</button>
                     </div>
@@ -3648,7 +3653,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       const nameInput = document.getElementById('newAttName') as HTMLInputElement;
                       const urlInput = document.getElementById('newAttUrl') as HTMLInputElement;
                       if (nameInput.value && urlInput.value) {
-                        setNewLessonAttachments([...newLessonAttachments, { name: nameInput.value, url: urlInput.value, type: 'link' }]);
+                        setNewLessonAttachments([...newLessonAttachments, { id: Date.now().toString() + Math.random().toString(), name: nameInput.value, url: urlInput.value, type: 'link' }]);
                         nameInput.value = '';
                         urlInput.value = '';
                       }
@@ -3778,24 +3783,25 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       id="project-file-upload"
                       multiple
                       className="hidden"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         if (e.target.files) {
                           const files = Array.from(e.target.files);
-                          files.forEach(file => {
-                            if (file.size > 700 * 1024) {
-                              alert(`الملف ${file.name} كبير جداً. يرجى اختيار ملفات أقل من 700 كيلوبايت.`);
-                              return;
-                            }
-                            const reader = new FileReader();
-                            reader.onload = () => {
+                          for (const file of files) {
+                            const storageRef = ref(storage, `projects/${Date.now()}_${file.name}`);
+                            try {
+                              const snapshot = await uploadBytes(storageRef, file);
+                              const downloadURL = await getDownloadURL(snapshot.ref);
                               setNewProjectAttachments(prev => [...prev, {
+                                id: Date.now().toString() + Math.random().toString(),
                                 type: 'file' as const,
-                                url: reader.result as string,
+                                url: downloadURL,
                                 name: file.name
                               }]);
-                            };
-                            reader.readAsDataURL(file);
-                          });
+                            } catch (error) {
+                              console.error("Error uploading file:", error);
+                              alert(`فشل رفع الملف ${file.name}`);
+                            }
+                          }
                         }
                       }}
                     />
@@ -3803,7 +3809,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   {newProjectAttachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {newProjectAttachments.map((att, idx) => (
-                        <div key={att.url} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+                        <div key={att.id} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
                           <FileText className="w-3 h-3" />
                           {att.name}
                           <button onClick={() => setNewProjectAttachments(newProjectAttachments.filter((_, i) => i !== idx))} className="hover:text-red-500">

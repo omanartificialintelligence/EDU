@@ -10,6 +10,8 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { storage } from '../src/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -79,23 +81,20 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
     }
   }, [editingLesson]);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
-      // Check file size (limit to 700KB for Firestore base64 storage)
-      if (file.size > 700 * 1024) {
-        alert('حجم الملف كبير جداً. يرجى اختيار ملف أقل من 700 كيلوبايت لضمان الحفظ.');
-        e.target.value = '';
-        return;
+      const storageRef = ref(storage, `lessons/${Date.now()}_${file.name}`);
+      try {
+        const snapshot = await uploadBytes(storageRef, file);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        setNewLessonFileName(file.name);
+        setNewLessonUrl(downloadURL);
+      } catch (error) {
+        console.error("Error uploading file:", error);
+        alert(`فشل رفع الملف ${file.name}`);
       }
-
-      setNewLessonFileName(file.name);
-      const reader = new FileReader();
-      reader.onload = () => {
-        setNewLessonUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
     }
   };
 
@@ -126,6 +125,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   const handleAddLink = () => {
     if (!newLinkUrl || !newLinkName) return;
     setSubmissionFiles(prev => [...prev, {
+      id: Date.now().toString() + Math.random().toString(),
       type: 'link',
       url: newLinkUrl,
       name: newLinkName,
@@ -1206,23 +1206,24 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                             <input 
                               type="file" 
                               className="hidden" 
-                              onChange={(e) => {
+                              onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
-                                  if (file.size > 700 * 1024) {
-                                    alert('حجم الملف كبير جداً. يرجى اختيار ملف أقل من 700 كيلوبايت.');
-                                    return;
-                                  }
-                                  const reader = new FileReader();
-                                  reader.onload = () => {
+                                  const storageRef = ref(storage, `submissions/${Date.now()}_${file.name}`);
+                                  try {
+                                    const snapshot = await uploadBytes(storageRef, file);
+                                    const downloadURL = await getDownloadURL(snapshot.ref);
                                     setSubmissionFiles(prev => [...prev, {
+                                      id: Date.now().toString() + Math.random().toString(),
                                       type: file.type.startsWith('image/') ? 'image' : 'file',
-                                      url: reader.result as string,
+                                      url: downloadURL,
                                       name: file.name,
                                       comment: ''
                                     }]);
-                                  };
-                                  reader.readAsDataURL(file);
+                                  } catch (error) {
+                                    console.error("Error uploading file:", error);
+                                    alert(`فشل رفع الملف ${file.name}`);
+                                  }
                                 }
                               }}
                             />
@@ -1429,6 +1430,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                       e.preventDefault();
                       if (newMessageText.trim() || messageAttachment) {
                         const attachments = messageAttachment ? [{
+                          id: Date.now().toString() + Math.random().toString(),
                           type: messageAttachmentType,
                           url: messageAttachment,
                           name: messageAttachmentName
@@ -1454,16 +1456,20 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                       type="file"
                       id="msg-file-upload"
                       className="hidden"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
                           setMessageAttachmentName(file.name);
                           setMessageAttachmentType(file.type.startsWith('image/') ? 'image' : 'file');
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setMessageAttachment(reader.result as string);
-                          };
-                          reader.readAsDataURL(file);
+                          const storageRef = ref(storage, `messages/${Date.now()}_${file.name}`);
+                          try {
+                            const snapshot = await uploadBytes(storageRef, file);
+                            const downloadURL = await getDownloadURL(snapshot.ref);
+                            setMessageAttachment(downloadURL);
+                          } catch (error) {
+                            console.error("Error uploading file:", error);
+                            alert(`فشل رفع الملف ${file.name}`);
+                          }
                         }
                       }}
                     />
@@ -1538,7 +1544,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         <label className="text-sm font-black text-slate-700 block">المرفقات المضافة</label>
                         <div className="space-y-2">
                           {newLessonAttachments.map((att, idx) => (
-                            <div key={att.url} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                            <div key={att.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center">
                                   {att.type === 'link' ? <LinkIcon className="w-5 h-5 text-indigo-500" /> : 
