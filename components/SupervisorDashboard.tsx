@@ -1297,7 +1297,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 { label: 'تسجيل معلمة', icon: Users, color: 'amber', action: () => setActiveTab('teachers') },
                               ].map((btn, i) => (
                                 <button 
-                                  key={`${btn.label}-${i}`} 
+                                  key={btn.label} 
                                   onClick={btn.action}
                                   className={cn(
                                     "p-6 rounded-3xl border border-slate-100 flex flex-col items-center gap-4 transition-all hover:shadow-lg hover:-translate-y-1",
@@ -1521,7 +1521,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 <motion.div 
                                   initial={{ opacity: 0, scale: 0.9 }}
                                   animate={{ opacity: 1, scale: 1 }}
-                                  key={`new-assignment-${assignment.grade}-${assignment.subject}-${idx}`} 
+                                  key={`new-assignment-${assignment.grade}-${assignment.subject}`} 
                                   className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm group hover:border-indigo-200 transition-all"
                                 >
                                   <div className="w-2 h-2 rounded-full bg-indigo-500" />
@@ -1640,7 +1640,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             </thead>
                             <tbody>
                               {teacher.assignments.map((assignment, idx) => (
-                                <tr key={`assignment-${assignment.grade}-${assignment.subject}-${idx}`} className="border-b border-slate-100 last:border-0">
+                                <tr key={`assignment-${assignment.grade}-${assignment.subject}`} className="border-b border-slate-100 last:border-0">
                                   <td className="py-2 text-slate-800 font-bold flex items-center gap-2">
                                     <GraduationCap className="w-3.5 h-3.5 text-emerald-500" />
                                     {assignment.grade}
@@ -1886,7 +1886,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 <span className="text-[10px] font-bold text-slate-400">المعلمة المسؤولة:</span>
                                 <div className="flex flex-wrap gap-1">
                                   {filteredTeachers.filter(t => t.assignments?.some(a => a.subject === viewingSubject && a.grade === activeGradeTab)).map((t, i) => (
-                                    <span key={`responsible-teacher-${t.id}-${i}`} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[10px] font-black">
+                                    <span key={`responsible-teacher-${t.id}`} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[10px] font-black">
                                       {t.name}
                                     </span>
                                   ))}
@@ -2138,7 +2138,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         >
                           <option value="">اختر المعلمة...</option>
                           {[user, ...filteredTeachers.filter(t => t.id !== user.id)].map((t, idx) => (
-                            <option key={`teacher-option-${t.id}-${idx}`} value={t.id}>{t.name}</option>
+                            <option key={`teacher-option-${t.id}`} value={t.id}>{t.name}</option>
                           ))}
                         </select>
                       </div>
@@ -2232,7 +2232,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         {attachmentFiles.length > 0 && (
                           <div className="space-y-2 mt-4">
                             {attachmentFiles.map((file, idx) => (
-                              <div key={`att-file-${file.name}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                              <div key={`att-file-${file.name}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                                 <div className="flex items-center gap-3">
                                   <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-indigo-600 shadow-sm">
                                     <FileText className="w-4 h-4" />

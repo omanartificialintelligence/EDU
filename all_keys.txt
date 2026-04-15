@@ -1,0 +1,180 @@
+./src/components/TeacherPanel.tsx:                key={lesson.id}
+./components/SupervisorDashboard.tsx:              key={item.id}
+./components/SupervisorDashboard.tsx:                          key={notification.id} 
+./components/SupervisorDashboard.tsx:                key="overview"
+./components/SupervisorDashboard.tsx:                    <div key={widgetId} className="relative group">
+./components/SupervisorDashboard.tsx:                              <div key={`stat-${stat.label.replace(/\s+/g, '-')}`} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center gap-6 group hover:shadow-xl hover:shadow-indigo-500/5 transition-all">
+./components/SupervisorDashboard.tsx:                                      <Cell key={`cell-${entry.name}`} fill={entry.color} />
+./components/SupervisorDashboard.tsx:                                  key={`${btn.label}-${i}`} 
+./components/SupervisorDashboard.tsx:                                <div key={lesson.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+./components/SupervisorDashboard.tsx:                key="teachers"
+./components/SupervisorDashboard.tsx:                                  {AVAILABLE_GRADES.map((g) => <option key={`grade-select-1-${g}`} value={g}>{g}</option>)}
+./components/SupervisorDashboard.tsx:                                  ).map((s) => <option key={`subject-select-1-${s}`} value={s}>{s}</option>)}
+./components/SupervisorDashboard.tsx:                                  key={`new-assignment-${assignment.grade}-${assignment.subject}-${idx}`} 
+./components/SupervisorDashboard.tsx:                    <div key={teacher.id} className="bg-white p-5 rounded-[1.5rem] shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-200 transition-all duration-300 group relative overflow-hidden">
+./components/SupervisorDashboard.tsx:                                <tr key={`assignment-${assignment.grade}-${assignment.subject}-${idx}`} className="border-b border-slate-100 last:border-0">
+./components/SupervisorDashboard.tsx:                key="lessons"
+./components/SupervisorDashboard.tsx:                      <div key={`grade-section-${grade}`} className="space-y-4">
+./components/SupervisorDashboard.tsx:                                key={`${grade}-${subject.name}`} 
+./components/SupervisorDashboard.tsx:                                      <div key={`teacher-avatar-${grade}-${subject.name}-${i}`} className="w-8 h-8 rounded-full bg-white border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm" title={teacher}>
+./components/SupervisorDashboard.tsx:                                    <span key={`responsible-teacher-${t.id}-${i}`} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[10px] font-black">
+./components/SupervisorDashboard.tsx:                            <div key={material.id} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
+./components/SupervisorDashboard.tsx:                                        key={`${material.id}-${attachment.url}-${attachment.name}-${idx}`}
+./components/SupervisorDashboard.tsx:                                            <div key={`material-comment-${comment.id}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+./components/SupervisorDashboard.tsx:                            <option key={`teacher-option-${t.id}-${idx}`} value={t.id}>{t.name}</option>
+./components/SupervisorDashboard.tsx:                            {AVAILABLE_GRADES.map((g) => <option key={`grade-select-2-${g}`} value={g}>{g}</option>)}
+./components/SupervisorDashboard.tsx:                            {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-2-${s}`} value={s}>{s}</option>)}
+./components/SupervisorDashboard.tsx:                              <div key={`att-file-${file.name}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+./components/SupervisorDashboard.tsx:                key="feed"
+./components/SupervisorDashboard.tsx:                              <div key={`new-post-att-${att.url}-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+./components/SupervisorDashboard.tsx:                    <div key={post.id} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden">
+./components/SupervisorDashboard.tsx:                            <div key={`post-att-${post.id}-${i}`} className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-500 flex items-center gap-2">
+./components/SupervisorDashboard.tsx:                key="archive"
+./components/SupervisorDashboard.tsx:                          key={`archive-year-${year}-${idx}`}
+./components/SupervisorDashboard.tsx:                            key={`archive-grade-${grade}-${idx}`}
+./components/SupervisorDashboard.tsx:                              key={`${selectedArchiveGrade}-${subject.name}`}
+./components/SupervisorDashboard.tsx:                                        key={`archive-sem-${sem}-${idx}`}
+./components/SupervisorDashboard.tsx:                            <div key={`archive-lesson-${lesson.id}-${idx}`} className="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-white hover:shadow-md transition-all">
+./components/SupervisorDashboard.tsx:                                  key={`${lesson.id}-${attachment.url}-${attachment.name}-${idx}`}
+./components/SupervisorDashboard.tsx:                              <div key={`archive-project-${project.id}-${idx}`} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
+./components/SupervisorDashboard.tsx:                              <div key={`archive-post-${post.id}-${idx}`} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex justify-between items-start">
+./components/SupervisorDashboard.tsx:                key="projects"
+./components/SupervisorDashboard.tsx:                      key={project.id}
+./components/SupervisorDashboard.tsx:                                <div key={`proj-teacher-${project.id}-${teacherId}-${idx}`} className={cn(
+./components/SupervisorDashboard.tsx:                                  <li key={`proj-task-${viewingProject.id}-${task}`} className="flex items-start gap-2 text-sm text-slate-600">
+./components/SupervisorDashboard.tsx:                          <div key={`view-proj-teacher-${viewingProject.id}-${teacherId}-${idx}`} className="bg-slate-50 rounded-[24px] border border-slate-100 overflow-hidden">
+./components/SupervisorDashboard.tsx:                                        key={`sub-file-${file.name}-${i}`}
+./components/SupervisorDashboard.tsx:                key="messages"
+./components/SupervisorDashboard.tsx:                          key={msg.id}
+./components/SupervisorDashboard.tsx:                                  <div key={`msg-att-${msg.id}-${att.name}-${idx}`} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
+./components/SupervisorDashboard.tsx:                key="temp-supervisors"
+./components/SupervisorDashboard.tsx:                                <label key={`subject-filter-${subject}-${idx}`} className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
+./components/SupervisorDashboard.tsx:                            <div key={`supervisor-${supervisor.id}`} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-slate-50 rounded-xl border border-slate-100 gap-4">
+./components/SupervisorDashboard.tsx:                                      <span key={`${supervisor.id}-${s}`} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">{s}</span>
+./components/SupervisorDashboard.tsx:                key="security"
+./components/SupervisorDashboard.tsx:                        key="security-main"
+./components/SupervisorDashboard.tsx:                        key="security-change-main"
+./components/SupervisorDashboard.tsx:                        key="security-add-emergency"
+./components/SupervisorDashboard.tsx:                  {AVAILABLE_GRADES.map((g) => <option key={`grade-select-3-${g}`} value={g}>{g}</option>)}
+./components/SupervisorDashboard.tsx:                  {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-3-${s}`} value={s}>{s}</option>)}
+./components/SupervisorDashboard.tsx:                    <div key={att.id} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
+./components/SupervisorDashboard.tsx:                        <div key={att.id} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+./components/SupervisorDashboard.tsx:                        <div key={`new-proj-task-${task}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+./components/SupervisorDashboard.tsx:                      <label key={`teacher-select-${teacher.id}-${idx}`} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-indigo-500 transition-all">
+./components/SupervisorDashboard.tsx:                        {AVAILABLE_GRADES.map((g) => <option key={`grade-select-4-${g}`} value={g}>{g}</option>)}
+./components/SupervisorDashboard.tsx:                        {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-4-${s}`} value={s}>{s}</option>)}
+./components/SupervisorDashboard.tsx:                      <div key={`edit-assignment-${assignment.grade}-${assignment.subject}-${idx}`} className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
+./components/SupervisorDashboard.tsx:                            key={`preview-att-${attachment.url}-${idx}`}
+./components/SupervisorDashboard.tsx:                          <div key={`lesson-comment-${comment.id}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
+./components/TeacherDashboardV2.tsx:                          key={`notif-${notification.id}`} 
+./components/TeacherDashboardV2.tsx:                          key={`post-${post.id}`} 
+./components/TeacherDashboardV2.tsx:                    key={`grade-select-${grade}`}
+./components/TeacherDashboardV2.tsx:                        key={`subject-select-${subject.name}`} 
+./components/TeacherDashboardV2.tsx:                          <div key={`material-${material.id}`} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
+./components/TeacherDashboardV2.tsx:                                    key={`${material.id}-${attachment.url}-${attachment.name}-${idx}`}
+./components/TeacherDashboardV2.tsx:                                          <div key={`material-comment-${comment.id}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+./components/TeacherDashboardV2.tsx:                      key={`project-filter-${filter}-${idx}`}
+./components/TeacherDashboardV2.tsx:                      key={`project-${project.id}`}
+./components/TeacherDashboardV2.tsx:                                <div key={`teacher-${project.id}-${teacherId}`} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600" title={teacherId === user.id ? 'أنا' : 'زميلة'}>
+./components/TeacherDashboardV2.tsx:                                key={`proj-att-${selectedProject.id}-${att.name}-${idx}`}
+./components/TeacherDashboardV2.tsx:                              <li key={`proj-task-${selectedProject.id}-${task}-${i}`} className="flex items-start gap-3 text-sm text-slate-600">
+./components/TeacherDashboardV2.tsx:                            <div key={`sub-file-${file.name}-${idx}`} className="bg-slate-50 rounded-xl border border-slate-100 p-3">
+./components/TeacherDashboardV2.tsx:                    <div key={`lesson-${lesson.id}`} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+./components/TeacherDashboardV2.tsx:                            <div key={`att-${lesson.id}-${idx}`} className="flex items-center justify-between text-xs p-2 bg-slate-50 rounded-lg">
+./components/TeacherDashboardV2.tsx:                        key={`msg-${msg.id}`}
+./components/TeacherDashboardV2.tsx:                                <div key={`msg-att-${msg.id}-${att.name}-${idx}`} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
+./components/TeacherDashboardV2.tsx:                            <div key={att.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+./components/TeacherDashboardV2.tsx:                          key={`upload-option-${type.id}-${idx}`}
+./components/TeacherDashboardV2.tsx:                          <div key={`${att.url}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+./components/TeacherDashboardV2.tsx:                            key={`preview-att-${attachment.url}-${idx}`}
+./components/TeacherDashboardV2.tsx:                          <div key={`lesson-comment-${comment.id}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
+./keys.txt:./src/components/TeacherPanel.tsx:                key={lesson.id}
+./keys.txt:./components/SupervisorDashboard.tsx:              key={item.id}
+./keys.txt:./components/SupervisorDashboard.tsx:                          key={notification.id} 
+./keys.txt:./components/SupervisorDashboard.tsx:                key="overview"
+./keys.txt:./components/SupervisorDashboard.tsx:                    <div key={widgetId} className="relative group">
+./keys.txt:./components/SupervisorDashboard.tsx:                              <div key={`stat-${stat.label.replace(/\s+/g, '-')}`} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center gap-6 group hover:shadow-xl hover:shadow-indigo-500/5 transition-all">
+./keys.txt:./components/SupervisorDashboard.tsx:                                      <Cell key={`cell-${entry.name}`} fill={entry.color} />
+./keys.txt:./components/SupervisorDashboard.tsx:                                  key={`${btn.label}-${i}`} 
+./keys.txt:./components/SupervisorDashboard.tsx:                                <div key={lesson.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+./keys.txt:./components/SupervisorDashboard.tsx:                key="teachers"
+./keys.txt:./components/SupervisorDashboard.tsx:                                  {AVAILABLE_GRADES.map((g) => <option key={`grade-select-1-${g}`} value={g}>{g}</option>)}
+./keys.txt:./components/SupervisorDashboard.tsx:                                  ).map((s) => <option key={`subject-select-1-${s}`} value={s}>{s}</option>)}
+./keys.txt:./components/SupervisorDashboard.tsx:                                  key={`new-assignment-${assignment.grade}-${assignment.subject}-${idx}`} 
+./keys.txt:./components/SupervisorDashboard.tsx:                    <div key={teacher.id} className="bg-white p-5 rounded-[1.5rem] shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-200 transition-all duration-300 group relative overflow-hidden">
+./keys.txt:./components/SupervisorDashboard.tsx:                                <tr key={`assignment-${assignment.grade}-${assignment.subject}-${idx}`} className="border-b border-slate-100 last:border-0">
+./keys.txt:./components/SupervisorDashboard.tsx:                key="lessons"
+./keys.txt:./components/SupervisorDashboard.tsx:                      <div key={`grade-section-${grade}`} className="space-y-4">
+./keys.txt:./components/SupervisorDashboard.tsx:                                key={`${grade}-${subject.name}`} 
+./keys.txt:./components/SupervisorDashboard.tsx:                                      <div key={`teacher-avatar-${grade}-${subject.name}-${i}`} className="w-8 h-8 rounded-full bg-white border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm" title={teacher}>
+./keys.txt:./components/SupervisorDashboard.tsx:                                    <span key={`responsible-teacher-${t.id}-${i}`} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[10px] font-black">
+./keys.txt:./components/SupervisorDashboard.tsx:                            <div key={material.id} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
+./keys.txt:./components/SupervisorDashboard.tsx:                                        key={`${material.id}-${attachment.url}-${attachment.name}-${idx}`}
+./keys.txt:./components/SupervisorDashboard.tsx:                                            <div key={`material-comment-${comment.id}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+./keys.txt:./components/SupervisorDashboard.tsx:                            <option key={`teacher-option-${t.id}-${idx}`} value={t.id}>{t.name}</option>
+./keys.txt:./components/SupervisorDashboard.tsx:                            {AVAILABLE_GRADES.map((g) => <option key={`grade-select-2-${g}`} value={g}>{g}</option>)}
+./keys.txt:./components/SupervisorDashboard.tsx:                            {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-2-${s}`} value={s}>{s}</option>)}
+./keys.txt:./components/SupervisorDashboard.tsx:                              <div key={`att-file-${file.name}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+./keys.txt:./components/SupervisorDashboard.tsx:                key="feed"
+./keys.txt:./components/SupervisorDashboard.tsx:                              <div key={`new-post-att-${att.url}-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+./keys.txt:./components/SupervisorDashboard.tsx:                    <div key={post.id} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden">
+./keys.txt:./components/SupervisorDashboard.tsx:                            <div key={`post-att-${post.id}-${i}`} className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-500 flex items-center gap-2">
+./keys.txt:./components/SupervisorDashboard.tsx:                key="archive"
+./keys.txt:./components/SupervisorDashboard.tsx:                          key={`archive-year-${year}-${idx}`}
+./keys.txt:./components/SupervisorDashboard.tsx:                            key={`archive-grade-${grade}-${idx}`}
+./keys.txt:./components/SupervisorDashboard.tsx:                              key={`${selectedArchiveGrade}-${subject.name}`}
+./keys.txt:./components/SupervisorDashboard.tsx:                                        key={`archive-sem-${sem}-${idx}`}
+./keys.txt:./components/SupervisorDashboard.tsx:                            <div key={`archive-lesson-${lesson.id}-${idx}`} className="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-white hover:shadow-md transition-all">
+./keys.txt:./components/SupervisorDashboard.tsx:                                  key={`${lesson.id}-${attachment.url}-${attachment.name}-${idx}`}
+./keys.txt:./components/SupervisorDashboard.tsx:                              <div key={`archive-project-${project.id}-${idx}`} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
+./keys.txt:./components/SupervisorDashboard.tsx:                              <div key={`archive-post-${post.id}-${idx}`} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex justify-between items-start">
+./keys.txt:./components/SupervisorDashboard.tsx:                key="projects"
+./keys.txt:./components/SupervisorDashboard.tsx:                      key={project.id}
+./keys.txt:./components/SupervisorDashboard.tsx:                                <div key={`proj-teacher-${project.id}-${teacherId}-${idx}`} className={cn(
+./keys.txt:./components/SupervisorDashboard.tsx:                                  <li key={`proj-task-${viewingProject.id}-${task}`} className="flex items-start gap-2 text-sm text-slate-600">
+./keys.txt:./components/SupervisorDashboard.tsx:                          <div key={`view-proj-teacher-${viewingProject.id}-${teacherId}-${idx}`} className="bg-slate-50 rounded-[24px] border border-slate-100 overflow-hidden">
+./keys.txt:./components/SupervisorDashboard.tsx:                                        key={`sub-file-${file.name}-${i}`}
+./keys.txt:./components/SupervisorDashboard.tsx:                key="messages"
+./keys.txt:./components/SupervisorDashboard.tsx:                          key={msg.id}
+./keys.txt:./components/SupervisorDashboard.tsx:                                  <div key={`msg-att-${msg.id}-${att.name}-${idx}`} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
+./keys.txt:./components/SupervisorDashboard.tsx:                key="temp-supervisors"
+./keys.txt:./components/SupervisorDashboard.tsx:                                <label key={`subject-filter-${subject}-${idx}`} className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
+./keys.txt:./components/SupervisorDashboard.tsx:                            <div key={`supervisor-${supervisor.id}`} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-slate-50 rounded-xl border border-slate-100 gap-4">
+./keys.txt:./components/SupervisorDashboard.tsx:                                      <span key={`${supervisor.id}-${s}`} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">{s}</span>
+./keys.txt:./components/SupervisorDashboard.tsx:                key="security"
+./keys.txt:./components/SupervisorDashboard.tsx:                        key="security-main"
+./keys.txt:./components/SupervisorDashboard.tsx:                        key="security-change-main"
+./keys.txt:./components/SupervisorDashboard.tsx:                        key="security-add-emergency"
+./keys.txt:./components/SupervisorDashboard.tsx:                  {AVAILABLE_GRADES.map((g) => <option key={`grade-select-3-${g}`} value={g}>{g}</option>)}
+./keys.txt:./components/SupervisorDashboard.tsx:                  {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-3-${s}`} value={s}>{s}</option>)}
+./keys.txt:./components/SupervisorDashboard.tsx:                    <div key={att.id} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
+./keys.txt:./components/SupervisorDashboard.tsx:                        <div key={att.id} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+./keys.txt:./components/SupervisorDashboard.tsx:                        <div key={`new-proj-task-${task}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+./keys.txt:./components/SupervisorDashboard.tsx:                      <label key={`teacher-select-${teacher.id}-${idx}`} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-indigo-500 transition-all">
+./keys.txt:./components/SupervisorDashboard.tsx:                        {AVAILABLE_GRADES.map((g) => <option key={`grade-select-4-${g}`} value={g}>{g}</option>)}
+./keys.txt:./components/SupervisorDashboard.tsx:                        {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-4-${s}`} value={s}>{s}</option>)}
+./keys.txt:./components/SupervisorDashboard.tsx:                      <div key={`edit-assignment-${assignment.grade}-${assignment.subject}-${idx}`} className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
+./keys.txt:./components/SupervisorDashboard.tsx:                            key={`preview-att-${attachment.url}-${idx}`}
+./keys.txt:./components/SupervisorDashboard.tsx:                          <div key={`lesson-comment-${comment.id}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
+./keys.txt:./components/TeacherDashboardV2.tsx:                          key={`notif-${notification.id}`} 
+./keys.txt:./components/TeacherDashboardV2.tsx:                          key={`post-${post.id}`} 
+./keys.txt:./components/TeacherDashboardV2.tsx:                    key={`grade-select-${grade}`}
+./keys.txt:./components/TeacherDashboardV2.tsx:                        key={`subject-select-${subject.name}`} 
+./keys.txt:./components/TeacherDashboardV2.tsx:                          <div key={`material-${material.id}`} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
+./keys.txt:./components/TeacherDashboardV2.tsx:                                    key={`${material.id}-${attachment.url}-${attachment.name}-${idx}`}
+./keys.txt:./components/TeacherDashboardV2.tsx:                                          <div key={`material-comment-${comment.id}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+./keys.txt:./components/TeacherDashboardV2.tsx:                      key={`project-filter-${filter}-${idx}`}
+./keys.txt:./components/TeacherDashboardV2.tsx:                      key={`project-${project.id}`}
+./keys.txt:./components/TeacherDashboardV2.tsx:                                <div key={`teacher-${project.id}-${teacherId}`} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600" title={teacherId === user.id ? 'أنا' : 'زميلة'}>
+./keys.txt:./components/TeacherDashboardV2.tsx:                                key={`proj-att-${selectedProject.id}-${att.name}-${idx}`}
+./keys.txt:./components/TeacherDashboardV2.tsx:                              <li key={`proj-task-${selectedProject.id}-${task}-${i}`} className="flex items-start gap-3 text-sm text-slate-600">
+./keys.txt:./components/TeacherDashboardV2.tsx:                            <div key={`sub-file-${file.name}-${idx}`} className="bg-slate-50 rounded-xl border border-slate-100 p-3">
+./keys.txt:./components/TeacherDashboardV2.tsx:                    <div key={`lesson-${lesson.id}`} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+./keys.txt:./components/TeacherDashboardV2.tsx:                            <div key={`att-${lesson.id}-${idx}`} className="flex items-center justify-between text-xs p-2 bg-slate-50 rounded-lg">
+./keys.txt:./components/TeacherDashboardV2.tsx:                        key={`msg-${msg.id}`}
+./keys.txt:./components/TeacherDashboardV2.tsx:                                <div key={`msg-att-${msg.id}-${att.name}-${idx}`} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
+./keys.txt:./components/TeacherDashboardV2.tsx:                            <div key={att.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+./keys.txt:./components/TeacherDashboardV2.tsx:                          key={`upload-option-${type.id}-${idx}`}
+./keys.txt:./components/TeacherDashboardV2.tsx:                          <div key={`${att.url}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+./keys.txt:./components/TeacherDashboardV2.tsx:                            key={`preview-att-${attachment.url}-${idx}`}
+./keys.txt:./components/TeacherDashboardV2.tsx:                          <div key={`lesson-comment-${comment.id}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
