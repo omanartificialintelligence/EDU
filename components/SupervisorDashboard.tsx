@@ -2201,12 +2201,21 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             onChange={(e) => {
                               if (e.target.files) {
                                 const files = Array.from(e.target.files);
-                                const newAttachments = files.map(file => ({
-                                  type: 'file' as const,
-                                  url: URL.createObjectURL(file), // In a real app, upload to server
-                                  name: file.name
-                                }));
-                                setAttachmentFiles(prev => [...prev, ...newAttachments]);
+                                files.forEach(file => {
+                                  if (file.size > 700 * 1024) {
+                                    alert(`الملف ${file.name} كبير جداً. يرجى اختيار ملفات أقل من 700 كيلوبايت.`);
+                                    return;
+                                  }
+                                  const reader = new FileReader();
+                                  reader.onload = () => {
+                                    setAttachmentFiles(prev => [...prev, {
+                                      type: 'file' as const,
+                                      url: reader.result as string,
+                                      name: file.name
+                                    }]);
+                                  };
+                                  reader.readAsDataURL(file);
+                                });
                               }
                             }}
                           />
@@ -2360,19 +2369,28 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           onChange={(e) => {
                             if (e.target.files) {
                               const files = Array.from(e.target.files);
-                              const newAtts = files.map(file => ({
-                                type: 'file' as const,
-                                url: URL.createObjectURL(file),
-                                name: file.name
-                              }));
-                              setNewPostAttachments([...newPostAttachments, ...newAtts]);
+                              files.forEach(file => {
+                                if (file.size > 700 * 1024) {
+                                  alert(`الملف ${file.name} كبير جداً. يرجى اختيار ملفات أقل من 700 كيلوبايت.`);
+                                  return;
+                                }
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                  setNewPostAttachments(prev => [...prev, {
+                                    type: 'file' as const,
+                                    url: reader.result as string,
+                                    name: file.name
+                                  }]);
+                                };
+                                reader.readAsDataURL(file);
+                              });
                             }
                           }}
                         />
                         {newPostAttachments.length > 0 && (
                           <div className="flex flex-wrap gap-2">
                             {newPostAttachments.map((att, idx) => (
-                              <div key={`new-post-att-${att.name}-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+                              <div key={`new-post-att-${att.url}-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
                                 <span className="truncate max-w-[100px]">{att.name}</span>
                                 <button 
                                   type="button"
@@ -3763,12 +3781,21 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       onChange={(e) => {
                         if (e.target.files) {
                           const files = Array.from(e.target.files);
-                          const newAtts = files.map(file => ({
-                            type: 'file' as const,
-                            url: URL.createObjectURL(file),
-                            name: file.name
-                          }));
-                          setNewProjectAttachments([...newProjectAttachments, ...newAtts]);
+                          files.forEach(file => {
+                            if (file.size > 700 * 1024) {
+                              alert(`الملف ${file.name} كبير جداً. يرجى اختيار ملفات أقل من 700 كيلوبايت.`);
+                              return;
+                            }
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              setNewProjectAttachments(prev => [...prev, {
+                                type: 'file' as const,
+                                url: reader.result as string,
+                                name: file.name
+                              }]);
+                            };
+                            reader.readAsDataURL(file);
+                          });
                         }
                       }}
                     />
@@ -3776,7 +3803,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   {newProjectAttachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {newProjectAttachments.map((att, idx) => (
-                        <div key={`new-proj-att-${att.name}-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+                        <div key={att.url} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
                           <FileText className="w-3 h-3" />
                           {att.name}
                           <button onClick={() => setNewProjectAttachments(newProjectAttachments.filter((_, i) => i !== idx))} className="hover:text-red-500">

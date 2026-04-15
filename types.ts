@@ -109,6 +109,7 @@ export interface ResetRequest {
 export type AttachmentType = 'link' | 'image' | 'video' | 'audio' | 'file';
 
 export interface Attachment {
+  id: string;
   type: AttachmentType;
   url: string;
   name: string;

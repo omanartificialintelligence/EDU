@@ -23,9 +23,9 @@ interface TeacherDashboardV2Props {
   messages: Message[];
   onSendMessage: (text: string, recipientId?: string, attachments?: Attachment[]) => void;
   onMarkMessageAsRead: (id: string) => void;
-  onAddMaterial: (material: LessonMaterial) => void;
-  onUpdateMaterial: (material: LessonMaterial) => void;
-  updateProjectSubmission: (projectId: string, submission: ProjectSubmission) => void;
+  onAddMaterial: (material: LessonMaterial) => Promise<void>;
+  onUpdateMaterial: (material: LessonMaterial) => Promise<void>;
+  updateProjectSubmission: (projectId: string, submission: ProjectSubmission) => Promise<void>;
   currentYear: string;
   semester: string;
   notifications: Notification[];
@@ -63,6 +63,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   const [newLessonTitle, setNewLessonTitle] = useState('');
   const [newLessonType, setNewLessonType] = useState<string | null>(null);
   const [newLessonUrl, setNewLessonUrl] = useState('');
+  const [newLessonFileName, setNewLessonFileName] = useState('');
   const [newLessonAttachments, setNewLessonAttachments] = useState<Attachment[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingLesson, setEditingLesson] = useState<LessonMaterial | null>(null);
@@ -81,6 +82,15 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      
+      // Check file size (limit to 700KB for Firestore base64 storage)
+      if (file.size > 700 * 1024) {
+        alert('حجم الملف كبير جداً. يرجى اختيار ملف أقل من 700 كيلوبايت لضمان الحفظ.');
+        e.target.value = '';
+        return;
+      }
+
+      setNewLessonFileName(file.name);
       const reader = new FileReader();
       reader.onload = () => {
         setNewLessonUrl(reader.result as string);
@@ -130,7 +140,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
     setSubmissionFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmitProject = () => {
+  const handleSubmitProject = async () => {
     if (!selectedProject) return;
     
     if (submissionFiles.length === 0 && !submissionNote) {
@@ -138,22 +148,30 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
       return;
     }
 
-    const submission: ProjectSubmission = {
-      teacherId: user.id,
-      files: submissionFiles,
-      notes: submissionNote,
-      status: 'submitted',
-      feedback: '',
-      badges: [],
-      submittedAt: new Date().toISOString()
-    };
+    setIsSubmitting(true);
+    try {
+      const submission: ProjectSubmission = {
+        teacherId: user.id,
+        files: submissionFiles,
+        notes: submissionNote,
+        status: 'submitted',
+        feedback: '',
+        badges: [],
+        submittedAt: new Date().toISOString()
+      };
 
-    updateProjectSubmission(selectedProject.id, submission);
-    
-    alert('تم تسليم المشروع بنجاح!');
-    setSelectedProject(null);
-    setSubmissionFiles([]);
-    setSubmissionNote('');
+      await updateProjectSubmission(selectedProject.id, submission);
+      
+      alert('تم تسليم المشروع بنجاح!');
+      setSelectedProject(null);
+      setSubmissionFiles([]);
+      setSubmissionNote('');
+    } catch (error) {
+      console.error("Error submitting project:", error);
+      alert('حدث خطأ أثناء تسليم المشروع');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const unreadNotifications = notifications.filter(n => !n.isRead);
@@ -217,21 +235,23 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
     
     if (newLessonType !== 'text') {
       setNewLessonAttachments(prev => [...prev, {
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         type: newLessonType === 'link' ? 'link' : (newLessonType === 'image' ? 'image' : (newLessonType === 'video' ? 'video' : (newLessonType === 'audio' ? 'audio' : 'file'))),
         url: newLessonUrl,
-        name: newLessonTitle || `مرفق ${prev.length + 1}`
+        name: newLessonFileName || newLessonTitle || `مرفق ${prev.length + 1}`
       }]);
     }
     
     setNewLessonType(null);
     setNewLessonUrl('');
+    setNewLessonFileName('');
   };
 
   const handleRemoveAttachment = (index: number) => {
     setNewLessonAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleAddLesson = () => {
+  const handleAddLesson = async () => {
     if (!newLessonTitle || !selectedSubject) {
       alert('يرجى إكمال جميع الحقول المطلوبة');
       return;
@@ -244,7 +264,8 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
 
     setIsSubmitting(true);
     
-    if (editingLesson) {
+    try {
+      if (editingLesson) {
       const updatedMaterial: LessonMaterial = {
         ...editingLesson,
         lessonTitle: newLessonTitle,
@@ -254,8 +275,8 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
         subject: selectedSubject,
         tags: [selectedSubject, selectedGrade]
       };
-      onUpdateMaterial(updatedMaterial);
-      alert('تم تحديث الدرس بنجاح.');
+        await onUpdateMaterial(updatedMaterial);
+        alert('تم تحديث الدرس بنجاح.');
     } else {
       const newMaterial: LessonMaterial = {
         id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -275,15 +296,20 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
         isModelLesson: false,
         tags: [selectedSubject, selectedGrade]
       };
-      onAddMaterial(newMaterial);
-      alert('تمت إضافة الدرس بنجاح وسيتم مراجعته من قبل المشرفة.');
-    }
+        await onAddMaterial(newMaterial);
+        alert('تمت إضافة الدرس بنجاح وسيتم مراجعته من قبل المشرفة.');
+      }
 
-    setIsSubmitting(false);
-    setIsUploadModalOpen(false);
-    setEditingLesson(null);
-    setNewLessonTitle('');
-    setNewLessonAttachments([]);
+      setIsUploadModalOpen(false);
+      setEditingLesson(null);
+      setNewLessonTitle('');
+      setNewLessonAttachments([]);
+    } catch (error) {
+      console.error("Error saving lesson:", error);
+      alert('حدث خطأ أثناء حفظ الدرس. يرجى المحاولة مرة أخرى.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const downloadFile = (url: string, filename: string) => {
@@ -1183,12 +1209,20 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
-                                  setSubmissionFiles(prev => [...prev, {
-                                    type: file.type.startsWith('image/') ? 'image' : 'file',
-                                    url: URL.createObjectURL(file),
-                                    name: file.name,
-                                    comment: ''
-                                  }]);
+                                  if (file.size > 700 * 1024) {
+                                    alert('حجم الملف كبير جداً. يرجى اختيار ملف أقل من 700 كيلوبايت.');
+                                    return;
+                                  }
+                                  const reader = new FileReader();
+                                  reader.onload = () => {
+                                    setSubmissionFiles(prev => [...prev, {
+                                      type: file.type.startsWith('image/') ? 'image' : 'file',
+                                      url: reader.result as string,
+                                      name: file.name,
+                                      comment: ''
+                                    }]);
+                                  };
+                                  reader.readAsDataURL(file);
                                 }
                               }}
                             />
@@ -1504,7 +1538,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         <label className="text-sm font-black text-slate-700 block">المرفقات المضافة</label>
                         <div className="space-y-2">
                           {newLessonAttachments.map((att, idx) => (
-                            <div key={`new-lesson-att-${att.name}-${idx}`} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                            <div key={att.url} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center">
                                   {att.type === 'link' ? <LinkIcon className="w-5 h-5 text-indigo-500" /> : 
