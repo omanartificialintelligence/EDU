@@ -64,6 +64,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   // New Lesson State
   const [newLessonTitle, setNewLessonTitle] = useState('');
   const [newLessonType, setNewLessonType] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [newLessonUrl, setNewLessonUrl] = useState('');
   const [newLessonFileName, setNewLessonFileName] = useState('');
   const [newLessonAttachments, setNewLessonAttachments] = useState<Attachment[]>([]);
@@ -85,6 +86,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
+      setIsUploading(true);
       const storageRef = ref(storage, `lessons/${Date.now()}_${file.name}`);
       try {
         const snapshot = await uploadBytes(storageRef, file);
@@ -94,6 +96,8 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
       } catch (error) {
         console.error("Error uploading file:", error);
         alert(`فشل رفع الملف ${file.name}`);
+      } finally {
+        setIsUploading(false);
       }
     }
   };
@@ -1568,7 +1572,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {uploadOptions.map((type, idx) => (
                         <button
-                          key={`upload-option-${type.id}`}
+                          key={`upload-option-${type.id}-${idx}`}
                           onClick={() => setNewLessonType(type.id)}
                           className={cn(
                             "flex flex-col items-center justify-center p-6 rounded-[24px] border-2 transition-all group bg-white hover:shadow-md",
@@ -1616,10 +1620,17 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
 
                     <button 
                       onClick={handleAddAttachment}
-                      disabled={!newLessonUrl}
-                      className="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={!newLessonUrl || isUploading}
+                      className="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                      تأكيد إضافة المرفق
+                      {isUploading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                          <span>جاري الرفع...</span>
+                        </>
+                      ) : (
+                        'تأكيد إضافة المرفق'
+                      )}
                     </button>
                   </div>
                 )}

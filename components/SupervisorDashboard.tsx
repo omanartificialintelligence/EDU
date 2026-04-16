@@ -1007,7 +1007,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
         <nav className="flex-1 p-4 sm:p-6 space-y-2 overflow-y-auto custom-scrollbar">
           {sidebarItems.filter(i => i.visible).map((item, idx) => (
             <motion.button
-              key={item.id}
+              key={`sidebar-${item.id}-${idx}`}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: idx * 0.05 }}
@@ -1205,7 +1205,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                 <div className="space-y-8">
                   {dashboardWidgets.map((widgetId, index) => (
-                    <div key={widgetId} className="relative group">
+                    <div key={`widget-${widgetId}-${index}`} className="relative group">
                       {isCustomizingDashboard && (
                         <div className="absolute -right-12 top-0 bottom-0 flex flex-col justify-center gap-2 z-10">
                           <button 
@@ -1276,7 +1276,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   />
                                   <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={40}>
                                     {statsData.map((entry, index) => (
-                                      <Cell key={`cell-${entry.name}`} fill={entry.color} />
+                                      <Cell key={`cell-${entry.name}-${index}`} fill={entry.color} />
                                     ))}
                                   </Bar>
                                 </BarChart>
@@ -1297,7 +1297,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 { label: 'تسجيل معلمة', icon: Users, color: 'amber', action: () => setActiveTab('teachers') },
                               ].map((btn, i) => (
                                 <button 
-                                  key={btn.label} 
+                                  key={`quick-action-${btn.label}-${i}`} 
                                   onClick={btn.action}
                                   className={cn(
                                     "p-6 rounded-3xl border border-slate-100 flex flex-col items-center gap-4 transition-all hover:shadow-lg hover:-translate-y-1",
@@ -1596,7 +1596,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="teachers-grid-container">
                   {filteredTeachers.map((teacher, i) => (
-                    <div key={teacher.id || i} className="bg-white p-5 rounded-[1.5rem] shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-200 transition-all duration-300 group relative overflow-hidden">
+                    <div key={`teacher-${teacher.id}-${i}`} className="bg-white p-5 rounded-[1.5rem] shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-200 transition-all duration-300 group relative overflow-hidden">
                       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                       
                       <div className="flex items-start justify-between mb-6">
@@ -1848,7 +1848,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                                   <div className="flex -space-x-2 space-x-reverse">
                                     {uniqueTeachers.slice(0, 5).map((teacher, i) => (
-                                      <div key={`teacher-avatar-${grade}-${subject.name}-${teacher}`} className="w-8 h-8 rounded-full bg-white border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm" title={teacher}>
+                                      <div key={`teacher-avatar-${grade}-${subject.name}-${teacher}-${i}`} className="w-8 h-8 rounded-full bg-white border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm" title={teacher}>
                                         {teacher.charAt(0)}
                                       </div>
                                     ))}
@@ -2484,7 +2484,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     <div className="flex flex-col gap-2">
                       {availableArchiveYears.map((year, idx) => (
                         <button 
-                          key={`archive-year-${year}`}
+                          key={`archive-year-${year}-${idx}`}
                           onClick={() => {
                             setSelectedArchiveYear(year);
                             setSelectedArchiveSemester(getSemesterForYear(year));
@@ -3263,7 +3263,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             <h6 className="font-bold text-slate-700 text-xs mb-3">المواد المسموح بمتابعتها (اتركه فارغاً للسماح بالكل)</h6>
                             <div className="flex flex-wrap gap-2">
                               {AVAILABLE_SUBJECTS.map((subject, idx) => (
-                                <label key={`subject-filter-${subject}`} className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
+                                <label key={`subject-filter-${subject}-${idx}`} className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
                                   <input 
                                     type="checkbox" 
                                     checked={tempPermSubjects.includes(subject)}
@@ -3641,7 +3641,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 <div className="space-y-2 mt-4">
                   <p className="text-xs font-bold text-slate-500">المرفقات:</p>
                   {newLessonAttachments.map((att, i) => (
-                    <div key={att.id || i} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
+                    <div key={`new-lesson-att-${att.id}-${i}`} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
                       {att.name}
                       <button onClick={() => setNewLessonAttachments(newLessonAttachments.filter((_, idx) => idx !== i))} className="text-red-500">حذف</button>
                     </div>
