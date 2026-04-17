@@ -161,7 +161,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
       setEditTeacherName(editingTeacher.name);
       setEditTeacherId(editingTeacher.id);
       setEditTeacherPhone(editingTeacher.phoneNumber || '');
-      setEditTeacherAssignments((editingTeacher.assignments || []).map(a => ({ ...a, id: Date.now().toString() + Math.random().toString() })));
+      setEditTeacherAssignments((editingTeacher.assignments || []).map(a => ({ ...a, id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}` })));
     }
   }, [editingTeacher]);
 
@@ -2197,25 +2197,52 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             type="file" 
                             multiple
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            onChange={(e) => {
+                            onChange={async (e) => {
                               if (e.target.files) {
                                 const files = Array.from(e.target.files);
-                                files.forEach(file => {
-                                  if (file.size > 700 * 1024) {
-                                    toast(`الملف ${file.name} كبير جداً. يرجى اختيار ملفات أقل من 700 كيلوبايت.`);
-                                    return;
+                                for (const file of files) {
+                                  if (file.size > 5 * 1024 * 1024) { // Increased to 5MB since we use Storage
+                                    toast(`الملف ${file.name} كبير جداً (أكثر من 5 ميجابايت).`);
+                                    continue;
                                   }
-                                  const reader = new FileReader();
-                                  reader.onload = () => {
-                                    setAttachmentFiles(prev => [...prev, {
-                                      id: Date.now().toString() + Math.random().toString(),
-                                      type: 'file' as const,
-                                      url: reader.result as string,
-                                      name: file.name
-                                    }]);
-                                  };
-                                  reader.readAsDataURL(file);
-                                });
+
+                                  const storageRef = ref(storage, `lessons/${Date.now()}_${file.name}`);
+                                  try {
+                                    const uploadTask = uploadBytesResumable(storageRef, file);
+                                    setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
+                                    
+                                    await new Promise<void>((resolve, reject) => {
+                                      uploadTask.on('state_changed',
+                                        (snapshot) => {
+                                          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                                          setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
+                                        },
+                                        (error) => {
+                                          console.error("Upload error:", error);
+                                          toast(`فشل رفع ${file.name}`);
+                                          reject(error);
+                                        },
+                                        async () => {
+                                          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                                          setAttachmentFiles(prev => [...prev, {
+                                            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                                            type: 'file' as const,
+                                            url: downloadURL,
+                                            name: file.name
+                                          }]);
+                                          setUploadProgress(prev => {
+                                            const next = { ...prev };
+                                            delete next[file.name];
+                                            return next;
+                                          });
+                                          resolve();
+                                        }
+                                      );
+                                    });
+                                  } catch (err) {
+                                    console.error("Upload error:", err);
+                                  }
+                                }
                               }
                             }}
                           />
@@ -2226,10 +2253,25 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           <p className="text-slate-400 text-xs font-bold mt-2">PDF, Word, Images, PowerPoint</p>
                         </div>
 
+                        {Object.entries(uploadProgress).map(([fileName, progress]) => (
+                          <div key={`lesson-upload-${fileName}`} className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-[10px] font-bold text-slate-500 truncate">{fileName}</span>
+                              <span className="text-[10px] font-black text-indigo-600">{Math.round(progress)}%</span>
+                            </div>
+                            <div className="w-full bg-slate-200 rounded-full h-1">
+                              <div 
+                                className="bg-indigo-600 h-1 rounded-full transition-all duration-300" 
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+
                         {attachmentFiles.length > 0 && (
                           <div className="space-y-2 mt-4">
                             {attachmentFiles.map((file, idx) => (
-                              <div key={`att-file-${file.name}-${file.url}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                              <div key={file.id || `att-file-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                                 <div className="flex items-center gap-3">
                                   <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-indigo-600 shadow-sm">
                                     <FileText className="w-4 h-4" />
@@ -2366,32 +2408,69 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           id="post-file-upload"
                           multiple
                           className="hidden"
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             if (e.target.files) {
                               const files = Array.from(e.target.files);
-                              files.forEach(file => {
-                                if (file.size > 700 * 1024) {
-                                  toast(`الملف ${file.name} كبير جداً. يرجى اختيار ملفات أقل من 700 كيلوبايت.`);
-                                  return;
+                              for (const file of files) {
+                                if (file.size > 5 * 1024 * 1024) {
+                                  toast(`الملف ${file.name} كبير جداً (أكثر من 5 ميجابايت).`);
+                                  continue;
                                 }
-                                const reader = new FileReader();
-                                reader.onload = () => {
-                                  setNewPostAttachments(prev => [...prev, {
-                                    id: Date.now().toString() + Math.random().toString(),
-                                    type: 'file' as const,
-                                    url: reader.result as string,
-                                    name: file.name
-                                  }]);
-                                };
-                                reader.readAsDataURL(file);
-                              });
+
+                                const storageRef = ref(storage, `posts/${Date.now()}_${file.name}`);
+                                try {
+                                  const uploadTask = uploadBytesResumable(storageRef, file);
+                                  setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
+                                  
+                                  await new Promise<void>((resolve, reject) => {
+                                    uploadTask.on('state_changed',
+                                      (snapshot) => {
+                                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                                        setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
+                                      },
+                                      (error) => reject(error),
+                                      async () => {
+                                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                                        setNewPostAttachments(prev => [...prev, {
+                                          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                                          type: 'file' as const,
+                                          url: downloadURL,
+                                          name: file.name
+                                        }]);
+                                        setUploadProgress(prev => {
+                                          const next = { ...prev };
+                                          delete next[file.name];
+                                          return next;
+                                        });
+                                        resolve();
+                                      }
+                                    );
+                                  });
+                                } catch (error) {
+                                  console.error("Error uploading post attachment:", error);
+                                }
+                              }
                             }
                           }}
                         />
-                        {newPostAttachments.length > 0 && (
-                          <div className="flex flex-wrap gap-2">
-                            {newPostAttachments.map((att, idx) => (
-                              <div key={att.id || `att-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+                         {Object.entries(uploadProgress).map(([fileName, progress]) => (
+                           <div key={`post-upload-${fileName}`} className="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100/50">
+                             <div className="flex justify-between items-center mb-1">
+                               <span className="text-[10px] font-bold text-slate-500 truncate">{fileName}</span>
+                               <span className="text-[10px] font-black text-indigo-600">{Math.round(progress)}%</span>
+                             </div>
+                             <div className="w-full bg-slate-200 rounded-full h-1">
+                               <div 
+                                 className="bg-indigo-600 h-1 rounded-full transition-all duration-300" 
+                                 style={{ width: `${progress}%` }}
+                               />
+                             </div>
+                           </div>
+                         ))}
+                         {newPostAttachments.length > 0 && (
+                           <div className="flex flex-wrap gap-2">
+                             {newPostAttachments.map((att, idx) => (
+                               <div key={att.id || `post-att-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
                                 <span className="truncate max-w-[100px]">{att.name}</span>
                                 <button 
                                   type="button"
@@ -2923,7 +3002,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           <h4 className="font-black text-slate-800 mb-3 text-sm">مهام المشروع المطلوبة:</h4>
                           <ul className="space-y-2">
                             {viewingProject.tasks.map((task, i) => (
-                                  <li key={`proj-task-${viewingProject.id}-${task}`} className="flex items-start gap-2 text-sm text-slate-600">
+                                  <li key={`proj-task-${viewingProject.id}-${i}`} className="flex items-start gap-2 text-sm text-slate-600">
                                     <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold mt-0.5 shrink-0">
                                       {i + 1}
                                     </span>
@@ -3141,7 +3220,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         e.preventDefault();
                         if (newMessageText.trim() || messageAttachment) {
                           const attachments = messageAttachment ? [{
-                            id: Date.now().toString() + Math.random().toString(),
+                            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                             type: messageAttachmentType,
                             url: messageAttachment,
                             name: messageAttachmentName
@@ -3167,18 +3246,46 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         type="file"
                         id="sup-msg-file-upload"
                         className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            setMessageAttachmentName(file.name);
-                            setMessageAttachmentType(file.type.startsWith('image/') ? 'image' : 'file');
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                              setMessageAttachment(reader.result as string);
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              if (file.size > 5 * 1024 * 1024) {
+                                toast(`الملف ${file.name} كبير جداً (أكثر من 5 ميجابايت).`);
+                                return;
+                              }
+                              setMessageAttachmentName(file.name);
+                              setMessageAttachmentType(file.type.startsWith('image/') ? 'image' : 'file');
+                              
+                              const storageRef = ref(storage, `messages/${Date.now()}_${file.name}`);
+                              try {
+                                const uploadTask = uploadBytesResumable(storageRef, file);
+                                setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
+                                
+                                await new Promise<void>((resolve, reject) => {
+                                  uploadTask.on('state_changed',
+                                    (snapshot) => {
+                                      const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                                      setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
+                                    },
+                                    (error) => reject(error),
+                                    async () => {
+                                      const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                                      setMessageAttachment(downloadURL);
+                                      setUploadProgress(prev => {
+                                        const next = { ...prev };
+                                        delete next[file.name];
+                                        return next;
+                                      });
+                                      resolve();
+                                    }
+                                  );
+                                });
+                              } catch (error) {
+                                console.error("Error uploading message attachment:", error);
+                                toast('فشل رفع المرفق');
+                              }
+                            }
+                          }}
                       />
                       <input 
                         type="text" 
@@ -3658,7 +3765,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       const nameInput = document.getElementById('newAttName') as HTMLInputElement;
                       const urlInput = document.getElementById('newAttUrl') as HTMLInputElement;
                       if (nameInput.value && urlInput.value) {
-                        setNewLessonAttachments([...newLessonAttachments, { id: Date.now().toString() + Math.random().toString(), name: nameInput.value, url: urlInput.value, type: 'link' }]);
+                        setNewLessonAttachments([...newLessonAttachments, { id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, name: nameInput.value, url: urlInput.value, type: 'link' }]);
                         nameInput.value = '';
                         urlInput.value = '';
                       }
@@ -3815,7 +3922,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               });
                               const downloadURL = await getDownloadURL(snapshot.ref);
                               setNewProjectAttachments(prev => [...prev, {
-                                id: Date.now().toString() + Math.random().toString(),
+                                id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                                 type: 'file' as const,
                                 url: downloadURL,
                                 name: file.name
@@ -3833,7 +3940,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   {Object.keys(uploadProgress).length > 0 && (
                     <div className="space-y-2 mt-2">
                       {Object.entries(uploadProgress).map(([fileName, progress]) => (
-                        <div key={`upload-${fileName}`} className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <div key={`proj-upload-${fileName}`} className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                           <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
                             <span className="truncate max-w-[80%]">{fileName}</span>
                             <span>{Math.round(progress)}%</span>
@@ -3919,7 +4026,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   {newProjectTasks.length > 0 && (
                     <div className="space-y-2 mt-2">
                       {newProjectTasks.map((task, idx) => (
-                        <div key={`new-proj-task-${task}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <div key={`new-proj-task-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                           <span className="text-sm font-bold text-slate-700">{idx + 1}. {task}</span>
                           <button 
                             onClick={() => setNewProjectTasks(newProjectTasks.filter((_, i) => i !== idx))}

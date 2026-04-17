@@ -138,7 +138,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   const handleAddLink = () => {
     if (!newLinkUrl || !newLinkName) return;
     setSubmissionFiles(prev => [...prev, {
-      id: Date.now().toString() + Math.random().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type: 'link',
       url: newLinkUrl,
       name: newLinkName,
@@ -1148,7 +1148,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                           </h4>
                           <ul className="space-y-3">
                             {selectedProject.tasks.map((task, i) => (
-                              <li key={`proj-task-${selectedProject.id}-${task}`} className="flex items-start gap-3 text-sm text-slate-600">
+                              <li key={`proj-task-${selectedProject.id}-${i}`} className="flex items-start gap-3 text-sm text-slate-600">
                                 <span className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold mt-0.5 shrink-0">
                                   {i + 1}
                                 </span>
@@ -1241,7 +1241,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                                     });
                                     const downloadURL = await getDownloadURL(snapshot.ref);
                                     setSubmissionFiles(prev => [...prev, {
-                                      id: Date.now().toString() + Math.random().toString(),
+                                      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                                       type: file.type.startsWith('image/') ? 'image' : 'file',
                                       url: downloadURL,
                                       name: file.name,
@@ -1265,7 +1265,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         {Object.keys(uploadProgress).length > 0 && (
                           <div className="space-y-2 mt-4">
                             {Object.entries(uploadProgress).map(([fileName, progress]) => (
-                              <div key={`upload-${fileName}`} className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                              <div key={`dash-upload-${fileName}`} className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                                 <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
                                   <span className="truncate max-w-[80%]">{fileName}</span>
                                   <span>{Math.round(progress)}%</span>
@@ -1448,7 +1448,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                             <div className="mt-2 space-y-1">
                               {msg.attachments.map((att, idx) => (
                                 <button 
-                                  key={att.id || `att-${idx}`} 
+                                  key={att.id || `msg-att-${msg.id || 'new'}-${idx}`} 
                                   onClick={() => setPreviewAttachment(att)}
                                   className="flex items-center gap-2 bg-black/10 p-2 rounded-lg hover:bg-black/20 transition-all w-full text-right"
                                 >
@@ -1487,7 +1487,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                       e.preventDefault();
                       if (newMessageText.trim() || messageAttachment) {
                         const attachments = messageAttachment ? [{
-                          id: Date.now().toString() + Math.random().toString(),
+                          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                           type: messageAttachmentType,
                           url: messageAttachment,
                           name: messageAttachmentName
