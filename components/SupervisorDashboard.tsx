@@ -2287,7 +2287,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                         },
                                         (error) => {
                                           console.error("Upload error (detailed):", error);
-                                          toast(`فشل رفع ${file.name}: ${error.message}`);
+                                          const errorMessage = (error as any).code ? `${(error as any).code}: ${error.message}` : error.message;
+                                          toast(`فشل رفع ${file.name}: ${errorMessage}`);
                                           reject(error);
                                         },
                                         async () => {
