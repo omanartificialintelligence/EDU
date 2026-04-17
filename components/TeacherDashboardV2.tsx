@@ -1,5 +1,6 @@
 import toast from 'react-hot-toast';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import { compressImage } from '../src/lib/imageUtils';
 import { User, Project, Post, LessonMaterial, LessonComment, Notification, ProjectSubmission, Message, Attachment } from '../types';
 import { 
   LayoutDashboard, BookOpen, FolderOpen, Search, Bell, ChevronDown, 
@@ -17,7 +18,7 @@ import FilePreviewModal from './FilePreviewModal';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { storage } from '../src/firebase';
-import { ref, uploadBytes, uploadBytesResumable, getDownloadURL, UploadTaskSnapshot } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL, UploadTaskSnapshot } from 'firebase/storage';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -91,16 +92,30 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
+      const rawFile = e.target.files[0];
       
       setIsUploading(true);
       setUploadError(null);
+      
+      // Optimize image before upload if it's an image
+      const file = await compressImage(rawFile);
+
       const storageRef = ref(storage, `lessons/${Date.now()}_${file.name}`);
       try {
-        const snapshot = await uploadBytes(storageRef, file);
-        const downloadURL = await getDownloadURL(snapshot.ref);
-        setNewLessonFileName(file.name);
-        setNewLessonUrl(downloadURL);
+        const uploadTask = uploadBytesResumable(storageRef, file);
+        
+        await new Promise<void>((resolve, reject) => {
+          uploadTask.on('state_changed',
+            null,
+            (error) => reject(error),
+            async () => {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              setNewLessonFileName(file.name);
+              setNewLessonUrl(downloadURL);
+              resolve();
+            }
+          );
+        });
       } catch (error) {
         console.error("Error uploading file:", error);
         setUploadError("فشل رفع الملف. يرجى المحاولة مرة أخرى.");
@@ -546,9 +561,9 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   </div>
                   <div className="max-h-80 overflow-y-auto">
                     {notifications.length > 0 ? (
-                      notifications.map((notification) => (
+                      notifications.map((notification, idx) => (
                         <div 
-                          key={`notif-${notification.id}`} 
+                          key={notification.id || `notif-${idx}`} 
                           className={cn(
                             "p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer",
                             !notification.isRead ? "bg-indigo-50/50" : ""
@@ -831,7 +846,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                               <div className="flex flex-wrap gap-2">
                                 {material.attachments.map((attachment, idx) => (
                                   <button 
-                                    key={attachment.id || `att-${idx}`}
+                                    key={attachment.id || `teacher-mat-att-${material.id}-${idx}`}
                                     onClick={() => setPreviewAttachment(attachment)}
                                     className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-slate-700 rounded-lg hover:bg-indigo-50 hover:text-indigo-700 transition-all font-bold text-[10px] border border-slate-100"
                                   >
@@ -877,7 +892,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                                     <div className="space-y-3">
                                       {material.comments && material.comments.length > 0 ? (
                                         material.comments.map((comment, index) => (
-                                          <div key={comment.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                          <div key={comment.id || `comment-${index}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                                             <div className="flex justify-between items-center mb-2">
                                               <span className="text-xs font-black text-slate-900">{comment.authorName}</span>
                                               <span className="text-[10px] font-bold text-slate-400">
@@ -1126,7 +1141,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                           <div className="flex flex-wrap gap-2">
                             {selectedProject.attachments.map((att, idx) => (
                               <button 
-                                key={att.id || `att-${idx}`}
+                                key={att.id || `proj-view-att-${selectedProject.id}-${idx}`}
                                 onClick={() => setPreviewAttachment(att)}
                                 className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-indigo-600 hover:bg-indigo-50 transition-all"
                               >
@@ -1166,7 +1181,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         
                         <div className="grid grid-cols-1 gap-3">
                           {submissionFiles.map((file, idx) => (
-                            <div key={file.id || file.url || `file-${idx}`} className="bg-slate-50 rounded-xl border border-slate-100 p-3">
+                            <div key={file.id || `sub-file-item-${selectedProject.id}-${idx}`} className="bg-slate-50 rounded-xl border border-slate-100 p-3">
                               <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-3 overflow-hidden">
                                   <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-slate-100 text-slate-400">
@@ -1216,8 +1231,11 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                               type="file" 
                               className="hidden" 
                               onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
+                                const rawFile = e.target.files?.[0];
+                                if (rawFile) {
+                                  // Optimize image before upload if it's an image
+                                  const file = await compressImage(rawFile);
+
                                   const storageRef = ref(storage, `submissions/${Date.now()}_${file.name}`);
                                   try {
                                     const uploadTask = uploadBytesResumable(storageRef, file);
@@ -1377,7 +1395,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                           const { icon: AttIcon, color: AttColor } = getAttachmentIcon(att);
                           return (
                             <button 
-                              key={att.id || `att-${idx}`} 
+                              key={att.id || `lesson-view-att-${lesson.id}-${idx}`} 
                               onClick={() => setPreviewAttachment(att)}
                               className="w-full flex items-center justify-between text-xs p-2 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
                             >
@@ -1425,7 +1443,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   ) : (
                     messages.map((msg, index) => (
                       <div 
-                        key={msg.id || `msg-${index}`}
+                        key={msg.id || `chat-msg-${index}`}
                         className={cn(
                           "flex flex-col max-w-[80%]",
                           msg.senderId === user.id ? "mr-auto items-end" : "ml-auto items-start"
@@ -1448,7 +1466,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                             <div className="mt-2 space-y-1">
                               {msg.attachments.map((att, idx) => (
                                 <button 
-                                  key={att.id || `msg-att-${msg.id || 'new'}-${idx}`} 
+                                  key={att.id || `msg-att-${msg.id || index}-${idx}`} 
                                   onClick={() => setPreviewAttachment(att)}
                                   className="flex items-center gap-2 bg-black/10 p-2 rounded-lg hover:bg-black/20 transition-all w-full text-right"
                                 >
@@ -1514,15 +1532,30 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                       id="msg-file-upload"
                       className="hidden"
                       onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
+                        const rawFile = e.target.files?.[0];
+                        if (rawFile) {
+                          // Optimize image before upload if it's an image
+                          const file = await compressImage(rawFile);
+
                           setMessageAttachmentName(file.name);
                           setMessageAttachmentType(file.type.startsWith('image/') ? 'image' : 'file');
                           const storageRef = ref(storage, `messages/${Date.now()}_${file.name}`);
                           try {
-                            const snapshot = await uploadBytes(storageRef, file);
-                            const downloadURL = await getDownloadURL(snapshot.ref);
-                            setMessageAttachment(downloadURL);
+                            const uploadTask = uploadBytesResumable(storageRef, file);
+                            
+                            await new Promise<void>((resolve, reject) => {
+                              uploadTask.on('state_changed',
+                                (snapshot) => {
+                                  // Optional: set temporary progress if needed
+                                },
+                                (error) => reject(error),
+                                async () => {
+                                  const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                                  setMessageAttachment(downloadURL);
+                                  resolve();
+                                }
+                              );
+                            });
                           } catch (error) {
                             console.error("Error uploading file:", error);
                             toast(`فشل رفع الملف ${file.name}`);
@@ -1601,7 +1634,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         <label className="text-sm font-black text-slate-700 block">المرفقات المضافة</label>
                         <div className="space-y-2">
                           {newLessonAttachments.map((att, idx) => (
-                            <div key={att.id || `att-${idx}`} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                            <div key={att.id || `teacher-new-lesson-att-${idx}-${att.name || ''}`} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center">
                                   {att.type === 'link' ? <LinkIcon className="w-5 h-5 text-indigo-500" /> : 
@@ -1764,7 +1797,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         const iconInfo = getAttachmentIcon(att);
                         const Icon = iconInfo.icon;
                         return (
-                          <div key={att.id || `att-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                          <div key={att.id || `post-view-att-${viewingPost.id}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                             <div className="flex items-center gap-3">
                               <div className={cn("p-2 rounded-lg", iconInfo.bg, iconInfo.color)}>
                                 <Icon className="w-4 h-4" />
@@ -1862,7 +1895,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         const AttachIcon = attachInfo.icon;
                         return (
                           <button 
-                            key={attachment.id || `att-${idx}`}
+                            key={attachment.id || `lesson-modal-att-${viewingLesson.id}-${idx}`}
                             onClick={() => setPreviewAttachment(attachment)}
                             className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 hover:border-indigo-200 hover:shadow-md transition-all group text-right"
                           >
@@ -1889,7 +1922,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                       </h4>
                       <div className="space-y-3">
                         {viewingLesson.comments.map((comment, idx) => (
-                          <div key={comment.id} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
+                          <div key={comment.id || `comment-${idx}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
                             <div className="flex justify-between items-center mb-2">
                               <span className="text-xs font-black text-amber-700">{comment.authorName}</span>
                               <span className="text-[10px] font-bold text-slate-400">{new Date(comment.createdAt).toLocaleDateString('ar-OM')}</span>

@@ -1,6 +1,7 @@
 
 import toast from 'react-hot-toast';
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, memo, useCallback } from 'react';
+import { compressImage } from '../src/lib/imageUtils';
 import { 
   User, Project, Post, ProjectSubmission, Attachment, ResetRequest, 
   LessonMaterial, LessonComment, UserRole, SupervisorConfig, Notification, AuditLog, Message 
@@ -26,11 +27,31 @@ import { exportTeachersCSV, exportLessonsCSV, exportProjectsCSV, exportToPDF } f
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { storage } from '../src/firebase';
-import { ref, uploadBytes, uploadBytesResumable, getDownloadURL, UploadTaskSnapshot } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL, UploadTaskSnapshot } from 'firebase/storage';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+// Memoized Chart component to prevent re-renders during background uploads
+const StatsChart = memo(({ data }: { data: any[] }) => (
+  <ResponsiveContainer width="100%" height={300}>
+    <BarChart data={data}>
+      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700, fill: '#64748b' }} dy={10} />
+      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700, fill: '#64748b' }} />
+      <Tooltip 
+        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px' }}
+        cursor={{ fill: '#f8fafc' }}
+      />
+      <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={40}>
+        {data.map((entry) => (
+          <Cell key={`cell-${entry.name}`} fill={entry.color} />
+        ))}
+      </Bar>
+    </BarChart>
+  </ResponsiveContainer>
+));
 
 interface SupervisorDashboardProps {
   user: User;
@@ -1135,7 +1156,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     {notifications.length > 0 ? (
                       notifications.map((notification, index) => (
                         <motion.div 
-                          key={notification.id} 
+                          key={notification.id || `notif-${index}`} 
                           variants={{
                             hidden: { opacity: 0, y: 10 },
                             visible: { opacity: 1, y: 0 },
@@ -1268,22 +1289,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               </select>
                             </div>
                             <div className="h-[300px] w-full">
-                              <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={statsData}>
-                                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700, fill: '#64748b' }} dy={10} />
-                                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700, fill: '#64748b' }} />
-                                  <Tooltip 
-                                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px' }}
-                                    cursor={{ fill: '#f8fafc' }}
-                                  />
-                                  <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={40}>
-                                    {statsData.map((entry, index) => (
-                                      <Cell key={`cell-${entry.name}`} fill={entry.color} />
-                                    ))}
-                                  </Bar>
-                                </BarChart>
-                              </ResponsiveContainer>
+                              <StatsChart data={statsData} />
                             </div>
                           </div>
                         )}
@@ -1507,7 +1513,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 onClick={() => {
                                   if (currentAssignmentGrade && currentAssignmentSubject) {
                                     if (!newTeacherAssignments.some(a => a.grade === currentAssignmentGrade && a.subject === currentAssignmentSubject)) {
-                                      setNewTeacherAssignments([...newTeacherAssignments, { id: Date.now().toString(), grade: currentAssignmentGrade, subject: currentAssignmentSubject }]);
+                                      setNewTeacherAssignments([...newTeacherAssignments, { id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, grade: currentAssignmentGrade, subject: currentAssignmentSubject }]);
                                     }
                                   }
                                 }} 
@@ -1978,7 +1984,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                     const AttachIcon = attachInfo.icon;
                                     return (
                                       <button 
-                                        key={attachment.id || `att-${idx}`}
+                                        key={attachment.id || `material-att-${material.id}-${idx}`}
                                         onClick={() => setPreviewAttachment(attachment)}
                                         className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-slate-700 rounded-lg hover:bg-indigo-50 hover:text-indigo-700 transition-all font-bold text-[10px] border border-slate-100"
                                       >
@@ -2029,7 +2035,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                         )}
                                         {material.comments && material.comments.length > 0 ? (
                                           material.comments.map((comment, index) => (
-                                            <div key={comment.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                            <div key={comment.id || `comment-${index}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                                               <div className="flex justify-between items-center mb-2">
                                                 <span className="text-xs font-black text-slate-900">{comment.authorName}</span>
                                                 <span className="text-[10px] font-bold text-slate-400">
@@ -2200,11 +2206,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             onChange={async (e) => {
                               if (e.target.files) {
                                 const files = Array.from(e.target.files);
-                                for (const file of files) {
-                                  if (file.size > 5 * 1024 * 1024) { // Increased to 5MB since we use Storage
-                                    toast(`الملف ${file.name} كبير جداً (أكثر من 5 ميجابايت).`);
-                                    continue;
-                                  }
+                                for (const rawFile of files) {
+                                  // Optimize image before upload if it's an image
+                                  const file = await compressImage(rawFile);
 
                                   const storageRef = ref(storage, `lessons/${Date.now()}_${file.name}`);
                                   try {
@@ -2271,7 +2275,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         {attachmentFiles.length > 0 && (
                           <div className="space-y-2 mt-4">
                             {attachmentFiles.map((file, idx) => (
-                              <div key={file.id || `att-file-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                              <div key={file.id || `new-lesson-file-upload-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                                 <div className="flex items-center gap-3">
                                   <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-indigo-600 shadow-sm">
                                     <FileText className="w-4 h-4" />
@@ -2411,11 +2415,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           onChange={async (e) => {
                             if (e.target.files) {
                               const files = Array.from(e.target.files);
-                              for (const file of files) {
-                                if (file.size > 5 * 1024 * 1024) {
-                                  toast(`الملف ${file.name} كبير جداً (أكثر من 5 ميجابايت).`);
-                                  continue;
-                                }
+                              for (const rawFile of files) {
+                                // Optimize image before upload if it's an image
+                                const file = await compressImage(rawFile);
 
                                 const storageRef = ref(storage, `posts/${Date.now()}_${file.name}`);
                                 try {
@@ -2470,7 +2472,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                          {newPostAttachments.length > 0 && (
                            <div className="flex flex-wrap gap-2">
                              {newPostAttachments.map((att, idx) => (
-                               <div key={att.id || `post-att-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+                               <div key={att.id || `new-post-file-upload-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
                                 <span className="truncate max-w-[100px]">{att.name}</span>
                                 <button 
                                   type="button"
@@ -2532,7 +2534,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         <div className="flex flex-wrap gap-2">
                           {post.attachments.map((att, i) => (
                             <button 
-                              key={`post-att-${post.id}-${att.id || att.name}`} 
+                              key={att.id || `post-att-${post.id}-${i}`} 
                               onClick={() => setPreviewAttachment(att)}
                               className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-500 flex items-center gap-2 hover:bg-indigo-50 transition-all"
                             >
@@ -2740,7 +2742,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               </button>
                               {lesson.attachments.map((attachment, idx) => (
                                 <button 
-                                  key={attachment.id || `att-${idx}`}
+                                  key={attachment.id || `archive-att-${lesson.id}-${idx}`}
                                   onClick={() => setPreviewAttachment(attachment)}
                                   className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm"
                                   title={`معاينة ${attachment.name || `مرفق ${idx + 1}`}`}
@@ -3060,7 +3062,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   <div className="flex flex-wrap gap-3">
                                     {submission.files.map((file, i) => (
                                       <button 
-                                        key={file.id || file.url || `sub-file-${idx}`}
+                                        key={file.id || file.url || `sub-file-${viewingProject.id}-${teacherId}-${i}`}
                                         onClick={() => downloadFile(file.url, file.name)}
                                         className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:text-indigo-600 hover:border-indigo-200 transition-all"
                                       >
@@ -3159,7 +3161,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         return true;
                       }).map((msg, index) => (
                         <div 
-                          key={msg.id || `msg-${index}`}
+                          key={msg.id || `chat-msg-${index}`}
                           className={cn(
                             "flex flex-col max-w-[75%]",
                             msg.senderId === user.id ? "mr-auto items-end" : "ml-auto items-start"
@@ -3182,7 +3184,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               <div className="mt-2 space-y-1">
                                 {msg.attachments.map((att, idx) => (
                                   <button 
-                                    key={att.id || `att-${idx}`} 
+                                    key={att.id || `msg-${msg.id || index}-att-${idx}`} 
                                     onClick={() => setPreviewAttachment(att)}
                                     className="flex items-center gap-2 bg-black/10 p-2 rounded-lg hover:bg-black/20 transition-all w-full text-right"
                                   >
@@ -3247,12 +3249,11 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         id="sup-msg-file-upload"
                         className="hidden"
                           onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              if (file.size > 5 * 1024 * 1024) {
-                                toast(`الملف ${file.name} كبير جداً (أكثر من 5 ميجابايت).`);
-                                return;
-                              }
+                            const rawFile = e.target.files?.[0];
+                            if (rawFile) {
+                              // Optimize image before upload if it's an image
+                              const file = await compressImage(rawFile);
+
                               setMessageAttachmentName(file.name);
                               setMessageAttachmentType(file.type.startsWith('image/') ? 'image' : 'file');
                               
@@ -3753,7 +3754,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 <div className="space-y-2 mt-4">
                   <p className="text-xs font-bold text-slate-500">المرفقات:</p>
                   {newLessonAttachments.map((att, i) => (
-                    <div key={att.id || `att-${i}`} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
+                    <div key={att.id || `new-lesson-att-${att.name || ''}-${i}`} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
                       {att.name}
                       <button onClick={() => setNewLessonAttachments(newLessonAttachments.filter((_, idx) => idx !== i))} className="text-red-500">حذف</button>
                     </div>
@@ -3898,7 +3899,10 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       onChange={async (e) => {
                         if (e.target.files) {
                           const files = Array.from(e.target.files);
-                          for (const file of files) {
+                          for (const rawFile of files) {
+                            // Optimize image before upload if it's an image
+                            const file = await compressImage(rawFile);
+                            
                             const storageRef = ref(storage, `projects/${Date.now()}_${file.name}`);
                             try {
                               const uploadTask = uploadBytesResumable(storageRef, file);
@@ -3959,7 +3963,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   {newProjectAttachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {newProjectAttachments.map((att, idx) => (
-                        <div key={att.id || `att-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+                        <div key={att.id || `new-proj-att-${att.name}-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
                           <FileText className="w-3 h-3" />
                           {att.name}
                           <button onClick={() => setNewProjectAttachments(newProjectAttachments.filter((_, i) => i !== idx))} className="hover:text-red-500">
@@ -4026,7 +4030,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   {newProjectTasks.length > 0 && (
                     <div className="space-y-2 mt-2">
                       {newProjectTasks.map((task, idx) => (
-                        <div key={`new-proj-task-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <div key={`new-proj-task-${newProjectName || 'project'}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                           <span className="text-sm font-bold text-slate-700">{idx + 1}. {task}</span>
                           <button 
                             onClick={() => setNewProjectTasks(newProjectTasks.filter((_, i) => i !== idx))}
@@ -4295,7 +4299,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         const AttachIcon = attachInfo.icon;
                         return (
                           <button 
-                            key={attachment.id || `att-${idx}`}
+                            key={attachment.id || `view-lesson-att-${viewingLesson.id}-${idx}`}
                             onClick={() => setPreviewAttachment(attachment)}
                             className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 hover:border-indigo-200 hover:shadow-md transition-all group text-right"
                           >
@@ -4322,7 +4326,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       </h4>
                       <div className="space-y-3">
                         {viewingLesson.comments.map((comment, idx) => (
-                          <div key={comment.id} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
+                          <div key={comment.id || `comment-${idx}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
                             <div className="flex justify-between items-center mb-2">
                               <span className="text-xs font-black text-amber-700">{comment.authorName}</span>
                               <span className="text-[10px] font-bold text-slate-400">{new Date(comment.createdAt).toLocaleDateString('ar-OM')}</span>
