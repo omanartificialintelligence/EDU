@@ -211,6 +211,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [activeGradeTab, setActiveGradeTab] = useState<string>(AVAILABLE_GRADES[0]);
   const [activeSubjectTab, setActiveSubjectTab] = useState<string>(AVAILABLE_SUBJECTS[0]);
   const [viewingSubject, setViewingSubject] = useState<string | null>(null);
+  const [lessonStatusFilter, setLessonStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [onlyModelLessons, setOnlyModelLessons] = useState(false);
 
   // Add Attachment State
   const [isAddAttachmentModalOpen, setIsAddAttachmentModalOpen] = useState(false);
@@ -918,9 +920,18 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     if (activeSubjectTab !== 'الكل') {
       list = list.filter(m => m.subject === activeSubjectTab || (m.tags && m.tags.includes(activeSubjectTab)));
     }
+
+    // New filters
+    if (lessonStatusFilter !== 'all') {
+      list = list.filter(m => m.status === lessonStatusFilter);
+    }
+
+    if (onlyModelLessons) {
+      list = list.filter(m => m.isModelLesson);
+    }
     
     return list;
-  }, [lessonMaterials, filteredTeachers, isMainSupervisor, isTempSupervisor, user.tempPermissions, activeGradeTab, activeSubjectTab]);
+  }, [lessonMaterials, filteredTeachers, isMainSupervisor, isTempSupervisor, user.tempPermissions, activeGradeTab, activeSubjectTab, lessonStatusFilter, onlyModelLessons, academicYear, semester]);
 
   const statsTeachers = useMemo(() => {
     if (isTempSupervisor && user.tempPermissions?.canViewTeachers === false) {
@@ -1796,6 +1807,50 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   </div>
                 </div>
 
+                {/* Filter Controls - Common for both Grid and Detail views */}
+                <div className="flex flex-wrap items-center gap-6 bg-white p-6 rounded-[24px] border border-slate-200 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-slate-50 rounded-lg">
+                      <Filter className="w-4 h-4 text-slate-400" />
+                    </div>
+                    <span className="text-sm font-bold text-slate-600">تصفية حسب الحالة:</span>
+                    <div className="flex bg-slate-100 p-1 rounded-xl">
+                      {(['all', 'pending', 'approved', 'rejected'] as const).map((status) => (
+                        <button
+                          key={status}
+                          onClick={() => setLessonStatusFilter(status)}
+                          className={cn(
+                            "px-4 py-1.5 rounded-lg text-xs font-black transition-all",
+                            lessonStatusFilter === status 
+                              ? "bg-white text-indigo-600 shadow-sm" 
+                              : "text-slate-500 hover:text-slate-700"
+                          )}
+                        >
+                          {status === 'all' ? 'الكل' : 
+                           status === 'pending' ? 'قيد الانتظار' : 
+                           status === 'approved' ? 'مقبول' : 'مرفوض'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-bold text-slate-600">دروس نموذجية:</span>
+                    <button
+                      onClick={() => setOnlyModelLessons(!onlyModelLessons)}
+                      className={cn(
+                        "relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none",
+                        onlyModelLessons ? "bg-amber-500" : "bg-slate-200"
+                      )}
+                    >
+                      <div className={cn(
+                        "absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-200",
+                        onlyModelLessons ? "left-1" : "right-1"
+                      )} />
+                    </button>
+                  </div>
+                </div>
+
                 {!viewingSubject ? (
                   <div className="space-y-12">
                     {AVAILABLE_GRADES.map((grade, i) => (
@@ -1810,7 +1865,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             const subjectMaterials = lessonMaterials.filter(m => 
                               (m.tags?.includes(subject.name) || m.lessonTitle.includes(subject.name) || m.subject === subject.name) && 
                               (m.tags?.includes(grade) || m.grade === grade) &&
-                              m.academicYear === academicYear && m.semester === semester && !m.isArchived && m.isActive !== false
+                              m.academicYear === academicYear && m.semester === semester && !m.isArchived && m.isActive !== false &&
+                              (lessonStatusFilter === 'all' || m.status === lessonStatusFilter) &&
+                              (!onlyModelLessons || m.isModelLesson)
                             );
                             
                             // Get unique teachers
@@ -1913,7 +1970,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           m.academicYear === academicYear && m.semester === semester &&
                           !m.isArchived && m.isActive !== false &&
                           (m.tags?.includes(viewingSubject!) || m.lessonTitle.includes(viewingSubject!) || m.subject === viewingSubject) && 
-                          (m.tags?.includes(activeGradeTab) || m.grade === activeGradeTab)
+                          (m.tags?.includes(activeGradeTab) || m.grade === activeGradeTab) &&
+                          (lessonStatusFilter === 'all' || m.status === lessonStatusFilter) &&
+                          (!onlyModelLessons || m.isModelLesson)
                         )
                         .map((material, index) => {
                           const fileInfo = getFileIcon(material);
