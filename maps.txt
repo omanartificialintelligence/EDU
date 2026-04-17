@@ -1,0 +1,59 @@
+866:      const allowedTeacherIds = filteredTeachers.map(t => t.id);
+888:      const allowedTeacherIds = filteredTeachers.map(t => t.id);
+934:      const allowedTeacherIds = statsTeachers.map(t => t.id);
+1008:          {sidebarItems.filter(i => i.visible).map((item, idx) => (
+1133:                      notifications.map((notification, index) => (
+1207:                  {dashboardWidgets.map((widgetId, index) => (
+1241:                            ].map((stat, i) => (
+1278:                                    {statsData.map((entry, index) => (
+1298:                              ].map((btn, i) => (
+1324:                              {lessonMaterials.slice(0, 5).map((lesson, idx) => (
+1469:                                  {AVAILABLE_GRADES.map((g) => <option key={`grade-select-1-${g}`} value={g}>{g}</option>)}
+1493:                                  ).map((s) => <option key={`subject-select-1-${s}`} value={s}>{s}</option>)}
+1520:                              {newTeacherAssignments.map((assignment, idx) => (
+1598:                  {filteredTeachers.map((teacher, i) => (
+1642:                              {teacher.assignments.map((assignment, idx) => (
+1792:                    {AVAILABLE_GRADES.map((grade, i) => (
+1799:                          {allSubjects.map((subject, j) => {
+1808:                            const uniqueTeachers = Array.from(new Set(subjectMaterials.map(m => m.teacherName)));
+1850:                                    {uniqueTeachers.slice(0, 5).map((teacher, i) => (
+1888:                                  {filteredTeachers.filter(t => t.assignments?.some(a => a.subject === viewingSubject && a.grade === activeGradeTab)).map((t, i) => (
+1909:                        .map((material, index) => {
+1973:                                  {material.attachments.map((attachment, idx) => {
+2034:                                          material.comments.map((comment, index) => (
+2140:                          {[user, ...filteredTeachers.filter(t => t.id !== user.id)].map((t, idx) => (
+2154:                            {AVAILABLE_GRADES.map((g) => <option key={`grade-select-2-${g}`} value={g}>{g}</option>)}
+2164:                            {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-2-${s}`} value={s}>{s}</option>)}
+2234:                            {attachmentFiles.map((file, idx) => (
+2396:                            {newPostAttachments.map((att, idx) => (
+2430:                  {filteredPosts.map((post, index) => (
+2457:                          {post.attachments.map((att, i) => (
+2485:                      {availableArchiveYears.map((year, idx) => (
+2516:                        {AVAILABLE_GRADES.map((grade, idx) => (
+2536:                          {allSubjects.map((subject) => (
+2560:                                  {['الفصل الأول', 'الفصل الثاني', 'الفصل الدراسي الأول', 'الفصل الدراسي الثاني'].map((sem, idx) => {
+2638:                        ).map((lesson, idx) => {
+2661:                              {lesson.attachments.map((attachment, idx) => (
+2720:                            projects.filter(p => p.academicYear === selectedArchiveYear).map((project, idx) => (
+2770:                            posts.filter(p => p.academicYear === selectedArchiveYear).map((post, idx) => (
+2823:                  {filteredProjects.map((project, index) => (
+2854:                          {project.assignedTeacherIds.map((teacherId, idx) => {
+2924:                            {viewingProject.tasks.map((task, i) => (
+2936:                      {viewingProject.assignedTeacherIds.map((teacherId, idx) => {
+2981:                                    {submission.files.map((file, i) => (
+3080:                      }).map((msg, index) => (
+3103:                                {msg.attachments.map((att, idx) => (
+3265:                              {AVAILABLE_SUBJECTS.map((subject, idx) => (
+3293:                        {teachers.filter(t => t.role === UserRole.TEMP_SUPERVISOR).map((supervisor, idx) => {
+3315:                                    {supervisor.tempPermissions.allowedSubjects.map((s, index) => (
+3630:                  {AVAILABLE_GRADES.map((g) => <option key={`grade-select-3-${g}`} value={g}>{g}</option>)}
+3637:                  {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-3-${s}`} value={s}>{s}</option>)}
+3643:                  {newLessonAttachments.map((att, i) => (
+3811:                      {newProjectAttachments.map((att, idx) => (
+3878:                      {newProjectTasks.map((task, idx) => (
+3895:                    {[user, ...filteredTeachers.filter(t => t.id !== user.id)].map((teacher, idx) => (
+4009:                        {AVAILABLE_GRADES.map((g) => <option key={`grade-select-4-${g}`} value={g}>{g}</option>)}
+4020:                        {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-4-${s}`} value={s}>{s}</option>)}
+4040:                    {editTeacherAssignments.map((assignment, idx) => (
+4143:                      {viewingLesson.attachments.map((attachment, idx) => {
+4180:                        {viewingLesson.comments.map((comment, idx) => (

@@ -1007,7 +1007,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
         <nav className="flex-1 p-4 sm:p-6 space-y-2 overflow-y-auto custom-scrollbar">
           {sidebarItems.filter(i => i.visible).map((item, idx) => (
             <motion.button
-              key={`sidebar-${item.id}-${idx}`}
+              key={item.id}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: idx * 0.05 }}
@@ -1132,7 +1132,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     {notifications.length > 0 ? (
                       notifications.map((notification, index) => (
                         <motion.div 
-                          key={`notification-${notification.id}-${index}`} 
+                          key={notification.id} 
                           variants={{
                             hidden: { opacity: 0, y: 10 },
                             visible: { opacity: 1, y: 0 },
@@ -1175,7 +1175,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
         </header>
 
         <main className="p-4 sm:p-8 space-y-6 sm:space-y-8 overflow-y-auto">
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             {activeTab === 'overview' && (
               <motion.div 
                 key="overview"
@@ -1205,7 +1205,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                 <div className="space-y-8">
                   {dashboardWidgets.map((widgetId, index) => (
-                    <div key={`widget-${widgetId}-${index}`} className="relative group">
+                    <div key={widgetId} className="relative group">
                       {isCustomizingDashboard && (
                         <div className="absolute -right-12 top-0 bottom-0 flex flex-col justify-center gap-2 z-10">
                           <button 
@@ -1265,7 +1265,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               </select>
                             </div>
                             <div className="h-[300px] w-full">
-                              <ResponsiveContainer width="100%" height="100%">
+                              <ResponsiveContainer width="100%" height={300}>
                                 <BarChart data={statsData}>
                                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700, fill: '#64748b' }} dy={10} />
@@ -1276,7 +1276,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   />
                                   <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={40}>
                                     {statsData.map((entry, index) => (
-                                      <Cell key={`cell-${entry.name}-${index}`} fill={entry.color} />
+                                      <Cell key={`cell-${entry.name}`} fill={entry.color} />
                                     ))}
                                   </Bar>
                                 </BarChart>
@@ -1297,7 +1297,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 { label: 'تسجيل معلمة', icon: Users, color: 'amber', action: () => setActiveTab('teachers') },
                               ].map((btn, i) => (
                                 <button 
-                                  key={`quick-action-${btn.label}-${i}`} 
+                                  key={`${btn.label}`} 
                                   onClick={btn.action}
                                   className={cn(
                                     "p-6 rounded-3xl border border-slate-100 flex flex-col items-center gap-4 transition-all hover:shadow-lg hover:-translate-y-1",
@@ -1322,7 +1322,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             </h3>
                             <div className="space-y-4">
                               {lessonMaterials.slice(0, 5).map((lesson, idx) => (
-                                <div key={`lesson-${lesson.id}-${idx}`} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                <div key={lesson.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                                   <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-indigo-600 shadow-sm">
                                       <BookOpen className="w-5 h-5" />
@@ -1596,7 +1596,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="teachers-grid-container">
                   {filteredTeachers.map((teacher, i) => (
-                    <div key={`teacher-${teacher.id}-${i}`} className="bg-white p-5 rounded-[1.5rem] shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-200 transition-all duration-300 group relative overflow-hidden">
+                    <div key={teacher.id} className="bg-white p-5 rounded-[1.5rem] shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-200 transition-all duration-300 group relative overflow-hidden">
                       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                       
                       <div className="flex items-start justify-between mb-6">
@@ -1848,7 +1848,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                                   <div className="flex -space-x-2 space-x-reverse">
                                     {uniqueTeachers.slice(0, 5).map((teacher, i) => (
-                                      <div key={`teacher-avatar-${grade}-${subject.name}-${teacher}-${i}`} className="w-8 h-8 rounded-full bg-white border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm" title={teacher}>
+                                      <div key={`teacher-avatar-${grade}-${subject.name}-${teacher}`} className="w-8 h-8 rounded-full bg-white border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm" title={teacher}>
                                         {teacher.charAt(0)}
                                       </div>
                                     ))}
@@ -1911,7 +1911,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           const Icon = fileInfo.icon;
                           
                           return (
-                            <div key={`material-${material.id}-${index}`} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
+                            <div key={material.id} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
                               <div className="p-6 flex-1">
                                 <div className="flex justify-between items-start mb-4">
                                   <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border relative", fileInfo.bg, fileInfo.color, "border-slate-50")}>
@@ -1975,7 +1975,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                     const AttachIcon = attachInfo.icon;
                                     return (
                                       <button 
-                                        key={`attachment-${attachment.id}-${idx}`}
+                                        key={attachment.id}
                                         onClick={() => {
                                           if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
                                             setPreviewAttachment(attachment);
@@ -2032,7 +2032,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                         )}
                                         {material.comments && material.comments.length > 0 ? (
                                           material.comments.map((comment, index) => (
-                                            <div key={`material-comment-${comment.id}-${index}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                            <div key={comment.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                                               <div className="flex justify-between items-center mb-2">
                                                 <span className="text-xs font-black text-slate-900">{comment.authorName}</span>
                                                 <span className="text-[10px] font-bold text-slate-400">
@@ -2138,7 +2138,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         >
                           <option value="">اختر المعلمة...</option>
                           {[user, ...filteredTeachers.filter(t => t.id !== user.id)].map((t, idx) => (
-                            <option key={`teacher-option-${t.id}`} value={t.id}>{t.name}</option>
+                            <option key={t.id} value={t.id}>{t.name}</option>
                           ))}
                         </select>
                       </div>
@@ -2232,7 +2232,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         {attachmentFiles.length > 0 && (
                           <div className="space-y-2 mt-4">
                             {attachmentFiles.map((file, idx) => (
-                              <div key={`att-file-${file.name}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                              <div key={`att-file-${file.name}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                                 <div className="flex items-center gap-3">
                                   <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-indigo-600 shadow-sm">
                                     <FileText className="w-4 h-4" />
@@ -2394,7 +2394,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         {newPostAttachments.length > 0 && (
                           <div className="flex flex-wrap gap-2">
                             {newPostAttachments.map((att, idx) => (
-                              <div key={`att-${att.id}-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+                              <div key={att.id} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
                                 <span className="truncate max-w-[100px]">{att.name}</span>
                                 <button 
                                   type="button"
@@ -2428,7 +2428,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                 <div className="space-y-6">
                   {filteredPosts.map((post, index) => (
-                    <div key={`post-${post.id}-${index}`} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden">
+                    <div key={post.id} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden">
                       {post.isPinned && (
                         <div className="absolute top-0 left-0 w-full h-1.5 bg-indigo-500" />
                       )}
@@ -2455,7 +2455,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       {post.attachments.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                           {post.attachments.map((att, i) => (
-                            <div key={att.id || i} className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-500 flex items-center gap-2">
+                            <div key={`post-att-${post.id}-${att.id || i}`} className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-500 flex items-center gap-2">
                               <FileText className="w-3 h-3" /> {att.name}
                             </div>
                           ))}
@@ -2484,7 +2484,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     <div className="flex flex-col gap-2">
                       {availableArchiveYears.map((year, idx) => (
                         <button 
-                          key={`archive-year-${year}-${idx}`}
+                          key={`archive-year-${year}`}
                           onClick={() => {
                             setSelectedArchiveYear(year);
                             setSelectedArchiveSemester(getSemesterForYear(year));
@@ -2640,7 +2640,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           const Icon = fileInfo.icon;
                           
                           return (
-                            <div key={`archive-lesson-${lesson.id}-${idx}`} className="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-white hover:shadow-md transition-all">
+                            <div key={lesson.id} className="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-white hover:shadow-md transition-all">
                               <div className="flex items-center gap-4">
                                 <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shadow-sm", fileInfo.bg, fileInfo.color)}>
                                   <Icon className="w-6 h-6" />
@@ -2660,7 +2660,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               </button>
                               {lesson.attachments.map((attachment, idx) => (
                                 <button 
-                                  key={`attachment-${attachment.id}-${idx}`}
+                                  key={attachment.id}
                                   onClick={() => downloadFile(attachment.url, attachment.name || lesson.lessonTitle)}
                                   className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm"
                                   title={`تحميل ${attachment.name || `مرفق ${idx + 1}`}`}
@@ -2718,7 +2718,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           {projects.filter(p => p.academicYear === selectedArchiveYear).length > 0 ? (
                             projects.filter(p => p.academicYear === selectedArchiveYear).map((project, idx) => (
-                              <div key={`archive-project-${project.id}-${idx}`} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
+                              <div key={project.id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
                                 <div className="flex justify-between items-start mb-4">
                                   <div>
                                     <h4 className="font-bold text-lg text-slate-900">{project.name}</h4>
@@ -2768,7 +2768,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         <div className="grid grid-cols-1 gap-4">
                           {posts.filter(p => p.academicYear === selectedArchiveYear).length > 0 ? (
                             posts.filter(p => p.academicYear === selectedArchiveYear).map((post, idx) => (
-                              <div key={`archive-post-${post.id}-${idx}`} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex justify-between items-start">
+                              <div key={post.id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex justify-between items-start">
                                 <div>
                                   <h4 className="font-bold text-slate-900 mb-1">{post.title}</h4>
                                   <p className="text-xs text-slate-500 mb-2">{new Date(post.createdAt).toLocaleDateString('ar-OM')}</p>
@@ -2822,7 +2822,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 <div className="flex flex-col gap-6 max-h-[70vh] overflow-y-auto snap-y snap-mandatory pr-2 custom-scrollbar focus:outline-none" tabIndex={0}>
                   {filteredProjects.map((project, index) => (
                     <motion.div 
-                      key={`project-${project.id}-${index}`}
+                      key={project.id}
                       initial={{ opacity: 0, y: 50 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
@@ -2857,7 +2857,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               const status = submission?.status || 'pending';
                               
                               return (
-                                <div key={`proj-teacher-${project.id}-${teacherId}-${idx}`} className={cn(
+                                <div key={`proj-teacher-${project.id}-${teacherId}`} className={cn(
                                   "px-3 py-1 rounded-full text-[10px] font-black flex items-center gap-1 border",
                                   status === 'approved' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
                                   status === 'submitted' ? "bg-blue-50 text-blue-700 border-blue-100" :
@@ -2922,7 +2922,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           <h4 className="font-black text-slate-800 mb-3 text-sm">مهام المشروع المطلوبة:</h4>
                           <ul className="space-y-2">
                             {viewingProject.tasks.map((task, i) => (
-                                  <li key={`proj-task-${viewingProject.id}-${task}-${i}`} className="flex items-start gap-2 text-sm text-slate-600">
+                                  <li key={`proj-task-${viewingProject.id}-${task}`} className="flex items-start gap-2 text-sm text-slate-600">
                                     <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold mt-0.5 shrink-0">
                                       {i + 1}
                                     </span>
@@ -2939,7 +2939,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         const status = submission?.status || 'pending';
 
                         return (
-                          <div key={`view-proj-teacher-${viewingProject.id}-${teacherId}-${idx}`} className="bg-slate-50 rounded-[24px] border border-slate-100 overflow-hidden">
+                          <div key={`view-proj-teacher-${viewingProject.id}-${teacherId}`} className="bg-slate-50 rounded-[24px] border border-slate-100 overflow-hidden">
                             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-black">
@@ -2980,7 +2980,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   <div className="flex flex-wrap gap-3">
                                     {submission.files.map((file, i) => (
                                       <button 
-                                        key={`sub-file-${file.name}-${i}`}
+                                        key={`sub-file-${file.name}`}
                                         onClick={() => downloadFile(file.url, file.name)}
                                         className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:text-indigo-600 hover:border-indigo-200 transition-all"
                                       >
@@ -3079,7 +3079,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         return true;
                       }).map((msg, index) => (
                         <div 
-                          key={`msg-${msg.id}-${index}`}
+                          key={msg.id}
                           className={cn(
                             "flex flex-col max-w-[75%]",
                             msg.senderId === user.id ? "mr-auto items-end" : "ml-auto items-start"
@@ -3101,7 +3101,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             {msg.attachments && msg.attachments.length > 0 && (
                               <div className="mt-2 space-y-1">
                                 {msg.attachments.map((att, idx) => (
-                                  <div key={`msg-att-${att.id}-${idx}`} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
+                                  <div key={att.id} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
                                     {att.type === 'image' ? <ImageIcon className="w-4 h-4" /> : <FileIcon className="w-4 h-4" />}
                                     <a href={att.url} download={att.name} target="_blank" rel="noopener noreferrer" className="underline text-xs truncate max-w-[150px] block">
                                       {att.name}
@@ -3263,7 +3263,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             <h6 className="font-bold text-slate-700 text-xs mb-3">المواد المسموح بمتابعتها (اتركه فارغاً للسماح بالكل)</h6>
                             <div className="flex flex-wrap gap-2">
                               {AVAILABLE_SUBJECTS.map((subject, idx) => (
-                                <label key={`subject-filter-${subject}-${idx}`} className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
+                                <label key={`subject-filter-${subject}`} className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
                                   <input 
                                     type="checkbox" 
                                     checked={tempPermSubjects.includes(subject)}
@@ -3292,7 +3292,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       <div className="space-y-4">
                         {teachers.filter(t => t.role === UserRole.TEMP_SUPERVISOR).map((supervisor, idx) => {
                           return (
-                            <div key={`supervisor-${supervisor.id}-${idx}`} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-slate-50 rounded-xl border border-slate-100 gap-4">
+                            <div key={supervisor.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-slate-50 rounded-xl border border-slate-100 gap-4">
                               <div>
                                 <span className="font-bold text-slate-700 block">{supervisor.name}</span>
                                 <span className="text-xs text-slate-500 font-mono mt-1 block">الرقم الوظيفي: {supervisor.code}</span>
@@ -3313,7 +3313,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   <div className="flex flex-wrap gap-1 mt-1">
                                     <span className="text-[10px] text-slate-500">المواد:</span>
                                     {supervisor.tempPermissions.allowedSubjects.map((s, index) => (
-                                      <span key={`${supervisor.id}-${s}-${index}`} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">{s}</span>
+                                      <span key={`${supervisor.id}-${s}`} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">{s}</span>
                                     ))}
                                   </div>
                                 )}
@@ -3378,7 +3378,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     )}
                   </div>
                   
-                  <AnimatePresence mode="wait">
+                  <AnimatePresence>
                     {securityView === 'main' ? (
                       <motion.div 
                         key="security-main"
@@ -3641,7 +3641,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 <div className="space-y-2 mt-4">
                   <p className="text-xs font-bold text-slate-500">المرفقات:</p>
                   {newLessonAttachments.map((att, i) => (
-                    <div key={`new-lesson-att-${att.id}-${i}`} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
+                    <div key={att.id} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
                       {att.name}
                       <button onClick={() => setNewLessonAttachments(newLessonAttachments.filter((_, idx) => idx !== i))} className="text-red-500">حذف</button>
                     </div>
@@ -3809,7 +3809,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   {newProjectAttachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {newProjectAttachments.map((att, idx) => (
-                        <div key={`new-proj-att-${att.id}-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+                        <div key={att.id} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
                           <FileText className="w-3 h-3" />
                           {att.name}
                           <button onClick={() => setNewProjectAttachments(newProjectAttachments.filter((_, i) => i !== idx))} className="hover:text-red-500">
@@ -3876,7 +3876,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   {newProjectTasks.length > 0 && (
                     <div className="space-y-2 mt-2">
                       {newProjectTasks.map((task, idx) => (
-                        <div key={`new-proj-task-${task}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <div key={`new-proj-task-${task}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                           <span className="text-sm font-bold text-slate-700">{idx + 1}. {task}</span>
                           <button 
                             onClick={() => setNewProjectTasks(newProjectTasks.filter((_, i) => i !== idx))}
@@ -3893,7 +3893,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   <label className="text-sm font-black text-slate-700">تعيين المعلمات</label>
                   <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-100">
                     {[user, ...filteredTeachers.filter(t => t.id !== user.id)].map((teacher, idx) => (
-                      <label key={`teacher-select-${teacher.id}-${idx}`} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-indigo-500 transition-all">
+                      <label key={teacher.id} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-indigo-500 transition-all">
                         <input 
                           type="checkbox"
                           checked={newProjectTeachers.includes(teacher.id)}
@@ -4145,7 +4145,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         const AttachIcon = attachInfo.icon;
                         return (
                           <button 
-                            key={`preview-att-${attachment.id}-${idx}`}
+                            key={attachment.id}
                             onClick={() => {
                               if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
                                 setPreviewAttachment(attachment);
@@ -4178,7 +4178,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       </h4>
                       <div className="space-y-3">
                         {viewingLesson.comments.map((comment, idx) => (
-                          <div key={`lesson-comment-${comment.id}-${idx}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
+                          <div key={comment.id} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
                             <div className="flex justify-between items-center mb-2">
                               <span className="text-xs font-black text-amber-700">{comment.authorName}</span>
                               <span className="text-[10px] font-bold text-slate-400">{new Date(comment.createdAt).toLocaleDateString('ar-OM')}</span>

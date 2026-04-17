@@ -1,0 +1,138 @@
+44-  // Dynamic Grades and Subjects based on Assignments
+45-  const teacherAssignments = user.assignments || [];
+46:  const assignedGrades = Array.from(new Set(teacherAssignments.map(a => a.grade)));
+47:  const assignedSubjects = Array.from(new Set(teacherAssignments.map(a => a.subject)));
+48-
+49-  const [activeTab, setActiveTab] = useState('dashboard');
+--
+540-                  <div className="max-h-80 overflow-y-auto">
+541-                    {notifications.length > 0 ? (
+542:                      notifications.map((notification, index) => (
+543-                        <div 
+544-                          key={`notif-${notification.id}-${index}`} 
+--
+603-                  <div className="flex-1 overflow-y-auto pr-2 space-y-4 max-h-[200px] scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+604-                    {posts.filter(p => !p.isArchived).length > 0 ? (
+605:                      posts.filter(p => !p.isArchived).slice(0, 3).map((post, index) => (
+606-                        <div 
+607-                          key={`post-${post.id}-${index}`} 
+--
+632-              {/* Grade Selection Filter Bar */}
+633-              <div className="flex overflow-x-auto pb-2 sm:pb-0 items-center gap-2 sm:gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm w-full sm:w-fit scrollbar-hide">
+634:                {grades.map((grade, i) => (
+635-                  <button
+636-                    key={`grade-select-${grade}`}
+--
+651-              {!viewingSubject ? (
+652-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+653:                  {subjects.map((subject, i) => {
+654-                    // Filter materials for this subject and grade
+655-                    const subjectMaterials = lessonMaterials.filter(m => 
+--
+774-                        (m.tags?.includes(selectedGrade) || m.grade === selectedGrade)
+775-                      )
+776:                      .map((material, index) => {
+777-                        const fileInfo = getFileIcon(material);
+778-                        const Icon = fileInfo.icon;
+--
+823-
+824-                              <div className="flex flex-wrap gap-2">
+825:                                {material.attachments.map((attachment, idx) => (
+826-                                  <button 
+827-                                    key={`attachment-${attachment.id}-${idx}`}
+--
+876-                                    <div className="space-y-3">
+877-                                      {material.comments && material.comments.length > 0 ? (
+878:                                        material.comments.map((comment, index) => (
+879-                                          <div key={`material-comment-${comment.id}-${index}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+880-                                            <div className="flex justify-between items-center mb-2">
+--
+967-                <h2 className="text-2xl font-black text-slate-900">مشاريعي</h2>
+968-                <div className="flex bg-slate-100 p-1 rounded-xl w-fit">
+969:                  {(['all', 'pending', 'submitted', 'completed'] as const).map((filter, idx) => (
+970-                    <button
+971-                      key={`project-filter-${filter}`}
+--
+1000-                  if (projectFilter === 'completed') return status === 'approved';
+1001-                  return true;
+1002:                }).map((project, index) => {
+1003-                  const mySubmission = project.submissions?.[user.id];
+1004-                  const status = mySubmission?.status || 'pending';
+--
+1052-                            <span className="text-xs font-bold text-slate-500">فريق العمل:</span>
+1053-                            <div className="flex -space-x-2 space-x-reverse">
+1054:                              {project.assignedTeacherIds.map((teacherId, i) => (
+1055-                                <div key={`teacher-${project.id}-${teacherId}-${i}`} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600" title={teacherId === user.id ? 'أنا' : 'زميلة'}>
+1056-                                  {teacherId === user.id ? 'أنا' : 'ز'}
+--
+1124-                          <h5 className="font-bold text-slate-700 text-xs mb-3">مرفقات المشروع:</h5>
+1125-                          <div className="flex flex-wrap gap-2">
+1126:                            {selectedProject.attachments.map((att, idx) => (
+1127-                              <a 
+1128-                                key={`att-${att.id}-${idx}`}
+--
+1150-                          </h4>
+1151-                          <ul className="space-y-3">
+1152:                            {selectedProject.tasks.map((task, i) => (
+1153-                              <li key={`proj-task-${selectedProject.id}-${task}-${i}`} className="flex items-start gap-3 text-sm text-slate-600">
+1154-                                <span className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold mt-0.5 shrink-0">
+--
+1168-                        
+1169-                        <div className="grid grid-cols-1 gap-3">
+1170:                          {submissionFiles.map((file, idx) => (
+1171-                            <div key={`sub-file-${file.name}-${idx}`} className="bg-slate-50 rounded-xl border border-slate-100 p-3">
+1172-                              <div className="flex items-center justify-between mb-3">
+--
+1314-              <h2 className="text-2xl font-black text-slate-900">دروسي المرفوعة</h2>
+1315-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+1316:                {lessonMaterials.filter(m => m.teacherId === user.id).map((lesson, index) => {
+1317-                  const { icon: Icon, color, bg } = getAttachmentIcon({ name: lesson.lessonTitle, type: 'file' } as Attachment);
+1318-                  return (
+--
+1334-                      
+1335-                      <div className="space-y-2 mb-4">
+1336:                        {lesson.attachments.map((att, idx) => {
+1337-                          const { icon: AttIcon, color: AttColor } = getAttachmentIcon(att);
+1338-                          return (
+--
+1382-                    </div>
+1383-                  ) : (
+1384:                    messages.map((msg, index) => (
+1385-                      <div 
+1386-                        key={`msg-${msg.id}-${index}`}
+--
+1405-                          {msg.attachments && msg.attachments.length > 0 && (
+1406-                            <div className="mt-2 space-y-1">
+1407:                              {msg.attachments.map((att, idx) => (
+1408-                                <div key={`msg-att-${att.id}-${idx}`} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
+1409-                                  {att.type === 'image' ? <ImageIcon className="w-4 h-4" /> : <FileIcon className="w-4 h-4" />}
+--
+1555-                        <label className="text-sm font-black text-slate-700 block">المرفقات المضافة</label>
+1556-                        <div className="space-y-2">
+1557:                          {newLessonAttachments.map((att, idx) => (
+1558-                            <div key={`new-lesson-att-${att.id}-${idx}`} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+1559-                              <div className="flex items-center gap-3">
+--
+1578-                    <label className="text-sm font-black text-slate-700 block">إضافة مرفق جديد</label>
+1579-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+1580:                      {uploadOptions.map((type, idx) => (
+1581-                        <button
+1582-                          key={`upload-option-${type.id}-${idx}`}
+--
+1715-                    <h4 className="font-bold text-slate-800">المرفقات:</h4>
+1716-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+1717:                      {viewingPost.attachments.map((att, idx) => {
+1718-                        const iconInfo = getAttachmentIcon(att);
+1719-                        const Icon = iconInfo.icon;
+--
+1814-                    </h4>
+1815-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+1816:                      {viewingLesson.attachments.map((attachment, idx) => {
+1817-                        const attachInfo = getAttachmentIcon(attachment);
+1818-                        const AttachIcon = attachInfo.icon;
+--
+1851-                      </h4>
+1852-                      <div className="space-y-3">
+1853:                        {viewingLesson.comments.map((comment, idx) => (
+1854-                          <div key={`lesson-comment-${comment.id}-${idx}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
+1855-                            <div className="flex justify-between items-center mb-2">

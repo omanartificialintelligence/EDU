@@ -1,0 +1,353 @@
+864-    let list = projects.filter(p => p.academicYear === academicYear && p.semester === semester && !p.isArchived);
+865-    if (isTempSupervisor) {
+866:      const allowedTeacherIds = filteredTeachers.map(t => t.id);
+867-      // Show project if ANY of the assigned teachers are visible to the supervisor
+868-      list = list.filter(p => p.assignedTeacherIds.some(id => allowedTeacherIds.includes(id)));
+--
+886-
+887-    if (!isMainSupervisor) {
+888:      const allowedTeacherIds = filteredTeachers.map(t => t.id);
+889-      list = list.filter(m => allowedTeacherIds.includes(m.teacherId));
+890-    }
+--
+932-    
+933-    if (!isMainSupervisor) {
+934:      const allowedTeacherIds = statsTeachers.map(t => t.id);
+935-      list = list.filter(m => allowedTeacherIds.includes(m.teacherId));
+936-    }
+--
+1006-
+1007-        <nav className="flex-1 p-4 sm:p-6 space-y-2 overflow-y-auto custom-scrollbar">
+1008:          {sidebarItems.filter(i => i.visible).map((item, idx) => (
+1009-            <motion.button
+1010-              key={`sidebar-${item.id}-${idx}`}
+--
+1131-                  <div className="max-h-80 overflow-y-auto">
+1132-                    {notifications.length > 0 ? (
+1133:                      notifications.map((notification, index) => (
+1134-                        <motion.div 
+1135-                          key={`notification-${notification.id}-${index}`} 
+--
+1205-
+1206-                <div className="space-y-8">
+1207:                  {dashboardWidgets.map((widgetId, index) => (
+1208-                    <div key={`widget-${widgetId}-${index}`} className="relative group">
+1209-                      {isCustomizingDashboard && (
+--
+1239-                              { label: 'الدروس المرفوعة', value: lessonMaterials.length, icon: Palette, color: 'amber' },
+1240-                              { label: 'التعاميم المنشورة', value: posts.length, icon: MessageSquare, color: 'rose' },
+1241:                            ].map((stat, i) => (
+1242-                              <div key={`stat-${stat.label.replace(/\s+/g, '-')}`} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center gap-6 group hover:shadow-xl hover:shadow-indigo-500/5 transition-all">
+1243-                                <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shadow-inner", `bg-${stat.color}-50 text-${stat.color}-600`)}>
+--
+1276-                                  />
+1277-                                  <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={40}>
+1278:                                    {statsData.map((entry, index) => (
+1279-                                      <Cell key={`cell-${entry.name}-${index}`} fill={entry.color} />
+1280-                                    ))}
+--
+1296-                                { label: 'إضافة تعميم', icon: MessageSquare, color: 'indigo', action: () => setActiveTab('feed') },
+1297-                                { label: 'تسجيل معلمة', icon: Users, color: 'amber', action: () => setActiveTab('teachers') },
+1298:                              ].map((btn, i) => (
+1299-                                <button 
+1300-                                  key={`quick-action-${btn.label}-${i}`} 
+--
+1322-                            </h3>
+1323-                            <div className="space-y-4">
+1324:                              {lessonMaterials.slice(0, 5).map((lesson, idx) => (
+1325-                                <div key={`lesson-${lesson.id}-${idx}`} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+1326-                                  <div className="flex items-center gap-4">
+--
+1467-                                  className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-transparent shadow-sm focus:border-indigo-500 font-bold text-sm outline-none appearance-none cursor-pointer"
+1468-                                >
+1469:                                  {AVAILABLE_GRADES.map((g) => <option key={`grade-select-1-${g}`} value={g}>{g}</option>)}
+1470-                                </select>
+1471-                                <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+--
+1491-                                    user.tempPermissions.allowedSubjects.length === 0 || 
+1492-                                    user.tempPermissions.allowedSubjects.includes(s)
+1493:                                  ).map((s) => <option key={`subject-select-1-${s}`} value={s}>{s}</option>)}
+1494-                                </select>
+1495-                                <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+--
+1518-                          {newTeacherAssignments.length > 0 ? (
+1519-                            <div className="flex flex-wrap gap-3 mt-6 pt-6 border-t border-slate-100">
+1520:                              {newTeacherAssignments.map((assignment, idx) => (
+1521-                                <motion.div 
+1522-                                  initial={{ opacity: 0, scale: 0.9 }}
+--
+1596-                  </div>
+1597-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="teachers-grid-container">
+1598:                  {filteredTeachers.map((teacher, i) => (
+1599-                    <div key={`teacher-${teacher.id}-${i}`} className="bg-white p-5 rounded-[1.5rem] shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-200 transition-all duration-300 group relative overflow-hidden">
+1600-                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+--
+1640-                            </thead>
+1641-                            <tbody>
+1642:                              {teacher.assignments.map((assignment, idx) => (
+1643-                                <tr key={`assignment-${assignment.grade}-${assignment.subject}-${idx}`} className="border-b border-slate-100 last:border-0">
+1644-                                  <td className="py-2 text-slate-800 font-bold flex items-center gap-2">
+--
+1790-                {!viewingSubject ? (
+1791-                  <div className="space-y-12">
+1792:                    {AVAILABLE_GRADES.map((grade, i) => (
+1793-                      <div key={`grade-section-${grade}`} className="space-y-4">
+1794-                        <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
+--
+1797-                        </h3>
+1798-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+1799:                          {allSubjects.map((subject, j) => {
+1800-                            // Filter materials for this subject and grade
+1801-                            const subjectMaterials = lessonMaterials.filter(m => 
+--
+1806-                            
+1807-                            // Get unique teachers
+1808:                            const uniqueTeachers = Array.from(new Set(subjectMaterials.map(m => m.teacherName)));
+1809-
+1810-                            return (
+--
+1848-
+1849-                                  <div className="flex -space-x-2 space-x-reverse">
+1850:                                    {uniqueTeachers.slice(0, 5).map((teacher, i) => (
+1851-                                      <div key={`teacher-avatar-${grade}-${subject.name}-${teacher}-${i}`} className="w-8 h-8 rounded-full bg-white border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm" title={teacher}>
+1852-                                        {teacher.charAt(0)}
+--
+1886-                                <span className="text-[10px] font-bold text-slate-400">المعلمة المسؤولة:</span>
+1887-                                <div className="flex flex-wrap gap-1">
+1888:                                  {filteredTeachers.filter(t => t.assignments?.some(a => a.subject === viewingSubject && a.grade === activeGradeTab)).map((t, i) => (
+1889-                                    <span key={`responsible-teacher-${t.id}`} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[10px] font-black">
+1890-                                      {t.name}
+--
+1907-                          (m.tags?.includes(activeGradeTab) || m.grade === activeGradeTab)
+1908-                        )
+1909:                        .map((material, index) => {
+1910-                          const fileInfo = getFileIcon(material);
+1911-                          const Icon = fileInfo.icon;
+--
+1971-
+1972-                                <div className="flex flex-wrap gap-2">
+1973:                                  {material.attachments.map((attachment, idx) => {
+1974-                                    const attachInfo = getAttachmentIcon(attachment);
+1975-                                    const AttachIcon = attachInfo.icon;
+--
+2032-                                        )}
+2033-                                        {material.comments && material.comments.length > 0 ? (
+2034:                                          material.comments.map((comment, index) => (
+2035-                                            <div key={`material-comment-${comment.id}-${index}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+2036-                                              <div className="flex justify-between items-center mb-2">
+--
+2138-                        >
+2139-                          <option value="">اختر المعلمة...</option>
+2140:                          {[user, ...filteredTeachers.filter(t => t.id !== user.id)].map((t, idx) => (
+2141-                            <option key={`teacher-option-${t.id}`} value={t.id}>{t.name}</option>
+2142-                          ))}
+--
+2152-                            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
+2153-                          >
+2154:                            {AVAILABLE_GRADES.map((g) => <option key={`grade-select-2-${g}`} value={g}>{g}</option>)}
+2155-                          </select>
+2156-                        </div>
+--
+2162-                            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
+2163-                          >
+2164:                            {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-2-${s}`} value={s}>{s}</option>)}
+2165-                          </select>
+2166-                        </div>
+--
+2232-                        {attachmentFiles.length > 0 && (
+2233-                          <div className="space-y-2 mt-4">
+2234:                            {attachmentFiles.map((file, idx) => (
+2235-                              <div key={`att-file-${file.name}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+2236-                                <div className="flex items-center gap-3">
+--
+2394-                        {newPostAttachments.length > 0 && (
+2395-                          <div className="flex flex-wrap gap-2">
+2396:                            {newPostAttachments.map((att, idx) => (
+2397-                              <div key={`att-${att.id}-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+2398-                                <span className="truncate max-w-[100px]">{att.name}</span>
+--
+2428-
+2429-                <div className="space-y-6">
+2430:                  {filteredPosts.map((post, index) => (
+2431-                    <div key={`post-${post.id}-${index}`} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden">
+2432-                      {post.isPinned && (
+--
+2455-                      {post.attachments.length > 0 && (
+2456-                        <div className="flex flex-wrap gap-2">
+2457:                          {post.attachments.map((att, i) => (
+2458-                            <div key={`post-att-${post.id}-${att.id || i}-${i}`} className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-500 flex items-center gap-2">
+2459-                              <FileText className="w-3 h-3" /> {att.name}
+--
+2483-                    </div>
+2484-                    <div className="flex flex-col gap-2">
+2485:                      {availableArchiveYears.map((year, idx) => (
+2486-                        <button 
+2487-                          key={`archive-year-${year}-${idx}`}
+--
+2514-                      {/* Grade Tabs */}
+2515-                      <div className="flex flex-wrap gap-2 p-1.5 bg-slate-50 rounded-2xl">
+2516:                        {AVAILABLE_GRADES.map((grade, idx) => (
+2517-                          <button
+2518-                            key={`archive-grade-${grade}`}
+--
+2534-                      {selectedArchiveGrade && (
+2535-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
+2536:                          {allSubjects.map((subject) => (
+2537-                            <div 
+2538-                              key={`${selectedArchiveGrade}-${subject.name}`}
+--
+2558-                              {selectedArchiveSubject === subject.name && (
+2559-                                <div className="mt-6 flex flex-wrap gap-3 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+2560:                                  {['الفصل الأول', 'الفصل الثاني', 'الفصل الدراسي الأول', 'الفصل الدراسي الثاني'].map((sem, idx) => {
+2561-                                    // Only show semesters that actually have materials in the archive for this selection
+2562-                                    const hasMaterials = lessonMaterials.some(m => 
+--
+2636-                          m.subject === selectedArchiveSubject && 
+2637-                          m.semester === selectedArchiveSemester
+2638:                        ).map((lesson, idx) => {
+2639-                          const fileInfo = getFileIcon(lesson);
+2640-                          const Icon = fileInfo.icon;
+--
+2659-                                <Eye className="w-4 h-4" />
+2660-                              </button>
+2661:                              {lesson.attachments.map((attachment, idx) => (
+2662-                                <button 
+2663-                                  key={`attachment-${attachment.id}-${idx}`}
+--
+2718-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+2719-                          {projects.filter(p => p.academicYear === selectedArchiveYear).length > 0 ? (
+2720:                            projects.filter(p => p.academicYear === selectedArchiveYear).map((project, idx) => (
+2721-                              <div key={`archive-project-${project.id}-${idx}`} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
+2722-                                <div className="flex justify-between items-start mb-4">
+--
+2768-                        <div className="grid grid-cols-1 gap-4">
+2769-                          {posts.filter(p => p.academicYear === selectedArchiveYear).length > 0 ? (
+2770:                            posts.filter(p => p.academicYear === selectedArchiveYear).map((post, idx) => (
+2771-                              <div key={`archive-post-${post.id}-${idx}`} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex justify-between items-start">
+2772-                                <div>
+--
+2821-                </div>
+2822-                <div className="flex flex-col gap-6 max-h-[70vh] overflow-y-auto snap-y snap-mandatory pr-2 custom-scrollbar focus:outline-none" tabIndex={0}>
+2823:                  {filteredProjects.map((project, index) => (
+2824-                    <motion.div 
+2825-                      key={`project-${project.id}-${index}`}
+--
+2852-                        <p className="text-slate-500 font-bold text-sm mb-4">{project.description || 'لا يوجد وصف'}</p>
+2853-                        <div className="flex flex-wrap items-center gap-2">
+2854:                          {project.assignedTeacherIds.map((teacherId, idx) => {
+2855-                              const teacher = teachers.find(t => t.id === teacherId);
+2856-                              const submission = project.submissions?.[teacherId];
+--
+2922-                          <h4 className="font-black text-slate-800 mb-3 text-sm">مهام المشروع المطلوبة:</h4>
+2923-                          <ul className="space-y-2">
+2924:                            {viewingProject.tasks.map((task, i) => (
+2925-                                  <li key={`proj-task-${viewingProject.id}-${task}-${i}`} className="flex items-start gap-2 text-sm text-slate-600">
+2926-                                    <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold mt-0.5 shrink-0">
+--
+2934-                      )}
+2935-
+2936:                      {viewingProject.assignedTeacherIds.map((teacherId, idx) => {
+2937-                        const teacher = teachers.find(t => t.id === teacherId);
+2938-                        const submission = viewingProject.submissions?.[teacherId];
+--
+2979-                                {submission.files && submission.files.length > 0 && (
+2980-                                  <div className="flex flex-wrap gap-3">
+2981:                                    {submission.files.map((file, i) => (
+2982-                                      <button 
+2983-                                        key={`sub-file-${file.name}-${i}`}
+--
+3078-                        }
+3079-                        return true;
+3080:                      }).map((msg, index) => (
+3081-                        <div 
+3082-                          key={`msg-${msg.id}-${index}`}
+--
+3101-                            {msg.attachments && msg.attachments.length > 0 && (
+3102-                              <div className="mt-2 space-y-1">
+3103:                                {msg.attachments.map((att, idx) => (
+3104-                                  <div key={`msg-att-${att.id}-${idx}`} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
+3105-                                    {att.type === 'image' ? <ImageIcon className="w-4 h-4" /> : <FileIcon className="w-4 h-4" />}
+--
+3263-                            <h6 className="font-bold text-slate-700 text-xs mb-3">المواد المسموح بمتابعتها (اتركه فارغاً للسماح بالكل)</h6>
+3264-                            <div className="flex flex-wrap gap-2">
+3265:                              {AVAILABLE_SUBJECTS.map((subject, idx) => (
+3266-                                <label key={`subject-filter-${subject}-${idx}`} className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
+3267-                                  <input 
+--
+3291-                      <h4 className="font-black text-slate-800 text-sm border-r-4 border-red-500 pr-4">المشرفين المؤقتين الحاليين</h4>
+3292-                      <div className="space-y-4">
+3293:                        {teachers.filter(t => t.role === UserRole.TEMP_SUPERVISOR).map((supervisor, idx) => {
+3294-                          return (
+3295-                            <div key={`supervisor-${supervisor.id}-${idx}`} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-slate-50 rounded-xl border border-slate-100 gap-4">
+--
+3313-                                  <div className="flex flex-wrap gap-1 mt-1">
+3314-                                    <span className="text-[10px] text-slate-500">المواد:</span>
+3315:                                    {supervisor.tempPermissions.allowedSubjects.map((s, index) => (
+3316-                                      <span key={`${supervisor.id}-${s}-${index}`} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">{s}</span>
+3317-                                    ))}
+--
+3628-                <input type="text" placeholder="عنوان الدرس" value={newLessonTitle} onChange={e => setNewLessonTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" />
+3629-                <select value={newLessonGrade} onChange={e => setNewLessonGrade(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm">
+3630:                  {AVAILABLE_GRADES.map((g) => <option key={`grade-select-3-${g}`} value={g}>{g}</option>)}
+3631-                </select>
+3632-                <select value={newLessonSemester} onChange={e => setNewLessonSemester(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm">
+--
+3635-                </select>
+3636-                <select value={newLessonSubject} onChange={e => setNewLessonSubject(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm">
+3637:                  {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-3-${s}`} value={s}>{s}</option>)}
+3638-                </select>
+3639-                <textarea placeholder="وصف الدرس" value={newLessonDescription} onChange={e => setNewLessonDescription(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" rows={4} />
+--
+3641-                <div className="space-y-2 mt-4">
+3642-                  <p className="text-xs font-bold text-slate-500">المرفقات:</p>
+3643:                  {newLessonAttachments.map((att, i) => (
+3644-                    <div key={`new-lesson-att-${att.id}-${i}`} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
+3645-                      {att.name}
+--
+3809-                  {newProjectAttachments.length > 0 && (
+3810-                    <div className="flex flex-wrap gap-2 mt-2">
+3811:                      {newProjectAttachments.map((att, idx) => (
+3812-                        <div key={`new-proj-att-${att.id}-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+3813-                          <FileText className="w-3 h-3" />
+--
+3876-                  {newProjectTasks.length > 0 && (
+3877-                    <div className="space-y-2 mt-2">
+3878:                      {newProjectTasks.map((task, idx) => (
+3879-                        <div key={`new-proj-task-${task}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+3880-                          <span className="text-sm font-bold text-slate-700">{idx + 1}. {task}</span>
+--
+3893-                  <label className="text-sm font-black text-slate-700">تعيين المعلمات</label>
+3894-                  <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-100">
+3895:                    {[user, ...filteredTeachers.filter(t => t.id !== user.id)].map((teacher, idx) => (
+3896-                      <label key={`teacher-select-${teacher.id}-${idx}`} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-indigo-500 transition-all">
+3897-                        <input 
+--
+4007-                        className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-transparent shadow-sm focus:border-indigo-500 font-bold text-sm outline-none"
+4008-                      >
+4009:                        {AVAILABLE_GRADES.map((g) => <option key={`grade-select-4-${g}`} value={g}>{g}</option>)}
+4010-                      </select>
+4011-                    </div>
+--
+4018-                        className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-transparent shadow-sm focus:border-indigo-500 font-bold text-sm outline-none"
+4019-                      >
+4020:                        {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-4-${s}`} value={s}>{s}</option>)}
+4021-                      </select>
+4022-                    </div>
+--
+4038-
+4039-                  <div className="flex flex-wrap gap-3 mt-4">
+4040:                    {editTeacherAssignments.map((assignment, idx) => (
+4041-                      <div key={`edit-assignment-${assignment.grade}-${assignment.subject}-${idx}`} className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
+4042-                        <span className="font-bold text-xs text-slate-700">{assignment.grade} • {assignment.subject}</span>
+--
+4141-                    </h4>
+4142-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+4143:                      {viewingLesson.attachments.map((attachment, idx) => {
+4144-                        const attachInfo = getAttachmentIcon(attachment);
+4145-                        const AttachIcon = attachInfo.icon;
+--
+4178-                      </h4>
+4179-                      <div className="space-y-3">
+4180:                        {viewingLesson.comments.map((comment, idx) => (
+4181-                          <div key={`lesson-comment-${comment.id}-${idx}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
+4182-                            <div className="flex justify-between items-center mb-2">

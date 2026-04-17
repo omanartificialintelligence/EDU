@@ -68,6 +68,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   const [newLessonUrl, setNewLessonUrl] = useState('');
   const [newLessonFileName, setNewLessonFileName] = useState('');
   const [newLessonAttachments, setNewLessonAttachments] = useState<Attachment[]>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingLesson, setEditingLesson] = useState<LessonMaterial | null>(null);
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
@@ -87,6 +88,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
       const file = e.target.files[0];
       
       setIsUploading(true);
+      setUploadError(null);
       const storageRef = ref(storage, `lessons/${Date.now()}_${file.name}`);
       try {
         const snapshot = await uploadBytes(storageRef, file);
@@ -95,7 +97,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
         setNewLessonUrl(downloadURL);
       } catch (error) {
         console.error("Error uploading file:", error);
-        alert(`فشل رفع الملف ${file.name}`);
+        setUploadError("فشل رفع الملف. يرجى المحاولة مرة أخرى.");
       } finally {
         setIsUploading(false);
       }
@@ -249,6 +251,11 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
     setNewLessonType(null);
     setNewLessonUrl('');
     setNewLessonFileName('');
+    setUploadError(null);
+    
+    // Clear file input if it exists
+    const fileInput = document.getElementById('lesson-file-upload') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
   };
 
   const handleRemoveAttachment = (index: number) => {
@@ -532,9 +539,9 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   </div>
                   <div className="max-h-80 overflow-y-auto">
                     {notifications.length > 0 ? (
-                      notifications.map((notification, index) => (
+                      notifications.map((notification) => (
                         <div 
-                          key={`notif-${notification.id}-${index}`} 
+                          key={`notif-${notification.id}`} 
                           className={cn(
                             "p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer",
                             !notification.isRead ? "bg-indigo-50/50" : ""
@@ -595,9 +602,9 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   
                   <div className="flex-1 overflow-y-auto pr-2 space-y-4 max-h-[200px] scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
                     {posts.filter(p => !p.isArchived).length > 0 ? (
-                      posts.filter(p => !p.isArchived).slice(0, 3).map((post, index) => (
+                      posts.filter(p => !p.isArchived).slice(0, 3).map((post) => (
                         <div 
-                          key={`post-${post.id}-${index}`} 
+                          key={`post-${post.id}`} 
                           onClick={() => setViewingPost(post)}
                           className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-amber-200 hover:bg-amber-50/30 transition-all group cursor-pointer"
                         >
@@ -771,7 +778,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         const Icon = fileInfo.icon;
                         
                         return (
-                          <div key={`material-${material.id}-${index}`} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
+                          <div key={material.id} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
                             <div className="p-6 flex-1">
                               <div className="flex justify-between items-start mb-4">
                                 <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border relative", fileInfo.bg, fileInfo.color, "border-slate-50")}>
@@ -817,7 +824,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                               <div className="flex flex-wrap gap-2">
                                 {material.attachments.map((attachment, idx) => (
                                   <button 
-                                    key={`attachment-${attachment.id}-${idx}`}
+                                    key={attachment.id}
                                     onClick={() => {
                                       if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
                                         setPreviewAttachment(attachment);
@@ -869,7 +876,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                                     <div className="space-y-3">
                                       {material.comments && material.comments.length > 0 ? (
                                         material.comments.map((comment, index) => (
-                                          <div key={`material-comment-${comment.id}-${index}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                          <div key={comment.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                                             <div className="flex justify-between items-center mb-2">
                                               <span className="text-xs font-black text-slate-900">{comment.authorName}</span>
                                               <span className="text-[10px] font-bold text-slate-400">
@@ -998,7 +1005,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   
                   return (
                     <motion.div 
-                      key={`project-${project.id}-${index}`}
+                      key={project.id}
                       initial={{ opacity: 0, y: 50 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
@@ -1045,7 +1052,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                             <span className="text-xs font-bold text-slate-500">فريق العمل:</span>
                             <div className="flex -space-x-2 space-x-reverse">
                               {project.assignedTeacherIds.map((teacherId, i) => (
-                                <div key={`teacher-${project.id}-${teacherId}-${i}`} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600" title={teacherId === user.id ? 'أنا' : 'زميلة'}>
+                                <div key={`teacher-${project.id}-${teacherId}`} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600" title={teacherId === user.id ? 'أنا' : 'زميلة'}>
                                   {teacherId === user.id ? 'أنا' : 'ز'}
                                 </div>
                               ))}
@@ -1118,7 +1125,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                           <div className="flex flex-wrap gap-2">
                             {selectedProject.attachments.map((att, idx) => (
                               <a 
-                                key={`att-${att.id}-${idx}`}
+                                key={att.id}
                                 href={att.url}
                                 download={att.name}
                                 target="_blank"
@@ -1143,7 +1150,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                           </h4>
                           <ul className="space-y-3">
                             {selectedProject.tasks.map((task, i) => (
-                              <li key={`proj-task-${selectedProject.id}-${task}-${i}`} className="flex items-start gap-3 text-sm text-slate-600">
+                              <li key={`proj-task-${selectedProject.id}-${task}`} className="flex items-start gap-3 text-sm text-slate-600">
                                 <span className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold mt-0.5 shrink-0">
                                   {i + 1}
                                 </span>
@@ -1161,7 +1168,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         
                         <div className="grid grid-cols-1 gap-3">
                           {submissionFiles.map((file, idx) => (
-                            <div key={`sub-file-${file.name}-${idx}`} className="bg-slate-50 rounded-xl border border-slate-100 p-3">
+                            <div key={`sub-file-${file.name}`} className="bg-slate-50 rounded-xl border border-slate-100 p-3">
                               <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-3 overflow-hidden">
                                   <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-slate-100 text-slate-400">
@@ -1309,7 +1316,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                 {lessonMaterials.filter(m => m.teacherId === user.id).map((lesson, index) => {
                   const { icon: Icon, color, bg } = getAttachmentIcon({ name: lesson.lessonTitle, type: 'file' } as Attachment);
                   return (
-                    <div key={`lesson-${lesson.id}-${index}`} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+                    <div key={lesson.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
                       <div className="flex items-start justify-between mb-4">
                         <div className={cn("p-3 rounded-xl", bg, color)}>
                           <BookOpen className="w-6 h-6" />
@@ -1329,7 +1336,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         {lesson.attachments.map((att, idx) => {
                           const { icon: AttIcon, color: AttColor } = getAttachmentIcon(att);
                           return (
-                            <div key={`lesson-att-${att.id}-${idx}`} className="flex items-center justify-between text-xs p-2 bg-slate-50 rounded-lg">
+                            <div key={att.id} className="flex items-center justify-between text-xs p-2 bg-slate-50 rounded-lg">
                               <div className="flex items-center gap-2">
                                 <AttIcon className={cn("w-4 h-4", AttColor)} />
                                 <span className="font-bold text-slate-700">{att.name}</span>
@@ -1376,7 +1383,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   ) : (
                     messages.map((msg, index) => (
                       <div 
-                        key={`msg-${msg.id}-${index}`}
+                        key={msg.id}
                         className={cn(
                           "flex flex-col max-w-[80%]",
                           msg.senderId === user.id ? "mr-auto items-end" : "ml-auto items-start"
@@ -1398,7 +1405,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                           {msg.attachments && msg.attachments.length > 0 && (
                             <div className="mt-2 space-y-1">
                               {msg.attachments.map((att, idx) => (
-                                <div key={`msg-att-${att.id}-${idx}`} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
+                                <div key={att.id} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
                                   {att.type === 'image' ? <ImageIcon className="w-4 h-4" /> : <FileIcon className="w-4 h-4" />}
                                   <a href={att.url} download={att.name} target="_blank" rel="noopener noreferrer" className="underline text-xs truncate max-w-[150px] block">
                                     {att.name}
@@ -1548,7 +1555,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         <label className="text-sm font-black text-slate-700 block">المرفقات المضافة</label>
                         <div className="space-y-2">
                           {newLessonAttachments.map((att, idx) => (
-                            <div key={`new-lesson-att-${att.id}-${idx}`} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                            <div key={att.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center">
                                   {att.type === 'link' ? <LinkIcon className="w-5 h-5 text-indigo-500" /> : 
@@ -1572,7 +1579,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {uploadOptions.map((type, idx) => (
                         <button
-                          key={`upload-option-${type.id}-${idx}`}
+                          key={`upload-option-${type.id}`}
                           onClick={() => setNewLessonType(type.id)}
                           className={cn(
                             "flex flex-col items-center justify-center p-6 rounded-[24px] border-2 transition-all group bg-white hover:shadow-md",
@@ -1603,29 +1610,57 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                     </div>
                     
                     {newLessonType === 'link' ? (
-                      <input 
-                        type="url" 
-                        value={newLessonUrl}
-                        onChange={e => setNewLessonUrl(e.target.value)}
-                        placeholder="أدخل رابط المورد التعليمي هنا..."
-                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-sm"
-                      />
+                      <div className="space-y-3">
+                        <input 
+                          type="text" 
+                          value={newLessonFileName}
+                          onChange={e => setNewLessonFileName(e.target.value)}
+                          placeholder="اسم الرابط (مثال: فيديو شرح الدرس)"
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-sm"
+                        />
+                        <input 
+                          type="url" 
+                          value={newLessonUrl}
+                          onChange={e => setNewLessonUrl(e.target.value)}
+                          placeholder="أدخل رابط المورد التعليمي هنا..."
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-sm"
+                        />
+                      </div>
                     ) : newLessonType !== 'text' ? (
-                      <input 
-                        type="file" 
-                        onChange={handleFileSelect}
-                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-sm"
-                      />
+                      <div className="space-y-3">
+                        <input 
+                          type="text" 
+                          value={newLessonFileName}
+                          onChange={e => setNewLessonFileName(e.target.value)}
+                          placeholder="اسم الملف (اختياري)"
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-sm"
+                        />
+                        <input 
+                          type="file" 
+                          id="lesson-file-upload"
+                          onChange={handleFileSelect}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-sm"
+                        />
+                      </div>
                     ) : null}
+
+                    {uploadError && (
+                      <p className="text-[10px] font-bold text-red-500 bg-red-50 p-2 rounded-lg border border-red-100">{uploadError}</p>
+                    )}
 
                     <button 
                       onClick={handleAddAttachment}
                       disabled={!newLessonUrl || isUploading}
-                      className="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      className={cn(
+                        "w-full py-3.5 rounded-xl font-black transition-all flex items-center justify-center gap-2",
+                        !newLessonUrl || isUploading
+                          ? "bg-slate-100 text-slate-400"
+                          : "bg-blue-600 text-white shadow-lg shadow-blue-100 hover:bg-blue-700"
+                      )}
                     >
                       {isUploading ? (
                         <>
-                          <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                           <span>جاري الرفع...</span>
                         </>
                       ) : (
@@ -1683,7 +1718,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         const iconInfo = getAttachmentIcon(att);
                         const Icon = iconInfo.icon;
                         return (
-                          <div key={`view-post-att-${att.id}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                          <div key={att.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                             <div className="flex items-center gap-3">
                               <div className={cn("p-2 rounded-lg", iconInfo.bg, iconInfo.color)}>
                                 <Icon className="w-4 h-4" />
@@ -1783,7 +1818,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         const AttachIcon = attachInfo.icon;
                         return (
                           <button 
-                            key={`preview-att-${attachment.id}-${idx}`}
+                            key={attachment.id}
                             onClick={() => {
                               if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
                                 setPreviewAttachment(attachment);
@@ -1816,7 +1851,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                       </h4>
                       <div className="space-y-3">
                         {viewingLesson.comments.map((comment, idx) => (
-                          <div key={`lesson-comment-${comment.id}-${idx}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
+                          <div key={comment.id} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
                             <div className="flex justify-between items-center mb-2">
                               <span className="text-xs font-black text-amber-700">{comment.authorName}</span>
                               <span className="text-[10px] font-bold text-slate-400">{new Date(comment.createdAt).toLocaleDateString('ar-OM')}</span>

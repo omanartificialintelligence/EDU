@@ -1,0 +1,24 @@
+46:  const assignedGrades = Array.from(new Set(teacherAssignments.map(a => a.grade)));
+47:  const assignedSubjects = Array.from(new Set(teacherAssignments.map(a => a.subject)));
+542:                      notifications.map((notification, index) => (
+605:                      posts.filter(p => !p.isArchived).slice(0, 3).map((post, index) => (
+634:                {grades.map((grade, i) => (
+653:                  {subjects.map((subject, i) => {
+776:                      .map((material, index) => {
+825:                                {material.attachments.map((attachment, idx) => (
+878:                                        material.comments.map((comment, index) => (
+969:                  {(['all', 'pending', 'submitted', 'completed'] as const).map((filter, idx) => (
+1002:                }).map((project, index) => {
+1054:                              {project.assignedTeacherIds.map((teacherId, i) => (
+1126:                            {selectedProject.attachments.map((att, idx) => (
+1152:                            {selectedProject.tasks.map((task, i) => (
+1170:                          {submissionFiles.map((file, idx) => (
+1316:                {lessonMaterials.filter(m => m.teacherId === user.id).map((lesson, index) => {
+1336:                        {lesson.attachments.map((att, idx) => {
+1384:                    messages.map((msg, index) => (
+1407:                              {msg.attachments.map((att, idx) => (
+1557:                          {newLessonAttachments.map((att, idx) => (
+1580:                      {uploadOptions.map((type, idx) => (
+1717:                      {viewingPost.attachments.map((att, idx) => {
+1816:                      {viewingLesson.attachments.map((attachment, idx) => {
+1853:                        {viewingLesson.comments.map((comment, idx) => (
