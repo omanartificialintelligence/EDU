@@ -83,7 +83,7 @@ const TeacherPanel: React.FC = () => {
           <AnimatePresence mode="popLayout">
             {lessons.map((lesson, index) => (
               <motion.div
-                key={`lesson-${lesson.id}-${index}`}
+                key={`lesson-${lesson.id}`}
                 layout
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}

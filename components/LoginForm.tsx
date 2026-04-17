@@ -1,4 +1,5 @@
 
+import toast from 'react-hot-toast';
 import React, { useState } from 'react';
 import { GraduationCap } from 'lucide-react';
 import { UserRole, User, SupervisorConfig } from '../types';
@@ -105,7 +106,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, teachers, onForgotPasswo
     const email = `${forgotId}@moe.om`;
     try {
       await sendPasswordResetEmail(auth, email);
-      alert('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.');
+      toast('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.');
       closeForgotModal();
     } catch (error) {
       console.error(error);
@@ -133,7 +134,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, teachers, onForgotPasswo
       mainPassword: newMainPass,
       backupPassword: newBackupPass
     });
-    alert('تم تحديث كلمات مرور المشرفة بنجاح');
+    toast('تم تحديث كلمات مرور المشرفة بنجاح');
     setShowForgotModal(false);
     setForgotStep('id');
     setForgotId('');

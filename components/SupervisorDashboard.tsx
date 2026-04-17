@@ -1,4 +1,5 @@
 
+import toast from 'react-hot-toast';
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   User, Project, Post, ProjectSubmission, Attachment, ResetRequest, 
@@ -18,13 +19,14 @@ import {
   PieChart, Pie, Cell, LineChart, Line 
 } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
+import FilePreviewModal from './FilePreviewModal';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { exportTeachersCSV, exportLessonsCSV, exportProjectsCSV, exportToPDF } from '../src/services/exportService';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { storage } from '../src/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, uploadBytesResumable, getDownloadURL, UploadTaskSnapshot } from 'firebase/storage';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -97,6 +99,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
   // Add Lesson State
   const [isAddLessonModalOpen, setIsAddLessonModalOpen] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [editingLesson, setEditingLesson] = useState<LessonMaterial | null>(null);
   const [newLessonTitle, setNewLessonTitle] = useState('');
   const [newLessonSubject, setNewLessonSubject] = useState(AVAILABLE_SUBJECTS[0]);
@@ -149,7 +152,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [editTeacherName, setEditTeacherName] = useState('');
   const [editTeacherId, setEditTeacherId] = useState('');
   const [editTeacherPhone, setEditTeacherPhone] = useState('');
-  const [editTeacherAssignments, setEditTeacherAssignments] = useState<{grade: string, subject: string}[]>([]);
+  const [editTeacherAssignments, setEditTeacherAssignments] = useState<{id: string, grade: string, subject: string}[]>([]);
   const [editAssignmentGrade, setEditAssignmentGrade] = useState('الصف الأول');
   const [editAssignmentSubject, setEditAssignmentSubject] = useState('لغة عربية');
   
@@ -158,14 +161,14 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
       setEditTeacherName(editingTeacher.name);
       setEditTeacherId(editingTeacher.id);
       setEditTeacherPhone(editingTeacher.phoneNumber || '');
-      setEditTeacherAssignments(editingTeacher.assignments || []);
+      setEditTeacherAssignments((editingTeacher.assignments || []).map(a => ({ ...a, id: Date.now().toString() + Math.random().toString() })));
     }
   }, [editingTeacher]);
 
   const handleUpdateTeacher = () => {
     if (!editingTeacher) return;
     if (!editTeacherName || !editTeacherId) {
-      alert('يرجى إدخال الاسم والرقم الوظيفي');
+      toast('يرجى إدخال الاسم والرقم الوظيفي');
       return;
     }
 
@@ -180,7 +183,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
     onUpdateTeacher(editingTeacher.id, updatedTeacher as User);
     setEditingTeacher(null);
-    alert('تم تحديث بيانات المعلمة بنجاح');
+    toast('تم تحديث بيانات المعلمة بنجاح');
   };
   
   // Lesson Filters
@@ -250,7 +253,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
       }
 
       if (count === 0) {
-        alert('لا توجد مرفقات لتنزيلها');
+        toast('لا توجد مرفقات لتنزيلها');
         setIsZipping(false);
         return;
       }
@@ -263,7 +266,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
       saveAs(content, filename);
     } catch (error) {
       console.error('Error creating zip:', error);
-      alert('حدث خطأ أثناء إنشاء الملف المضغوط');
+      toast('حدث خطأ أثناء إنشاء الملف المضغوط');
     } finally {
       setIsZipping(false);
     }
@@ -271,15 +274,15 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
   const handleAddAttachment = () => {
     if (!attachmentTeacherId) {
-      alert('يرجى اختيار المعلمة');
+      toast('يرجى اختيار المعلمة');
       return;
     }
     if (attachmentLessonId === 'new' && !attachmentNewLessonTitle) {
-      alert('يرجى إدخال عنوان المرفق');
+      toast('يرجى إدخال عنوان المرفق');
       return;
     }
     if (attachmentFiles.length === 0) {
-      alert('يرجى اختيار ملف واحد على الأقل');
+      toast('يرجى اختيار ملف واحد على الأقل');
       return;
     }
 
@@ -328,14 +331,14 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     setAttachmentNewLessonTitle('');
     setAttachmentLessonId('new');
     setAttachmentTeacherId('');
-    alert('تم إضافة المرفقات بنجاح');
+    toast('تم إضافة المرفقات بنجاح');
   };
 
   // Add Teacher State
   const [newTeacherName, setNewTeacherName] = useState('');
   const [newTeacherId, setNewTeacherId] = useState('');
   const [newTeacherPhone, setNewTeacherPhone] = useState('');
-  const [newTeacherAssignments, setNewTeacherAssignments] = useState<{grade: string, subject: string}[]>([]);
+  const [newTeacherAssignments, setNewTeacherAssignments] = useState<{id: string, grade: string, subject: string}[]>([]);
   const [currentAssignmentGrade, setCurrentAssignmentGrade] = useState('الصف الأول');
   const [currentAssignmentSubject, setCurrentAssignmentSubject] = useState('لغة عربية');
   
@@ -353,11 +356,11 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
   const handleAddNewTempSupervisor = () => {
     if (!newTempName || !newTempId || !newTempPass) {
-      alert('يرجى إكمال جميع الحقول الأساسية');
+      toast('يرجى إكمال جميع الحقول الأساسية');
       return;
     }
     if (teachers.some(t => t.id === newTempId)) {
-      alert('الرقم الوظيفي موجود مسبقاً');
+      toast('الرقم الوظيفي موجود مسبقاً');
       return;
     }
     onAddTempSupervisor({
@@ -389,7 +392,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     setTempPermDownload(false);
     setTempPermFull(false);
     setTempPermSubjects([]);
-    alert('تم إضافة المشرف المؤقت بنجاح');
+    toast('تم إضافة المشرف المؤقت بنجاح');
   };
 
   // Password Reset State
@@ -421,7 +424,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     if (year && /^\d{4}-\d{4}$/.test(year)) {
       const currentYears = supervisorConfig.archiveYears || [];
       if (currentYears.includes(year) || year === academicYear) {
-        alert('هذا العام موجود بالفعل');
+        toast('هذا العام موجود بالفعل');
         return;
       }
       onUpdateSecurity({
@@ -429,7 +432,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
         archiveYears: [...currentYears, year]
       });
     } else if (year) {
-      alert('يرجى إدخال العام بتنسيق صحيح (YYYY-YYYY)');
+      toast('يرجى إدخال العام بتنسيق صحيح (YYYY-YYYY)');
     }
   };
 
@@ -467,7 +470,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [commentText, setCommentText] = useState('');
   const [currentSupervisorNotes, setCurrentSupervisorNotes] = useState('');
   
-  const [previewAttachment, setPreviewAttachment] = useState<{url: string, type: string, name: string} | null>(null);
+  const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
   const [viewingLesson, setViewingLesson] = useState<LessonMaterial | null>(null);
 
   useEffect(() => {
@@ -526,7 +529,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
   const handleAddProject = () => {
     if (!newProjectName || !newProjectDescription) {
-      alert('يرجى إدخال اسم المشروع ووصفه');
+      toast('يرجى إدخال اسم المشروع ووصفه');
       return;
     }
 
@@ -555,7 +558,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     setNewProjectEndDate('');
     setNewProjectAttachments([]);
     setIsAddProjectModalOpen(false);
-    alert('تم إضافة المشروع بنجاح');
+    toast('تم إضافة المشروع بنجاح');
   };
 
   // Project Management State
@@ -595,16 +598,16 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
   const handleSaveConfig = () => {
      if (newMainPass.length > 0 && newMainPass.length < 8) {
-        return alert('يجب أن تكون كلمة المرور الرئيسية 8 أحرف على الأقل');
+        return toast('يجب أن تكون كلمة المرور الرئيسية 8 أحرف على الأقل');
      }
      if (newMainPass !== confirmMainPass) {
-        return alert('كلمة المرور الرئيسية وتأكيدها غير متطابقين');
+        return toast('كلمة المرور الرئيسية وتأكيدها غير متطابقين');
      }
      if (newBackupPass.length > 0 && newBackupPass.length < 8) {
-        return alert('يجب أن تكون كلمة مرور الطوارئ 8 أحرف على الأقل');
+        return toast('يجب أن تكون كلمة مرور الطوارئ 8 أحرف على الأقل');
      }
      if (newBackupPass !== confirmBackupPass) {
-        return alert('كلمة مرور الطوارئ وتأكيدها غير متطابقين');
+        return toast('كلمة مرور الطوارئ وتأكيدها غير متطابقين');
      }
 
      let finalYear = `${editStartYear}-${editEndYear}`;
@@ -640,12 +643,12 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
         semester: finalSemester,
         archiveYears: updatedArchiveYears
      });
-     alert('تم حفظ الإعدادات بنجاح');
+     toast('تم حفظ الإعدادات بنجاح');
   };
 
   const downloadFile = (url: string, filename: string) => {
     if (isTempSupervisor && !user.tempPermissions?.hasFullAccess && !user.tempPermissions?.canDownloadAttachments) {
-      alert('عذراً، لا تملك صلاحية تنزيل المرفقات');
+      toast('عذراً، لا تملك صلاحية تنزيل المرفقات');
       return;
     }
 
@@ -713,12 +716,12 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
       });
     }
     
-    alert('تم حفظ الملاحظات بنجاح');
+    toast('تم حفظ الملاحظات بنجاح');
   };
 
   const handleAddLesson = async () => {
     if (!newLessonTitle || !newLessonDescription) {
-      alert('يرجى إكمال جميع الحقول');
+      toast('يرجى إكمال جميع الحقول');
       return;
     }
 
@@ -737,7 +740,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
           tags: [newLessonSubject, newLessonGrade]
         };
         await onUpdateLessonMaterial(updatedMaterial);
-        alert('تم تحديث الدرس بنجاح.');
+        toast('تم تحديث الدرس بنجاح.');
       } else {
         const newMaterial: LessonMaterial = {
           id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -757,7 +760,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
           tags: [newLessonSubject, newLessonGrade]
         };
         await onAddLessonMaterial(newMaterial);
-        alert('تمت إضافة الدرس بنجاح.');
+        toast('تمت إضافة الدرس بنجاح.');
       }
       setIsAddLessonModalOpen(false);
       setEditingLesson(null);
@@ -766,7 +769,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
       setNewLessonAttachments([]);
     } catch (error) {
       console.error("Error saving lesson:", error);
-      alert('حدث خطأ أثناء حفظ الدرس. يرجى المحاولة مرة أخرى.');
+      toast('حدث خطأ أثناء حفظ الدرس. يرجى المحاولة مرة أخرى.');
     } finally {
       setIsSubmitting(false);
     }
@@ -1395,13 +1398,13 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                       <form onSubmit={(e) => { 
                         e.preventDefault(); 
-                        if (!newTeacherName || !newTeacherId) return alert('الرجاء إدخال الاسم والرقم الوظيفي');
+                        if (!newTeacherName || !newTeacherId) return toast('الرجاء إدخال الاسم والرقم الوظيفي');
                         onAddTeacher(newTeacherId, newTeacherName, undefined, newTeacherPhone, newTeacherAssignments); 
                         setNewTeacherName(''); 
                         setNewTeacherId(''); 
                         setNewTeacherPhone(''); 
                         setNewTeacherAssignments([]);
-                        alert('تم إضافة المعلمة بنجاح'); 
+                        toast('تم إضافة المعلمة بنجاح'); 
                       }} className="space-y-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                           <div className="space-y-2">
@@ -1504,7 +1507,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 onClick={() => {
                                   if (currentAssignmentGrade && currentAssignmentSubject) {
                                     if (!newTeacherAssignments.some(a => a.grade === currentAssignmentGrade && a.subject === currentAssignmentSubject)) {
-                                      setNewTeacherAssignments([...newTeacherAssignments, { grade: currentAssignmentGrade, subject: currentAssignmentSubject }]);
+                                      setNewTeacherAssignments([...newTeacherAssignments, { id: Date.now().toString(), grade: currentAssignmentGrade, subject: currentAssignmentSubject }]);
                                     }
                                   }
                                 }} 
@@ -1521,7 +1524,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 <motion.div 
                                   initial={{ opacity: 0, scale: 0.9 }}
                                   animate={{ opacity: 1, scale: 1 }}
-                                  key={`new-assignment-${assignment.grade}-${assignment.subject}-${idx}`} 
+                                  key={assignment.id} 
                                   className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm group hover:border-indigo-200 transition-all"
                                 >
                                   <div className="w-2 h-2 rounded-full bg-indigo-500" />
@@ -1640,7 +1643,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             </thead>
                             <tbody>
                               {teacher.assignments.map((assignment, idx) => (
-                                <tr key={`assignment-${assignment.grade}-${assignment.subject}-${idx}`} className="border-b border-slate-100 last:border-0">
+                                <tr key={`assignment-${teacher.id}-${assignment.grade}-${assignment.subject}`} className="border-b border-slate-100 last:border-0">
                                   <td className="py-2 text-slate-800 font-bold flex items-center gap-2">
                                     <GraduationCap className="w-3.5 h-3.5 text-emerald-500" />
                                     {assignment.grade}
@@ -1945,7 +1948,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                                 isArchived: true,
                                                 isActive: false
                                             });
-                                            alert('تم نقل الملف إلى الأرشيف');
+                                            toast('تم نقل الملف إلى الأرشيف');
                                         }}
                                         className="p-2 hover:bg-amber-50 text-amber-600 rounded-xl transition-colors"
                                         title="أرشفة"
@@ -1975,14 +1978,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                     const AttachIcon = attachInfo.icon;
                                     return (
                                       <button 
-                                        key={attachment.id}
-                                        onClick={() => {
-                                          if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
-                                            setPreviewAttachment(attachment);
-                                          } else {
-                                            downloadFile(attachment.url, attachment.name || `${material.lessonTitle}.bin`);
-                                          }
-                                        }}
+                                        key={attachment.id || `att-${idx}`}
+                                        onClick={() => setPreviewAttachment(attachment)}
                                         className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-slate-700 rounded-lg hover:bg-indigo-50 hover:text-indigo-700 transition-all font-bold text-[10px] border border-slate-100"
                                       >
                                         <AttachIcon className={cn("w-3 h-3", attachInfo.color)} />
@@ -2205,7 +2202,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 const files = Array.from(e.target.files);
                                 files.forEach(file => {
                                   if (file.size > 700 * 1024) {
-                                    alert(`الملف ${file.name} كبير جداً. يرجى اختيار ملفات أقل من 700 كيلوبايت.`);
+                                    toast(`الملف ${file.name} كبير جداً. يرجى اختيار ملفات أقل من 700 كيلوبايت.`);
                                     return;
                                   }
                                   const reader = new FileReader();
@@ -2232,7 +2229,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         {attachmentFiles.length > 0 && (
                           <div className="space-y-2 mt-4">
                             {attachmentFiles.map((file, idx) => (
-                              <div key={`att-file-${file.name}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                              <div key={`att-file-${file.name}-${file.url}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                                 <div className="flex items-center gap-3">
                                   <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-indigo-600 shadow-sm">
                                     <FileText className="w-4 h-4" />
@@ -2296,7 +2293,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   </h3>
                   <form className="space-y-6" onSubmit={(e) => {
                     e.preventDefault();
-                    if (!newPostTitle || !newPostContent) return alert('يرجى إدخال العنوان والمحتوى');
+                    if (!newPostTitle || !newPostContent) return toast('يرجى إدخال العنوان والمحتوى');
                     onAddPost({
                       id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
                       authorId: user.id,
@@ -2328,7 +2325,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     setNewPostContent('');
                     setNewPostIsPinned(false);
                     setNewPostAttachments([]);
-                    alert('تم نشر التعميم بنجاح');
+                    toast('تم نشر التعميم بنجاح');
                   }}>
                     <div className="space-y-2">
                       <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">عنوان التعميم</label>
@@ -2374,7 +2371,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               const files = Array.from(e.target.files);
                               files.forEach(file => {
                                 if (file.size > 700 * 1024) {
-                                  alert(`الملف ${file.name} كبير جداً. يرجى اختيار ملفات أقل من 700 كيلوبايت.`);
+                                  toast(`الملف ${file.name} كبير جداً. يرجى اختيار ملفات أقل من 700 كيلوبايت.`);
                                   return;
                                 }
                                 const reader = new FileReader();
@@ -2394,7 +2391,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         {newPostAttachments.length > 0 && (
                           <div className="flex flex-wrap gap-2">
                             {newPostAttachments.map((att, idx) => (
-                              <div key={att.id} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+                              <div key={att.id || `att-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
                                 <span className="truncate max-w-[100px]">{att.name}</span>
                                 <button 
                                   type="button"
@@ -2455,9 +2452,13 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       {post.attachments.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                           {post.attachments.map((att, i) => (
-                            <div key={`post-att-${post.id}-${att.id || i}`} className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-500 flex items-center gap-2">
+                            <button 
+                              key={`post-att-${post.id}-${att.id || att.name}`} 
+                              onClick={() => setPreviewAttachment(att)}
+                              className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-500 flex items-center gap-2 hover:bg-indigo-50 transition-all"
+                            >
                               <FileText className="w-3 h-3" /> {att.name}
-                            </div>
+                            </button>
                           ))}
                         </div>
                       )}
@@ -2660,12 +2661,12 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               </button>
                               {lesson.attachments.map((attachment, idx) => (
                                 <button 
-                                  key={attachment.id}
-                                  onClick={() => downloadFile(attachment.url, attachment.name || lesson.lessonTitle)}
+                                  key={attachment.id || `att-${idx}`}
+                                  onClick={() => setPreviewAttachment(attachment)}
                                   className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm"
-                                  title={`تحميل ${attachment.name || `مرفق ${idx + 1}`}`}
+                                  title={`معاينة ${attachment.name || `مرفق ${idx + 1}`}`}
                                 >
-                                  <Download className="w-4 h-4" />
+                                  <Eye className="w-4 h-4" />
                                 </button>
                               ))}
                               
@@ -2980,7 +2981,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   <div className="flex flex-wrap gap-3">
                                     {submission.files.map((file, i) => (
                                       <button 
-                                        key={`sub-file-${file.name}`}
+                                        key={file.id || file.url || `sub-file-${idx}`}
                                         onClick={() => downloadFile(file.url, file.name)}
                                         className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:text-indigo-600 hover:border-indigo-200 transition-all"
                                       >
@@ -3079,7 +3080,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         return true;
                       }).map((msg, index) => (
                         <div 
-                          key={msg.id}
+                          key={msg.id || `msg-${index}`}
                           className={cn(
                             "flex flex-col max-w-[75%]",
                             msg.senderId === user.id ? "mr-auto items-end" : "ml-auto items-start"
@@ -3101,12 +3102,16 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             {msg.attachments && msg.attachments.length > 0 && (
                               <div className="mt-2 space-y-1">
                                 {msg.attachments.map((att, idx) => (
-                                  <div key={att.id} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
+                                  <button 
+                                    key={att.id || `att-${idx}`} 
+                                    onClick={() => setPreviewAttachment(att)}
+                                    className="flex items-center gap-2 bg-black/10 p-2 rounded-lg hover:bg-black/20 transition-all w-full text-right"
+                                  >
                                     {att.type === 'image' ? <ImageIcon className="w-4 h-4" /> : <FileIcon className="w-4 h-4" />}
-                                    <a href={att.url} download={att.name} target="_blank" rel="noopener noreferrer" className="underline text-xs truncate max-w-[150px] block">
+                                    <span className="text-xs truncate max-w-[150px] block font-bold">
                                       {att.name}
-                                    </a>
-                                  </div>
+                                    </span>
+                                  </button>
                                 ))}
                               </div>
                             )}
@@ -3313,7 +3318,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   <div className="flex flex-wrap gap-1 mt-1">
                                     <span className="text-[10px] text-slate-500">المواد:</span>
                                     {supervisor.tempPermissions.allowedSubjects.map((s, index) => (
-                                      <span key={`${supervisor.id}-${s}`} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">{s}</span>
+                                      <span key={`sup-sub-${supervisor.id}-${s}`} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">{s}</span>
                                     ))}
                                   </div>
                                 )}
@@ -3490,10 +3495,10 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           </div>
                           <button 
                             onClick={() => {
-                              if (newMainPass.length < 8) return alert('يجب أن تكون كلمة المرور 8 أحرف على الأقل');
-                              if (newMainPass !== confirmMainPass) return alert('كلمات المرور غير متطابقة');
+                              if (newMainPass.length < 8) return toast('يجب أن تكون كلمة المرور 8 أحرف على الأقل');
+                              if (newMainPass !== confirmMainPass) return toast('كلمات المرور غير متطابقة');
                               onUpdateSecurity({ ...supervisorConfig, mainPassword: newMainPass });
-                              alert('تم تغيير كلمة المرور بنجاح');
+                              toast('تم تغيير كلمة المرور بنجاح');
                               setSecurityView('main');
                               setNewMainPass('');
                               setConfirmMainPass('');
@@ -3550,10 +3555,10 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           </div>
                           <button 
                             onClick={() => {
-                              if (newBackupPass.length < 8) return alert('يجب أن تكون كلمة المرور 8 أحرف على الأقل');
-                              if (newBackupPass !== confirmBackupPass) return alert('كلمات المرور غير متطابقة');
+                              if (newBackupPass.length < 8) return toast('يجب أن تكون كلمة المرور 8 أحرف على الأقل');
+                              if (newBackupPass !== confirmBackupPass) return toast('كلمات المرور غير متطابقة');
                               onUpdateSecurity({ ...supervisorConfig, backupPassword: newBackupPass });
-                              alert('تم تمكين كلمة مرور الطوارئ بنجاح');
+                              toast('تم تمكين كلمة مرور الطوارئ بنجاح');
                               setSecurityView('main');
                               setNewBackupPass('');
                               setConfirmBackupPass('');
@@ -3641,7 +3646,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 <div className="space-y-2 mt-4">
                   <p className="text-xs font-bold text-slate-500">المرفقات:</p>
                   {newLessonAttachments.map((att, i) => (
-                    <div key={att.id} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
+                    <div key={att.id || `att-${i}`} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">
                       {att.name}
                       <button onClick={() => setNewLessonAttachments(newLessonAttachments.filter((_, idx) => idx !== i))} className="text-red-500">حذف</button>
                     </div>
@@ -3693,7 +3698,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <button 
-                  onClick={() => { navigator.clipboard.writeText(resetPassword); alert('تم نسخ كلمة المرور'); }}
+                  onClick={() => { navigator.clipboard.writeText(resetPassword); toast('تم نسخ كلمة المرور'); }}
                   className="bg-slate-100 text-slate-700 py-3 rounded-xl font-black text-xs hover:bg-slate-200 transition-all"
                 >
                   نسخ
@@ -3789,7 +3794,25 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           for (const file of files) {
                             const storageRef = ref(storage, `projects/${Date.now()}_${file.name}`);
                             try {
-                              const snapshot = await uploadBytes(storageRef, file);
+                              const uploadTask = uploadBytesResumable(storageRef, file);
+                              setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
+                              const snapshot = await new Promise<UploadTaskSnapshot>((resolve, reject) => {
+                                uploadTask.on('state_changed',
+                                  (snapshot) => {
+                                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                                    setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
+                                  },
+                                  (error) => reject(error),
+                                  () => {
+                                    setUploadProgress(prev => {
+                                      const next = { ...prev };
+                                      delete next[file.name];
+                                      return next;
+                                    });
+                                    resolve(uploadTask.snapshot);
+                                  }
+                                );
+                              });
                               const downloadURL = await getDownloadURL(snapshot.ref);
                               setNewProjectAttachments(prev => [...prev, {
                                 id: Date.now().toString() + Math.random().toString(),
@@ -3799,17 +3822,37 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               }]);
                             } catch (error) {
                               console.error("Error uploading file:", error);
-                              alert(`فشل رفع الملف ${file.name}`);
+                              toast(`فشل رفع الملف ${file.name}`);
                             }
                           }
                         }
                       }}
                     />
                   </div>
+
+                  {Object.keys(uploadProgress).length > 0 && (
+                    <div className="space-y-2 mt-2">
+                      {Object.entries(uploadProgress).map(([fileName, progress]) => (
+                        <div key={`upload-${fileName}`} className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                          <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
+                            <span className="truncate max-w-[80%]">{fileName}</span>
+                            <span>{Math.round(progress)}%</span>
+                          </div>
+                          <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                            <div 
+                              className="bg-indigo-600 h-1.5 rounded-full transition-all duration-300"
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {newProjectAttachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {newProjectAttachments.map((att, idx) => (
-                        <div key={att.id} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+                        <div key={att.id || `att-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
                           <FileText className="w-3 h-3" />
                           {att.name}
                           <button onClick={() => setNewProjectAttachments(newProjectAttachments.filter((_, i) => i !== idx))} className="hover:text-red-500">
@@ -4026,7 +4069,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         type="button" 
                         onClick={() => {
                           if (!editTeacherAssignments.some(a => a.grade === editAssignmentGrade && a.subject === editAssignmentSubject)) {
-                            setEditTeacherAssignments([...editTeacherAssignments, { grade: editAssignmentGrade, subject: editAssignmentSubject }]);
+                            setEditTeacherAssignments([...editTeacherAssignments, { id: Date.now().toString(), grade: editAssignmentGrade, subject: editAssignmentSubject }]);
                           }
                         }} 
                         className="w-full sm:w-auto px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"
@@ -4038,7 +4081,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
                   <div className="flex flex-wrap gap-3 mt-4">
                     {editTeacherAssignments.map((assignment, idx) => (
-                      <div key={`edit-assignment-${assignment.grade}-${assignment.subject}-${idx}`} className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
+                      <div key={assignment.id} className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
                         <span className="font-bold text-xs text-slate-700">{assignment.grade} • {assignment.subject}</span>
                         <button 
                           type="button" 
@@ -4145,14 +4188,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         const AttachIcon = attachInfo.icon;
                         return (
                           <button 
-                            key={attachment.id}
-                            onClick={() => {
-                              if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
-                                setPreviewAttachment(attachment);
-                              } else {
-                                downloadFile(attachment.url, attachment.name || `مرفق-${idx + 1}`);
-                              }
-                            }}
+                            key={attachment.id || `att-${idx}`}
+                            onClick={() => setPreviewAttachment(attachment)}
                             className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 hover:border-indigo-200 hover:shadow-md transition-all group text-right"
                           >
                             <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", attachInfo.bg, attachInfo.color)}>
@@ -4226,66 +4263,10 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
       </AnimatePresence>
 
       {/* Preview Modal */}
-      <AnimatePresence>
-        {previewAttachment && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
-            onClick={() => setPreviewAttachment(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={e => e.stopPropagation()}
-              className="bg-white w-full max-w-4xl rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-            >
-              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
-                <h3 className="text-lg font-black text-slate-900">{previewAttachment.name}</h3>
-                <button 
-                  onClick={() => setPreviewAttachment(null)} 
-                  className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-              
-              <div className="flex-1 bg-slate-900 flex items-center justify-center p-4 overflow-auto">
-                {previewAttachment.type === 'image' ? (
-                  <img 
-                    src={previewAttachment.url} 
-                    alt={previewAttachment.name} 
-                    className="max-w-full max-h-[70vh] rounded-lg object-contain"
-                  />
-                ) : previewAttachment.type === 'video' ? (
-                  <video 
-                    src={previewAttachment.url} 
-                    controls 
-                    className="max-w-full max-h-[70vh] rounded-lg"
-                  />
-                ) : (
-                  <iframe 
-                    src={previewAttachment.url} 
-                    className="w-full h-[70vh] bg-white rounded-lg"
-                    title="Preview"
-                  />
-                )}
-              </div>
-
-              <div className="p-6 border-t border-slate-100 bg-white flex justify-end">
-                <button 
-                  onClick={() => downloadFile(previewAttachment.url, previewAttachment.name)}
-                  className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-sm hover:bg-indigo-700 transition-all flex items-center gap-2"
-                >
-                  <Download className="w-4 h-4" /> تحميل الملف
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <FilePreviewModal 
+        attachment={previewAttachment} 
+        onClose={() => setPreviewAttachment(null)} 
+      />
 
       {/* Password Reset Modal */}
       <AnimatePresence>
@@ -4315,7 +4296,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(resetPassword || '');
-                    alert('تم نسخ كلمة المرور');
+                    toast('تم نسخ كلمة المرور');
                   }}
                   className="px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all"
                 >

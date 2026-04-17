@@ -8,6 +8,7 @@ import ChangePasswordForm from './components/ChangePasswordForm';
 import { db, handleFirestoreError, OperationType } from './src/firebase';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield } from 'lucide-react';
+import { Toaster } from 'react-hot-toast';
 import { 
   collection, 
   onSnapshot, 
@@ -1120,6 +1121,7 @@ const App: React.FC = () => {
       <footer className="py-8 text-center text-slate-400 text-[10px] font-bold border-t border-slate-100 mt-12 bg-white/50">
         جميع الحقوق محفوظة - {APP_TITLE} © {currentAcademicYear}
       </footer>
+      <Toaster position="top-center" />
     </div>
   );
 };

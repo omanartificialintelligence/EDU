@@ -1,0 +1,53 @@
+163:      setEditTeacherAssignments((editingTeacher.assignments || []).map(a => ({ ...a, id: Date.now().toString() + Math.random().toString() })));
+868:      const allowedTeacherIds = filteredTeachers.map(t => t.id);
+890:      const allowedTeacherIds = filteredTeachers.map(t => t.id);
+936:      const allowedTeacherIds = statsTeachers.map(t => t.id);
+1010:          {sidebarItems.filter(i => i.visible).map((item, idx) => (
+1135:                      notifications.map((notification, index) => (
+1209:                  {dashboardWidgets.map((widgetId, index) => (
+1243:                            ].map((stat, i) => (
+1280:                                    {statsData.map((entry, index) => (
+1300:                              ].map((btn, i) => (
+1326:                              {lessonMaterials.slice(0, 5).map((lesson, idx) => (
+1522:                              {newTeacherAssignments.map((assignment, idx) => (
+1600:                  {filteredTeachers.map((teacher, i) => (
+1644:                              {teacher.assignments.map((assignment, idx) => (
+1794:                    {AVAILABLE_GRADES.map((grade, i) => (
+1801:                          {allSubjects.map((subject, j) => {
+1810:                            const uniqueTeachers = Array.from(new Set(subjectMaterials.map(m => m.teacherName)));
+1852:                                    {uniqueTeachers.slice(0, 5).map((teacher, i) => (
+1890:                                  {filteredTeachers.filter(t => t.assignments?.some(a => a.subject === viewingSubject && a.grade === activeGradeTab)).map((t, i) => (
+1911:                        .map((material, index) => {
+1975:                                  {material.attachments.map((attachment, idx) => {
+2030:                                          material.comments.map((comment, index) => (
+2136:                          {[user, ...filteredTeachers.filter(t => t.id !== user.id)].map((t, idx) => (
+2230:                            {attachmentFiles.map((file, idx) => (
+2392:                            {newPostAttachments.map((att, idx) => (
+2426:                  {filteredPosts.map((post, index) => (
+2453:                          {post.attachments.map((att, i) => (
+2485:                      {availableArchiveYears.map((year, idx) => (
+2516:                        {AVAILABLE_GRADES.map((grade, idx) => (
+2536:                          {allSubjects.map((subject) => (
+2560:                                  {['الفصل الأول', 'الفصل الثاني', 'الفصل الدراسي الأول', 'الفصل الدراسي الثاني'].map((sem, idx) => {
+2638:                        ).map((lesson, idx) => {
+2661:                              {lesson.attachments.map((attachment, idx) => (
+2720:                            projects.filter(p => p.academicYear === selectedArchiveYear).map((project, idx) => (
+2770:                            posts.filter(p => p.academicYear === selectedArchiveYear).map((post, idx) => (
+2823:                  {filteredProjects.map((project, index) => (
+2854:                          {project.assignedTeacherIds.map((teacherId, idx) => {
+2924:                            {viewingProject.tasks.map((task, i) => (
+2936:                      {viewingProject.assignedTeacherIds.map((teacherId, idx) => {
+2981:                                    {submission.files.map((file, i) => (
+3080:                      }).map((msg, index) => (
+3103:                                {msg.attachments.map((att, idx) => (
+3269:                              {AVAILABLE_SUBJECTS.map((subject, idx) => (
+3297:                        {teachers.filter(t => t.role === UserRole.TEMP_SUPERVISOR).map((supervisor, idx) => {
+3319:                                    {supervisor.tempPermissions.allowedSubjects.map((s, index) => (
+3647:                  {newLessonAttachments.map((att, i) => (
+3834:                      {Object.entries(uploadProgress).map(([fileName, progress]) => (
+3853:                      {newProjectAttachments.map((att, idx) => (
+3920:                      {newProjectTasks.map((task, idx) => (
+3937:                    {[user, ...filteredTeachers.filter(t => t.id !== user.id)].map((teacher, idx) => (
+4082:                    {editTeacherAssignments.map((assignment, idx) => (
+4185:                      {viewingLesson.attachments.map((attachment, idx) => {
+4216:                        {viewingLesson.comments.map((comment, idx) => (

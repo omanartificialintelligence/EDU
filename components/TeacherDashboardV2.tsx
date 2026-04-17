@@ -1,3 +1,4 @@
+import toast from 'react-hot-toast';
 import React, { useState, useEffect } from 'react';
 import { User, Project, Post, LessonMaterial, LessonComment, Notification, ProjectSubmission, Message, Attachment } from '../types';
 import { 
@@ -7,11 +8,16 @@ import {
   TrendingUp, Users, ClipboardList, Send, Music, CheckCircle2, AlertCircle,
   Calendar, ListTodo, Trash2, Clock, X, Edit, Download, LogOut
 } from 'lucide-react';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, 
+  PieChart, Pie, Cell, LineChart, Line 
+} from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
+import FilePreviewModal from './FilePreviewModal';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { storage } from '../src/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, uploadBytesResumable, getDownloadURL, UploadTaskSnapshot } from 'firebase/storage';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -107,6 +113,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   // Project Submission State
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [submissionFiles, setSubmissionFiles] = useState<Attachment[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [newLinkUrl, setNewLinkUrl] = useState('');
   const [newLinkName, setNewLinkName] = useState('');
   const [isAddingLink, setIsAddingLink] = useState(false);
@@ -150,7 +157,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
     if (!selectedProject) return;
     
     if (submissionFiles.length === 0 && !submissionNote) {
-      alert('يرجى إرفاق ملف أو كتابة ملاحظة');
+      toast('يرجى إرفاق ملف أو كتابة ملاحظة');
       return;
     }
 
@@ -168,13 +175,13 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
 
       await updateProjectSubmission(selectedProject.id, submission);
       
-      alert('تم تسليم المشروع بنجاح!');
+      toast('تم تسليم المشروع بنجاح!');
       setSelectedProject(null);
       setSubmissionFiles([]);
       setSubmissionNote('');
     } catch (error) {
       console.error("Error submitting project:", error);
-      alert('حدث خطأ أثناء تسليم المشروع');
+      toast('حدث خطأ أثناء تسليم المشروع');
     } finally {
       setIsSubmitting(false);
     }
@@ -264,12 +271,12 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
 
   const handleAddLesson = async () => {
     if (!newLessonTitle || !selectedSubject) {
-      alert('يرجى إكمال جميع الحقول المطلوبة');
+      toast('يرجى إكمال جميع الحقول المطلوبة');
       return;
     }
 
     if (newLessonAttachments.length === 0) {
-      alert('يرجى إضافة مرفق واحد على الأقل');
+      toast('يرجى إضافة مرفق واحد على الأقل');
       return;
     }
 
@@ -287,7 +294,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
         tags: [selectedSubject, selectedGrade]
       };
         await onUpdateMaterial(updatedMaterial);
-        alert('تم تحديث الدرس بنجاح.');
+        toast('تم تحديث الدرس بنجاح.');
     } else {
       const newMaterial: LessonMaterial = {
         id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -308,7 +315,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
         tags: [selectedSubject, selectedGrade]
       };
         await onAddMaterial(newMaterial);
-        alert('تمت إضافة الدرس بنجاح وسيتم مراجعته من قبل المشرفة.');
+        toast('تمت إضافة الدرس بنجاح وسيتم مراجعته من قبل المشرفة.');
       }
 
       setIsUploadModalOpen(false);
@@ -317,7 +324,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
       setNewLessonAttachments([]);
     } catch (error) {
       console.error("Error saving lesson:", error);
-      alert('حدث خطأ أثناء حفظ الدرس. يرجى المحاولة مرة أخرى.');
+      toast('حدث خطأ أثناء حفظ الدرس. يرجى المحاولة مرة أخرى.');
     } finally {
       setIsSubmitting(false);
     }
@@ -824,14 +831,8 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                               <div className="flex flex-wrap gap-2">
                                 {material.attachments.map((attachment, idx) => (
                                   <button 
-                                    key={attachment.id}
-                                    onClick={() => {
-                                      if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
-                                        setPreviewAttachment(attachment);
-                                      } else {
-                                        downloadFile(attachment.url, `${attachment.name || material.lessonTitle}.bin`);
-                                      }
-                                    }}
+                                    key={attachment.id || `att-${idx}`}
+                                    onClick={() => setPreviewAttachment(attachment)}
                                     className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-slate-700 rounded-lg hover:bg-indigo-50 hover:text-indigo-700 transition-all font-bold text-[10px] border border-slate-100"
                                   >
                                     {attachment.type === 'link' ? <LinkIcon className="w-3 h-3" /> : 
@@ -1124,17 +1125,14 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                           <h5 className="font-bold text-slate-700 text-xs mb-3">مرفقات المشروع:</h5>
                           <div className="flex flex-wrap gap-2">
                             {selectedProject.attachments.map((att, idx) => (
-                              <a 
-                                key={att.id}
-                                href={att.url}
-                                download={att.name}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <button 
+                                key={att.id || `att-${idx}`}
+                                onClick={() => setPreviewAttachment(att)}
                                 className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-indigo-600 hover:bg-indigo-50 transition-all"
                               >
                                 <FileText className="w-3 h-3" />
                                 {att.name}
-                              </a>
+                              </button>
                             ))}
                           </div>
                         </div>
@@ -1168,7 +1166,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         
                         <div className="grid grid-cols-1 gap-3">
                           {submissionFiles.map((file, idx) => (
-                            <div key={`sub-file-${file.name}`} className="bg-slate-50 rounded-xl border border-slate-100 p-3">
+                            <div key={file.id || file.url || `file-${idx}`} className="bg-slate-50 rounded-xl border border-slate-100 p-3">
                               <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-3 overflow-hidden">
                                   <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-slate-100 text-slate-400">
@@ -1222,7 +1220,25 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                                 if (file) {
                                   const storageRef = ref(storage, `submissions/${Date.now()}_${file.name}`);
                                   try {
-                                    const snapshot = await uploadBytes(storageRef, file);
+                                    const uploadTask = uploadBytesResumable(storageRef, file);
+                                    setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
+                                    const snapshot = await new Promise<UploadTaskSnapshot>((resolve, reject) => {
+                                      uploadTask.on('state_changed',
+                                        (snapshot) => {
+                                          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                                          setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
+                                        },
+                                        (error) => reject(error),
+                                        () => {
+                                          setUploadProgress(prev => {
+                                            const next = { ...prev };
+                                            delete next[file.name];
+                                            return next;
+                                          });
+                                          resolve(uploadTask.snapshot);
+                                        }
+                                      );
+                                    });
                                     const downloadURL = await getDownloadURL(snapshot.ref);
                                     setSubmissionFiles(prev => [...prev, {
                                       id: Date.now().toString() + Math.random().toString(),
@@ -1233,13 +1249,37 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                                     }]);
                                   } catch (error) {
                                     console.error("Error uploading file:", error);
-                                    alert(`فشل رفع الملف ${file.name}`);
+                                    toast(`فشل رفع الملف ${file.name}`);
+                                    setUploadProgress(prev => {
+                                      const next = { ...prev };
+                                      delete next[file.name];
+                                      return next;
+                                    });
                                   }
                                 }
                               }}
                             />
                           </label>
                         </div>
+                        
+                        {Object.keys(uploadProgress).length > 0 && (
+                          <div className="space-y-2 mt-4">
+                            {Object.entries(uploadProgress).map(([fileName, progress]) => (
+                              <div key={`upload-${fileName}`} className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
+                                  <span className="truncate max-w-[80%]">{fileName}</span>
+                                  <span>{Math.round(progress)}%</span>
+                                </div>
+                                <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                                  <div 
+                                    className="bg-indigo-600 h-1.5 rounded-full transition-all duration-300"
+                                    style={{ width: `${progress}%` }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
 
                         {isAddingLink && (
                           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3 animate-in fade-in slide-in-from-top-2">
@@ -1336,15 +1376,17 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         {lesson.attachments.map((att, idx) => {
                           const { icon: AttIcon, color: AttColor } = getAttachmentIcon(att);
                           return (
-                            <div key={att.id} className="flex items-center justify-between text-xs p-2 bg-slate-50 rounded-lg">
+                            <button 
+                              key={att.id || `att-${idx}`} 
+                              onClick={() => setPreviewAttachment(att)}
+                              className="w-full flex items-center justify-between text-xs p-2 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
+                            >
                               <div className="flex items-center gap-2">
                                 <AttIcon className={cn("w-4 h-4", AttColor)} />
                                 <span className="font-bold text-slate-700">{att.name}</span>
                               </div>
-                              <button onClick={() => downloadFile(att.url, att.name)} className="text-indigo-600 hover:text-indigo-800">
-                                <Download className="w-4 h-4" />
-                              </button>
-                            </div>
+                              <Eye className="w-4 h-4 text-slate-400" />
+                            </button>
                           );
                         })}
                       </div>
@@ -1383,7 +1425,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   ) : (
                     messages.map((msg, index) => (
                       <div 
-                        key={msg.id}
+                        key={msg.id || `msg-${index}`}
                         className={cn(
                           "flex flex-col max-w-[80%]",
                           msg.senderId === user.id ? "mr-auto items-end" : "ml-auto items-start"
@@ -1405,12 +1447,16 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                           {msg.attachments && msg.attachments.length > 0 && (
                             <div className="mt-2 space-y-1">
                               {msg.attachments.map((att, idx) => (
-                                <div key={att.id} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
+                                <button 
+                                  key={att.id || `att-${idx}`} 
+                                  onClick={() => setPreviewAttachment(att)}
+                                  className="flex items-center gap-2 bg-black/10 p-2 rounded-lg hover:bg-black/20 transition-all w-full text-right"
+                                >
                                   {att.type === 'image' ? <ImageIcon className="w-4 h-4" /> : <FileIcon className="w-4 h-4" />}
-                                  <a href={att.url} download={att.name} target="_blank" rel="noopener noreferrer" className="underline text-xs truncate max-w-[150px] block">
+                                  <span className="text-xs truncate max-w-[150px] block font-bold">
                                     {att.name}
-                                  </a>
-                                </div>
+                                  </span>
+                                </button>
                               ))}
                             </div>
                           )}
@@ -1479,7 +1525,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                             setMessageAttachment(downloadURL);
                           } catch (error) {
                             console.error("Error uploading file:", error);
-                            alert(`فشل رفع الملف ${file.name}`);
+                            toast(`فشل رفع الملف ${file.name}`);
                           }
                         }
                       }}
@@ -1555,7 +1601,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         <label className="text-sm font-black text-slate-700 block">المرفقات المضافة</label>
                         <div className="space-y-2">
                           {newLessonAttachments.map((att, idx) => (
-                            <div key={att.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                            <div key={att.id || `att-${idx}`} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center">
                                   {att.type === 'link' ? <LinkIcon className="w-5 h-5 text-indigo-500" /> : 
@@ -1718,7 +1764,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         const iconInfo = getAttachmentIcon(att);
                         const Icon = iconInfo.icon;
                         return (
-                          <div key={att.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                          <div key={att.id || `att-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                             <div className="flex items-center gap-3">
                               <div className={cn("p-2 rounded-lg", iconInfo.bg, iconInfo.color)}>
                                 <Icon className="w-4 h-4" />
@@ -1726,11 +1772,9 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                               <span className="text-xs font-bold text-slate-700 truncate max-w-[120px]">{att.name}</span>
                             </div>
                             <div className="flex gap-2">
-                              {(att.type === 'image' || att.type === 'video' || att.type === 'link') && (
-                                <button onClick={() => setPreviewAttachment(att)} className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-500">
-                                  <Eye className="w-4 h-4" />
-                                </button>
-                              )}
+                              <button onClick={() => setPreviewAttachment(att)} className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-500">
+                                <Eye className="w-4 h-4" />
+                              </button>
                               <button onClick={() => {
                                 const link = document.createElement('a');
                                 link.href = att.url;
@@ -1818,14 +1862,8 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         const AttachIcon = attachInfo.icon;
                         return (
                           <button 
-                            key={attachment.id}
-                            onClick={() => {
-                              if (attachment.type === 'image' || attachment.type === 'video' || attachment.type === 'link') {
-                                setPreviewAttachment(attachment);
-                              } else {
-                                downloadFile(attachment.url, attachment.name || `مرفق-${idx + 1}`);
-                              }
-                            }}
+                            key={attachment.id || `att-${idx}`}
+                            onClick={() => setPreviewAttachment(attachment)}
                             className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 hover:border-indigo-200 hover:shadow-md transition-all group text-right"
                           >
                             <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", attachInfo.bg, attachInfo.color)}>
@@ -1879,58 +1917,10 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
       </AnimatePresence>
 
       {/* Preview Modal */}
-      <AnimatePresence>
-        {previewAttachment && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[300] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white w-full max-w-4xl rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-            >
-              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
-                <h3 className="text-lg font-black text-slate-900">{previewAttachment.name}</h3>
-                <button 
-                  onClick={() => setPreviewAttachment(null)}
-                  className="p-2 hover:bg-slate-100 rounded-full transition-colors"
-                >
-                  <XCircle className="w-6 h-6 text-slate-400" />
-                </button>
-              </div>
-              <div className="flex-1 overflow-auto p-4 bg-slate-50 flex items-center justify-center min-h-[300px]">
-                {previewAttachment.type === 'image' ? (
-                  <img 
-                    src={previewAttachment.url} 
-                    alt={previewAttachment.name} 
-                    className="max-w-full max-h-full object-contain rounded-xl shadow-lg"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : previewAttachment.type === 'video' ? (
-                  <video 
-                    src={previewAttachment.url} 
-                    controls 
-                    className="max-w-full max-h-full rounded-xl shadow-lg"
-                  />
-                ) : (
-                  <iframe 
-                    src={previewAttachment.url} 
-                    className="w-full h-full min-h-[500px] border-none rounded-xl bg-white shadow-lg"
-                    title="Preview"
-                  />
-                )}
-              </div>
-              <div className="p-6 bg-white border-t border-slate-100 flex justify-end gap-3">
-                <button 
-                  onClick={() => downloadFile(previewAttachment.url, previewAttachment.name)}
-                  className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-black text-xs hover:bg-indigo-700 transition-all flex items-center gap-2"
-                >
-                  <Download className="w-4 h-4" /> تحميل الملف
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <FilePreviewModal 
+        attachment={previewAttachment} 
+        onClose={() => setPreviewAttachment(null)} 
+      />
     </div>
   );
 };

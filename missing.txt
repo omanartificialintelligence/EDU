@@ -1,0 +1,78 @@
+components/SupervisorDashboard.tsx:163:      setEditTeacherAssignments((editingTeacher.assignments || []).map(a => ({ ...a, id: Date.now().toString() + Math.random().toString() })));
+components/SupervisorDashboard.tsx:868:      const allowedTeacherIds = filteredTeachers.map(t => t.id);
+components/SupervisorDashboard.tsx:890:      const allowedTeacherIds = filteredTeachers.map(t => t.id);
+components/SupervisorDashboard.tsx:936:      const allowedTeacherIds = statsTeachers.map(t => t.id);
+components/SupervisorDashboard.tsx:1010:          {sidebarItems.filter(i => i.visible).map((item, idx) => (
+components/SupervisorDashboard.tsx:1135:                      notifications.map((notification, index) => (
+components/SupervisorDashboard.tsx:1209:                  {dashboardWidgets.map((widgetId, index) => (
+components/SupervisorDashboard.tsx:1243:                            ].map((stat, i) => (
+components/SupervisorDashboard.tsx:1280:                                    {statsData.map((entry, index) => (
+components/SupervisorDashboard.tsx:1300:                              ].map((btn, i) => (
+components/SupervisorDashboard.tsx:1326:                              {lessonMaterials.slice(0, 5).map((lesson, idx) => (
+components/SupervisorDashboard.tsx:1522:                              {newTeacherAssignments.map((assignment, idx) => (
+components/SupervisorDashboard.tsx:1600:                  {filteredTeachers.map((teacher, i) => (
+components/SupervisorDashboard.tsx:1644:                              {teacher.assignments.map((assignment, idx) => (
+components/SupervisorDashboard.tsx:1794:                    {AVAILABLE_GRADES.map((grade, i) => (
+components/SupervisorDashboard.tsx:1801:                          {allSubjects.map((subject, j) => {
+components/SupervisorDashboard.tsx:1810:                            const uniqueTeachers = Array.from(new Set(subjectMaterials.map(m => m.teacherName)));
+components/SupervisorDashboard.tsx:1852:                                    {uniqueTeachers.slice(0, 5).map((teacher, i) => (
+components/SupervisorDashboard.tsx:1890:                                  {filteredTeachers.filter(t => t.assignments?.some(a => a.subject === viewingSubject && a.grade === activeGradeTab)).map((t, i) => (
+components/SupervisorDashboard.tsx:1911:                        .map((material, index) => {
+components/SupervisorDashboard.tsx:1975:                                  {material.attachments.map((attachment, idx) => {
+components/SupervisorDashboard.tsx:2030:                                          material.comments.map((comment, index) => (
+components/SupervisorDashboard.tsx:2136:                          {[user, ...filteredTeachers.filter(t => t.id !== user.id)].map((t, idx) => (
+components/SupervisorDashboard.tsx:2230:                            {attachmentFiles.map((file, idx) => (
+components/SupervisorDashboard.tsx:2392:                            {newPostAttachments.map((att, idx) => (
+components/SupervisorDashboard.tsx:2426:                  {filteredPosts.map((post, index) => (
+components/SupervisorDashboard.tsx:2453:                          {post.attachments.map((att, i) => (
+components/SupervisorDashboard.tsx:2485:                      {availableArchiveYears.map((year, idx) => (
+components/SupervisorDashboard.tsx:2516:                        {AVAILABLE_GRADES.map((grade, idx) => (
+components/SupervisorDashboard.tsx:2536:                          {allSubjects.map((subject) => (
+components/SupervisorDashboard.tsx:2560:                                  {['الفصل الأول', 'الفصل الثاني', 'الفصل الدراسي الأول', 'الفصل الدراسي الثاني'].map((sem, idx) => {
+components/SupervisorDashboard.tsx:2638:                        ).map((lesson, idx) => {
+components/SupervisorDashboard.tsx:2661:                              {lesson.attachments.map((attachment, idx) => (
+components/SupervisorDashboard.tsx:2720:                            projects.filter(p => p.academicYear === selectedArchiveYear).map((project, idx) => (
+components/SupervisorDashboard.tsx:2770:                            posts.filter(p => p.academicYear === selectedArchiveYear).map((post, idx) => (
+components/SupervisorDashboard.tsx:2823:                  {filteredProjects.map((project, index) => (
+components/SupervisorDashboard.tsx:2854:                          {project.assignedTeacherIds.map((teacherId, idx) => {
+components/SupervisorDashboard.tsx:2924:                            {viewingProject.tasks.map((task, i) => (
+components/SupervisorDashboard.tsx:2936:                      {viewingProject.assignedTeacherIds.map((teacherId, idx) => {
+components/SupervisorDashboard.tsx:2981:                                    {submission.files.map((file, i) => (
+components/SupervisorDashboard.tsx:3080:                      }).map((msg, index) => (
+components/SupervisorDashboard.tsx:3103:                                {msg.attachments.map((att, idx) => (
+components/SupervisorDashboard.tsx:3269:                              {AVAILABLE_SUBJECTS.map((subject, idx) => (
+components/SupervisorDashboard.tsx:3297:                        {teachers.filter(t => t.role === UserRole.TEMP_SUPERVISOR).map((supervisor, idx) => {
+components/SupervisorDashboard.tsx:3319:                                    {supervisor.tempPermissions.allowedSubjects.map((s, index) => (
+components/SupervisorDashboard.tsx:3647:                  {newLessonAttachments.map((att, i) => (
+components/SupervisorDashboard.tsx:3833:                      {newProjectAttachments.map((att, idx) => (
+components/SupervisorDashboard.tsx:3900:                      {newProjectTasks.map((task, idx) => (
+components/SupervisorDashboard.tsx:3917:                    {[user, ...filteredTeachers.filter(t => t.id !== user.id)].map((teacher, idx) => (
+components/SupervisorDashboard.tsx:4062:                    {editTeacherAssignments.map((assignment, idx) => (
+components/SupervisorDashboard.tsx:4165:                      {viewingLesson.attachments.map((attachment, idx) => {
+components/SupervisorDashboard.tsx:4196:                        {viewingLesson.comments.map((comment, idx) => (
+components/TeacherDashboardV2.tsx:51:  const assignedGrades = Array.from(new Set(teacherAssignments.map(a => a.grade)));
+components/TeacherDashboardV2.tsx:52:  const assignedSubjects = Array.from(new Set(teacherAssignments.map(a => a.subject)));
+components/TeacherDashboardV2.tsx:547:                      notifications.map((notification) => (
+components/TeacherDashboardV2.tsx:610:                      posts.filter(p => !p.isArchived).slice(0, 3).map((post) => (
+components/TeacherDashboardV2.tsx:639:                {grades.map((grade, i) => (
+components/TeacherDashboardV2.tsx:658:                  {subjects.map((subject, i) => {
+components/TeacherDashboardV2.tsx:781:                      .map((material, index) => {
+components/TeacherDashboardV2.tsx:830:                                {material.attachments.map((attachment, idx) => (
+components/TeacherDashboardV2.tsx:877:                                        material.comments.map((comment, index) => (
+components/TeacherDashboardV2.tsx:968:                  {(['all', 'pending', 'submitted', 'completed'] as const).map((filter, idx) => (
+components/TeacherDashboardV2.tsx:1001:                }).map((project, index) => {
+components/TeacherDashboardV2.tsx:1053:                              {project.assignedTeacherIds.map((teacherId, i) => (
+components/TeacherDashboardV2.tsx:1125:                            {selectedProject.attachments.map((att, idx) => (
+components/TeacherDashboardV2.tsx:1148:                            {selectedProject.tasks.map((task, i) => (
+components/TeacherDashboardV2.tsx:1166:                          {submissionFiles.map((file, idx) => (
+components/TeacherDashboardV2.tsx:1322:                {lessonMaterials.filter(m => m.teacherId === user.id).map((lesson, index) => {
+components/TeacherDashboardV2.tsx:1342:                        {lesson.attachments.map((att, idx) => {
+components/TeacherDashboardV2.tsx:1392:                    messages.map((msg, index) => (
+components/TeacherDashboardV2.tsx:1415:                              {msg.attachments.map((att, idx) => (
+components/TeacherDashboardV2.tsx:1569:                          {newLessonAttachments.map((att, idx) => (
+components/TeacherDashboardV2.tsx:1592:                      {uploadOptions.map((type, idx) => (
+components/TeacherDashboardV2.tsx:1729:                      {viewingPost.attachments.map((att, idx) => {
+components/TeacherDashboardV2.tsx:1826:                      {viewingLesson.attachments.map((attachment, idx) => {
+components/TeacherDashboardV2.tsx:1857:                        {viewingLesson.comments.map((comment, idx) => (
+src/components/TeacherPanel.tsx:21:        const lessonsData: Lesson[] = snapshot.docs.map((doc) => ({
+src/components/TeacherPanel.tsx:84:            {lessons.map((lesson, index) => (
