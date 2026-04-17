@@ -2334,7 +2334,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         {attachmentFiles.length > 0 && (
                           <div className="space-y-2 mt-4">
                             {attachmentFiles.map((file, idx) => (
-                              <div key={file.id || `new-lesson-file-upload-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                              <div key={file.id || `new-lesson-file-upload-${file.name || 'file'}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                                 <div className="flex items-center gap-3">
                                   <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-indigo-600 shadow-sm">
                                     <FileText className="w-4 h-4" />
@@ -2531,7 +2531,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                          {newPostAttachments.length > 0 && (
                            <div className="flex flex-wrap gap-2">
                              {newPostAttachments.map((att, idx) => (
-                               <div key={att.id || `new-post-file-upload-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+                               <div key={att.id || `new-post-file-upload-${att.name || 'att'}-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
                                 <span className="truncate max-w-[100px]">{att.name}</span>
                                 <button 
                                   type="button"
@@ -2801,7 +2801,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               </button>
                               {lesson.attachments.map((attachment, idx) => (
                                 <button 
-                                  key={attachment.id || `archive-att-${lesson.id}-${idx}`}
+                                  key={attachment.id || `archive-att-${lesson.id}-${attachment.name || 'att'}-${idx}`}
                                   onClick={() => setPreviewAttachment(attachment)}
                                   className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm"
                                   title={`معاينة ${attachment.name || `مرفق ${idx + 1}`}`}
@@ -4089,7 +4089,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   {newProjectTasks.length > 0 && (
                     <div className="space-y-2 mt-2">
                       {newProjectTasks.map((task, idx) => (
-                        <div key={`new-proj-task-${newProjectName || 'project'}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <div key={`new-proj-task-${newProjectName}-${task}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                           <span className="text-sm font-bold text-slate-700">{idx + 1}. {task}</span>
                           <button 
                             onClick={() => setNewProjectTasks(newProjectTasks.filter((_, i) => i !== idx))}
