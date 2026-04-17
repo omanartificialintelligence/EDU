@@ -3230,7 +3230,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         return true;
                       }).map((msg, index) => (
                         <div 
-                          key={msg.id || `chat-msg-${index}`}
+                          key={msg.id || `chat-msg-${msg.senderId}-${index}`}
                           className={cn(
                             "flex flex-col max-w-[75%]",
                             msg.senderId === user.id ? "mr-auto items-end" : "ml-auto items-start"
