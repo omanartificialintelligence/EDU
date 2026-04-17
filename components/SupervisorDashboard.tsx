@@ -2267,7 +2267,12 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 const files = Array.from(e.target.files);
                                 for (const rawFile of files) {
                                   // Optimize image before upload if it's an image
-                                  const file = await compressImage(rawFile);
+                                  let file = rawFile;
+                                  try {
+                                    file = await compressImage(rawFile);
+                                  } catch (compressErr) {
+                                    console.error("Compression error, using original file:", compressErr);
+                                  }
 
                                   const storageRef = ref(storage, `lessons/${Date.now()}_${file.name}`);
                                   try {
@@ -2281,29 +2286,34 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                           setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
                                         },
                                         (error) => {
-                                          console.error("Upload error:", error);
-                                          toast(`فشل رفع ${file.name}`);
+                                          console.error("Upload error (detailed):", error);
+                                          toast(`فشل رفع ${file.name}: ${error.message}`);
                                           reject(error);
                                         },
                                         async () => {
-                                          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                                          setAttachmentFiles(prev => [...prev, {
-                                            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                                            type: 'file' as const,
-                                            url: downloadURL,
-                                            name: file.name
-                                          }]);
-                                          setUploadProgress(prev => {
-                                            const next = { ...prev };
-                                            delete next[file.name];
-                                            return next;
-                                          });
-                                          resolve();
+                                          try {
+                                            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                                            setAttachmentFiles(prev => [...prev, {
+                                              id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                                              type: 'file' as const,
+                                              url: downloadURL,
+                                              name: file.name
+                                            }]);
+                                            setUploadProgress(prev => {
+                                              const next = { ...prev };
+                                              delete next[file.name];
+                                              return next;
+                                            });
+                                            resolve();
+                                          } catch (finalErr) {
+                                            console.error("Error getting download URL:", finalErr);
+                                            reject(finalErr);
+                                          }
                                         }
                                       );
                                     });
                                   } catch (err) {
-                                    console.error("Upload error:", err);
+                                    console.error("Critical upload error:", err);
                                   }
                                 }
                               }
