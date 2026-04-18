@@ -57,6 +57,7 @@ const App: React.FC = () => {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false);
   const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
 
   // Firebase Auth Listener
   useEffect(() => {
@@ -470,13 +471,16 @@ const App: React.FC = () => {
   };
 
   const handleAddLessonMaterial = async (material: LessonMaterial) => {
+    console.log("Attempting to save lesson:", material);
     try {
       const cleanMaterial = { ...material } as any;
       Object.keys(cleanMaterial).forEach(key => {
         if (cleanMaterial[key] === undefined) delete cleanMaterial[key];
       });
       await setDoc(doc(db, 'lessonMaterials', material.id), cleanMaterial);
+      console.log("Lesson saved successfully:", material.id);
     } catch (error) {
+      console.error("Error saving lesson:", error);
       handleFirestoreError(error, OperationType.WRITE, `lessonMaterials/${material.id}`);
     }
   };
@@ -634,6 +638,20 @@ const App: React.FC = () => {
         }));
         setShowChangePassword(false);
         alert('تم تحديث كلمة المرور بنجاح');
+      } catch (error) {
+        handleFirestoreError(error, OperationType.UPDATE, `users/${auth.user.id}`);
+      }
+    }
+  };
+
+  const handleUpdateUserPreferences = async (preferences: any) => {
+    if (auth.user) {
+      try {
+        await updateDoc(doc(db, 'users', auth.user.id), { preferences });
+        setAuth(prev => ({
+          ...prev,
+          user: prev.user ? { ...prev.user, preferences } : null
+        }));
       } catch (error) {
         handleFirestoreError(error, OperationType.UPDATE, `users/${auth.user.id}`);
       }
@@ -798,6 +816,38 @@ const App: React.FC = () => {
 
   // Full-page layout for Supervisor
   if (auth.user?.role === UserRole.SUPERVISOR || auth.user?.role === UserRole.TEMP_SUPERVISOR) {
+    if (isPreviewMode) {
+      return (
+        <TeacherDashboard 
+          user={auth.user} 
+          posts={posts}
+          projects={projects}
+          lessonMaterials={lessonMaterials}
+          messages={messages}
+          onSendMessage={handleSendMessage}
+          onMarkMessageAsRead={handleMarkMessageAsRead}
+          onAddMaterial={handleAddLessonMaterial}
+          onUpdateMaterial={handleUpdateLessonMaterial}
+          updateProjectSubmission={async (pid, sub) => {
+            try {
+              const project = projects.find(p => p.id === pid);
+              if (project) {
+                const updatedSubmissions = { ...project.submissions, [auth.user!.id]: sub };
+                await updateDoc(doc(db, 'projects', pid), { submissions: updatedSubmissions });
+              }
+            } catch (error) {
+              handleFirestoreError(error, OperationType.UPDATE, `projects/${pid}`);
+            }
+          }}
+          currentYear={currentAcademicYear}
+          semester={currentSemester}
+          notifications={notifications.filter(n => n.userId === auth.user?.id)}
+          onMarkAsRead={handleMarkNotificationAsRead}
+          onAddNotification={handleAddNotification}
+          onSwitchBackToSupervisorView={() => setIsPreviewMode(false)}
+        />
+      );
+    }
     return (
       <SupervisorDashboard 
         user={auth.user}
@@ -807,6 +857,7 @@ const App: React.FC = () => {
         lessonMaterials={lessonMaterials}
         resetRequests={resetRequests}
         messages={messages}
+        onUpdateUserPreferences={handleUpdateUserPreferences}
         onSendMessage={handleSendMessage}
         onMarkMessageAsRead={handleMarkMessageAsRead}
         onAddPost={async (p) => {
@@ -1004,6 +1055,7 @@ const App: React.FC = () => {
         supervisorConfig={supervisorConfig}
         academicYear={currentAcademicYear}
         semester={currentSemester}
+        onSwitchToTeacherView={() => setIsPreviewMode(true)}
       />
     );
   }
@@ -1079,6 +1131,7 @@ const App: React.FC = () => {
           semester={currentSemester}
           notifications={notifications.filter(n => n.userId === auth.user?.id)}
           onMarkAsRead={handleMarkNotificationAsRead}
+          onAddNotification={handleAddNotification}
         />
       </main>
 

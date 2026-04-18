@@ -78,6 +78,9 @@ export const exportLessonsCSV = (lessons: LessonMaterial[]) => {
     'عنوان الدرس': l.lessonTitle,
     'المعلمة': l.teacherName,
     'التاريخ': l.createdAt,
+    'الصف': l.grade,
+    'المادة': l.subject,
+    'الفصل': l.semester,
     'نموذجي': l.isModelLesson ? 'نعم' : 'لا',
     'الوصف': l.description
   }));
