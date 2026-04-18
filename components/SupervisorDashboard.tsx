@@ -130,6 +130,16 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [newLessonAttachments, setNewLessonAttachments] = useState<Attachment[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Add Attachment State (for Supervisor adding on behalf of Teacher)
+  const [isAddAttachmentModalOpen, setIsAddAttachmentModalOpen] = useState(false);
+  const [attachmentFiles, setAttachmentFiles] = useState<Attachment[]>([]);
+  const [attachmentNewLessonTitle, setAttachmentNewLessonTitle] = useState('');
+  const [attachmentLessonId, setAttachmentLessonId] = useState('new');
+  const [attachmentTeacherId, setAttachmentTeacherId] = useState('');
+  const [attachmentSemester, setAttachmentSemester] = useState(semester);
+  const [attachmentGrade, setAttachmentGrade] = useState(AVAILABLE_GRADES[0]);
+  const [attachmentSubject, setAttachmentSubject] = useState(AVAILABLE_SUBJECTS[0]);
+
   // تنظيف تلقائي: حذف المعلمات اللاتي ليس لديهن صفوف دراسية (غير مسجلات) أو بيانات غير صحيحة
   useEffect(() => {
     if (user.role === UserRole.SUPERVISOR) {
