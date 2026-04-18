@@ -1,25 +1,15 @@
-import toast from 'react-hot-toast';
-import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
-import { compressImage } from '../src/lib/imageUtils';
+import React, { useState } from 'react';
 import { User, Project, Post, LessonMaterial, LessonComment, Notification, ProjectSubmission, Message, Attachment } from '../types';
 import { 
   LayoutDashboard, BookOpen, FolderOpen, Search, Bell, ChevronDown, 
   Plus, FileText, ExternalLink, Play, Image as ImageIcon, XCircle, Eye,
   MessageSquare, Settings, Award, FileIcon, Link as LinkIcon, Video,
   TrendingUp, Users, ClipboardList, Send, Music, CheckCircle2, AlertCircle,
-  Calendar, ListTodo, Trash2, Clock, X, Edit, Download, LogOut
+  Calendar, ListTodo, Trash2, Clock, X
 } from 'lucide-react';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell, LineChart, Line 
-} from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
-import FilePreviewModal from './FilePreviewModal';
-import { LessonAttachmentUploader } from './LessonAttachmentUploader';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { storage } from '../src/firebase';
-import { ref, uploadBytesResumable, getDownloadURL, UploadTaskSnapshot } from 'firebase/storage';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -33,21 +23,18 @@ interface TeacherDashboardV2Props {
   messages: Message[];
   onSendMessage: (text: string, recipientId?: string, attachments?: Attachment[]) => void;
   onMarkMessageAsRead: (id: string) => void;
-  onAddMaterial: (material: LessonMaterial) => Promise<void>;
-  onUpdateMaterial: (material: LessonMaterial) => Promise<void>;
-  updateProjectSubmission: (projectId: string, submission: ProjectSubmission) => Promise<void>;
+  onAddMaterial: (material: LessonMaterial) => void;
+  onUpdateMaterial: (material: LessonMaterial) => void;
+  updateProjectSubmission: (projectId: string, submission: ProjectSubmission) => void;
   currentYear: string;
   semester: string;
   notifications: Notification[];
   onMarkAsRead: (id: string) => void;
-  onAddNotification?: (notification: Notification) => void;
-  onSwitchBackToSupervisorView?: () => void;
 }
 
 const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   user, posts, lessonMaterials, onAddMaterial, onUpdateMaterial, notifications,
-  messages, onSendMessage, onMarkMessageAsRead, projects, updateProjectSubmission, onMarkAsRead, onAddNotification, currentYear, semester,
-  onSwitchBackToSupervisorView
+  messages, onSendMessage, onMarkMessageAsRead, projects, updateProjectSubmission, onMarkAsRead, currentYear, semester
 }) => {
   // Dynamic Grades and Subjects based on Assignments
   const teacherAssignments = user.assignments || [];
@@ -72,64 +59,24 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   // New Lesson State
   const [newLessonTitle, setNewLessonTitle] = useState('');
   const [newLessonType, setNewLessonType] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
   const [newLessonUrl, setNewLessonUrl] = useState('');
-  const [newLessonFileName, setNewLessonFileName] = useState('');
   const [newLessonAttachments, setNewLessonAttachments] = useState<Attachment[]>([]);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [editingLesson, setEditingLesson] = useState<LessonMaterial | null>(null);
-  const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
-  const [viewingLesson, setViewingLesson] = useState<LessonMaterial | null>(null);
-  const [viewingPost, setViewingPost] = useState<Post | null>(null);
 
-  useEffect(() => {
-    if (editingLesson) {
-      setNewLessonTitle(editingLesson.lessonTitle);
-      setNewLessonAttachments(editingLesson.attachments || []);
-      setIsUploadModalOpen(true);
-    }
-  }, [editingLesson]);
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const rawFile = e.target.files[0];
-      
-      setIsUploading(true);
-      setUploadError(null);
-      
-      // Optimize image before upload if it's an image
-      const file = await compressImage(rawFile);
-
-      const storageRef = ref(storage, `lessons/${Date.now()}_${file.name}`);
-      try {
-        const uploadTask = uploadBytesResumable(storageRef, file);
-        
-        await new Promise<void>((resolve, reject) => {
-          uploadTask.on('state_changed',
-            null,
-            (error) => reject(error),
-            async () => {
-              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              setNewLessonFileName(file.name);
-              setNewLessonUrl(downloadURL);
-              resolve();
-            }
-          );
-        });
-      } catch (error) {
-        console.error("Error uploading file:", error);
-        setUploadError("فشل رفع الملف. يرجى المحاولة مرة أخرى.");
-      } finally {
-        setIsUploading(false);
-      }
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = () => {
+        setNewLessonUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   // Project Submission State
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [submissionFiles, setSubmissionFiles] = useState<Attachment[]>([]);
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [newLinkUrl, setNewLinkUrl] = useState('');
   const [newLinkName, setNewLinkName] = useState('');
   const [isAddingLink, setIsAddingLink] = useState(false);
@@ -137,24 +84,9 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   const [projectFilter, setProjectFilter] = useState<'all' | 'pending' | 'submitted' | 'completed'>('all');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
-  const getAttachmentIcon = (attachment: Attachment) => {
-    const fileName = (attachment.name || '').toLowerCase();
-    const type = attachment.type;
-
-    if (type === 'link') return { icon: LinkIcon, color: 'text-blue-500', bg: 'bg-blue-50' };
-    if (fileName.endsWith('.pdf')) return { icon: FileText, color: 'text-red-600', bg: 'bg-red-50' };
-    if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) return { icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' };
-    if (fileName.endsWith('.ppt') || fileName.endsWith('.pptx')) return { icon: FileIcon, color: 'text-orange-500', bg: 'bg-orange-50' };
-    if (fileName.endsWith('.mp4') || fileName.endsWith('.mov') || fileName.endsWith('.avi')) return { icon: Video, color: 'text-red-500', bg: 'bg-red-50' };
-    if (fileName.endsWith('.mp3') || fileName.endsWith('.wav')) return { icon: Music, color: 'text-emerald-500', bg: 'bg-emerald-50' };
-    if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png') || fileName.endsWith('.gif')) return { icon: ImageIcon, color: 'text-purple-500', bg: 'bg-purple-50' };
-    
-    return { icon: FileIcon, color: 'text-slate-400', bg: 'bg-slate-50' };
-  };
   const handleAddLink = () => {
     if (!newLinkUrl || !newLinkName) return;
     setSubmissionFiles(prev => [...prev, {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type: 'link',
       url: newLinkUrl,
       name: newLinkName,
@@ -169,38 +101,30 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
     setSubmissionFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmitProject = async () => {
+  const handleSubmitProject = () => {
     if (!selectedProject) return;
     
     if (submissionFiles.length === 0 && !submissionNote) {
-      toast('يرجى إرفاق ملف أو كتابة ملاحظة');
+      alert('يرجى إرفاق ملف أو كتابة ملاحظة');
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      const submission: ProjectSubmission = {
-        teacherId: user.id,
-        files: submissionFiles,
-        notes: submissionNote,
-        status: 'submitted',
-        feedback: '',
-        badges: [],
-        submittedAt: new Date().toISOString()
-      };
+    const submission: ProjectSubmission = {
+      teacherId: user.id,
+      files: submissionFiles,
+      notes: submissionNote,
+      status: 'submitted',
+      feedback: '',
+      badges: [],
+      submittedAt: new Date().toISOString()
+    };
 
-      await updateProjectSubmission(selectedProject.id, submission);
-      
-      toast('تم تسليم المشروع بنجاح!');
-      setSelectedProject(null);
-      setSubmissionFiles([]);
-      setSubmissionNote('');
-    } catch (error) {
-      console.error("Error submitting project:", error);
-      toast('حدث خطأ أثناء تسليم المشروع');
-    } finally {
-      setIsSubmitting(false);
-    }
+    updateProjectSubmission(selectedProject.id, submission);
+    
+    alert('تم تسليم المشروع بنجاح!');
+    setSelectedProject(null);
+    setSubmissionFiles([]);
+    setSubmissionNote('');
   };
 
   const unreadNotifications = notifications.filter(n => !n.isRead);
@@ -235,7 +159,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
     : allSubjects;
 
   const uploadOptions = [
-    { id: 'ppt', label: 'بوربوينت', icon: FileText, color: 'text-orange-600', bg: 'bg-orange-100', border: 'border-orange-300' },
+    { id: 'ppt', label: 'باور بوينت', icon: FileText, color: 'text-orange-600', bg: 'bg-orange-100', border: 'border-orange-300' },
     { id: 'doc', label: 'ملف وورد', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-100', border: 'border-blue-300' },
     { id: 'video', label: 'فيديو', icon: Video, color: 'text-red-600', bg: 'bg-red-100', border: 'border-red-300' },
     { id: 'image', label: 'صورة', icon: ImageIcon, color: 'text-emerald-600', bg: 'bg-emerald-100', border: 'border-emerald-300' },
@@ -259,71 +183,61 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
     setIsUploadModalOpen(true);
   };
 
+  const handleAddAttachment = () => {
+    if (newLessonType !== 'text' && !newLessonUrl) return;
+    
+    if (newLessonType !== 'text') {
+      setNewLessonAttachments(prev => [...prev, {
+        type: newLessonType === 'link' ? 'link' : (newLessonType === 'image' ? 'image' : (newLessonType === 'video' ? 'video' : (newLessonType === 'audio' ? 'audio' : 'file'))),
+        url: newLessonUrl,
+        name: newLessonTitle || `مرفق ${prev.length + 1}`
+      }]);
+    }
+    
+    setNewLessonType(null);
+    setNewLessonUrl('');
+  };
+
   const handleRemoveAttachment = (index: number) => {
     setNewLessonAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleAddLesson = async () => {
+  const handleAddLesson = () => {
     if (!newLessonTitle || !selectedSubject) {
-      toast('يرجى إكمال جميع الحقول المطلوبة');
+      alert('يرجى إكمال جميع الحقول المطلوبة');
       return;
     }
 
     if (newLessonAttachments.length === 0) {
-      toast('يرجى إضافة مرفق واحد على الأقل');
+      alert('يرجى إضافة مرفق واحد على الأقل');
       return;
     }
 
     setIsSubmitting(true);
     
-    try {
-      if (editingLesson) {
-      const updatedMaterial: LessonMaterial = {
-        ...editingLesson,
-        lessonTitle: newLessonTitle,
-        description: `درس: ${newLessonTitle}`,
-        attachments: newLessonAttachments,
-        grade: selectedGrade,
-        subject: selectedSubject,
-        tags: [selectedSubject, selectedGrade],
-        hasNewAttachments: true // Flag for supervisor
-      };
-        await onUpdateMaterial(updatedMaterial);
-        toast('تم تحديث الدرس بنجاح.');
-    } else {
-      const newMaterial: LessonMaterial = {
-        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        teacherId: user.id,
-        teacherName: user.name,
-        lessonTitle: newLessonTitle,
-        description: `درس: ${newLessonTitle}`,
-        attachments: newLessonAttachments,
-        comments: [],
-        createdAt: new Date().toISOString(),
-        academicYear: currentYear,
-        semester: semester,
-        grade: selectedGrade,
-        subject: selectedSubject,
-        status: 'pending',
-        isActive: true,
-        isModelLesson: false,
-        tags: [selectedSubject, selectedGrade],
-        hasNewAttachments: true // Flag for supervisor
-      };
-        await onAddMaterial(newMaterial);
-        toast('تمت إضافة الدرس بنجاح وسيتم مراجعته من قبل المشرفة.');
-      }
+    const newMaterial: LessonMaterial = {
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      teacherId: user.id,
+      teacherName: user.name,
+      lessonTitle: newLessonTitle,
+      description: `درس: ${newLessonTitle}`,
+      attachments: newLessonAttachments,
+      comments: [],
+      createdAt: new Date().toISOString(),
+      academicYear: currentYear,
+      semester: semester,
+      grade: selectedGrade,
+      subject: selectedSubject,
+      status: 'pending',
+      isActive: true,
+      isModelLesson: false,
+      tags: [selectedSubject, selectedGrade]
+    };
 
-      setIsUploadModalOpen(false);
-      setEditingLesson(null);
-      setNewLessonTitle('');
-      setNewLessonAttachments([]);
-    } catch (error) {
-      console.error("Error saving lesson:", error);
-      toast('حدث خطأ أثناء حفظ الدرس. يرجى المحاولة مرة أخرى.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    onAddMaterial(newMaterial);
+    setIsSubmitting(false);
+    setIsUploadModalOpen(false);
+    alert('تمت إضافة الدرس بنجاح وسيتم مراجعته من قبل المشرفة.');
   };
 
   const downloadFile = (url: string, filename: string) => {
@@ -358,93 +272,6 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
 
     onUpdateMaterial(updatedMaterial);
     setCommentText('');
-
-    if (material.teacherId !== user.id && onAddNotification) {
-      onAddNotification({
-        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        userId: material.teacherId,
-        message: `أضافت المعلمة ${user.name} تعليقاً على درسك: ${material.lessonTitle}`,
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        type: 'comment',
-      });
-    }
-  };
-
-  const handleUploadAttachmentToLesson = async (lesson: LessonMaterial, rawFile: File) => {
-    setIsSubmitting(true);
-    const file = await compressImage(rawFile);
-    const attachmentId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const storageRef = ref(storage, `lessons/${lesson.id}/${attachmentId}_${file.name}`);
-    
-    try {
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
-      
-      const snapshot = await new Promise<UploadTaskSnapshot>((resolve, reject) => {
-        uploadTask.on('state_changed',
-          (snap) => {
-            const progress = (snap.bytesTransferred / snap.totalBytes) * 100;
-            setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
-          },
-          (error) => reject(error),
-          () => {
-            setUploadProgress(prev => {
-              const next = { ...prev };
-              delete next[file.name];
-              return next;
-            });
-            resolve(uploadTask.snapshot);
-          }
-        );
-      });
-      
-      const downloadURL = await getDownloadURL(snapshot.ref);
-      const newAttachment: Attachment = {
-        id: attachmentId,
-        name: file.name,
-        url: downloadURL,
-        type: file.type.startsWith('image/') ? 'image' : 
-              file.name.toLowerCase().endsWith('.pdf') ? 'file' : 
-              file.type.startsWith('video/') ? 'video' : 'file',
-        uploadedAt: new Date().toISOString()
-      };
-      
-      const updatedLesson: LessonMaterial = {
-        ...lesson,
-        attachments: [...(lesson.attachments || []), newAttachment],
-        hasNewAttachments: true
-      };
-      
-      await onUpdateMaterial(updatedLesson);
-      toast.success('تم رفع المرفق بنجاح');
-    } catch (error) {
-      console.error("Error uploading attachment:", error);
-      toast.error('فشل رفع المرفق');
-      setUploadProgress(prev => {
-        const next = { ...prev };
-        delete next[file.name];
-        return next;
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDeleteAttachmentFromLesson = async (lesson: LessonMaterial, attachmentId: string) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذا المرفق؟')) return;
-    
-    try {
-      const updatedLesson: LessonMaterial = {
-        ...lesson,
-        attachments: (lesson.attachments || []).filter(a => a.id !== attachmentId)
-      };
-      await onUpdateMaterial(updatedLesson);
-      toast.success('تم حذف المرفق');
-    } catch (error) {
-      console.error("Error deleting attachment:", error);
-      toast.error('فشل حذف المرفق');
-    }
   };
 
   const getFileIcon = (material: LessonMaterial) => {
@@ -538,22 +365,6 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
             <MessageSquare className="w-5 h-5" />
             <span>الرسائل</span>
           </button>
-          <button 
-            onClick={() => { setActiveTab('lessons'); setIsMobileMenuOpen(false); }}
-            className={cn("w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all", activeTab === 'lessons' ? "bg-blue-50 text-blue-700" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900")}
-          >
-            <BookOpen className="w-5 h-5" />
-            <span>الدروس</span>
-          </button>
-          {onSwitchBackToSupervisorView && (
-            <button 
-              onClick={onSwitchBackToSupervisorView}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all text-amber-600 hover:bg-amber-50"
-            >
-              <LogOut className="w-5 h-5" />
-              <span>العودة للوحة المشرفة</span>
-            </button>
-          )}
         </nav>
         <div className="p-4 border-t border-slate-100">
           <div className="flex items-center gap-3">
@@ -618,9 +429,9 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   </div>
                   <div className="max-h-80 overflow-y-auto">
                     {notifications.length > 0 ? (
-                      notifications.map((notification, idx) => (
+                      notifications.map((notification, index) => (
                         <div 
-                          key={notification.id || `notif-${idx}`} 
+                          key={`${notification.id}-${index}`} 
                           className={cn(
                             "p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer",
                             !notification.isRead ? "bg-indigo-50/50" : ""
@@ -681,12 +492,8 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   
                   <div className="flex-1 overflow-y-auto pr-2 space-y-4 max-h-[200px] scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
                     {posts.filter(p => !p.isArchived).length > 0 ? (
-                      posts.filter(p => !p.isArchived).slice(0, 3).map((post) => (
-                        <div 
-                          key={`post-${post.id}`} 
-                          onClick={() => setViewingPost(post)}
-                          className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-amber-200 hover:bg-amber-50/30 transition-all group cursor-pointer"
-                        >
+                      posts.filter(p => !p.isArchived).slice(0, 3).map((post, index) => (
+                        <div key={`${post.id}-${index}`} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-amber-200 hover:bg-amber-50/30 transition-all group">
                           <div className="flex justify-between items-start mb-2">
                             <h4 className="font-bold text-sm text-slate-800 group-hover:text-amber-700 transition-colors">{post.title}</h4>
                             <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-100">
@@ -712,7 +519,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
               <div className="flex overflow-x-auto pb-2 sm:pb-0 items-center gap-2 sm:gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm w-full sm:w-fit scrollbar-hide">
                 {grades.map((grade, i) => (
                   <button
-                    key={`grade-select-${grade}`}
+                    key={`grade-select-${grade}-${i}`}
                     onClick={() => { setSelectedGrade(grade); setViewingSubject(null); }}
                     className={cn(
                       "px-4 sm:px-8 py-2.5 sm:py-3 rounded-[12px] text-xs sm:text-sm font-bold transition-all duration-200 whitespace-nowrap",
@@ -750,7 +557,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
 
                     return (
                       <div 
-                        key={`subject-select-${subject.name}`} 
+                        key={`${subject.name}-${i}`} 
                         className={cn(
                           "relative p-8 rounded-[24px] border-2 transition-all duration-300 overflow-hidden group hover:shadow-xl",
                           subject.bg, subject.border
@@ -843,7 +650,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 gap-4">
                     {/* Render actual materials here */}
                     {lessonMaterials
                       .filter(m => 
@@ -857,178 +664,158 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         const Icon = fileInfo.icon;
                         
                         return (
-                          <div key={material.id} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
-                            <div className="p-6 flex-1">
-                              <div className="flex justify-between items-start mb-4">
-                                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border relative", fileInfo.bg, fileInfo.color, "border-slate-50")}>
-                                  <Icon className="w-6 h-6" />
-                                  {material.isModelLesson && (
-                                    <div className="absolute -top-2 -right-2 w-5 h-5 bg-amber-100 rounded-full flex items-center justify-center border border-amber-200 shadow-sm">
-                                      <Award className="w-3 h-3 text-amber-600" />
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="flex gap-1">
-                                  <button 
-                                    onClick={() => setViewingLesson(material)}
-                                    className="p-2 hover:bg-indigo-50 text-indigo-600 rounded-xl transition-colors"
-                                    title="معاينة"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                  </button>
-                                  {material.teacherId === user.id && (
-                                    <button 
-                                      onClick={() => setEditingLesson(material)}
-                                      className="p-2 hover:bg-blue-50 text-blue-600 rounded-xl transition-colors"
-                                      title="تعديل"
-                                    >
-                                      <Edit className="w-4 h-4" />
-                                    </button>
-                                  )}
-                                </div>
+                          <div key={`${material.id}-${index}`} className="bg-white rounded-[20px] shadow-sm border border-slate-200 overflow-hidden group hover:shadow-md transition-all">
+                            <div className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                              <div className="flex items-center gap-4">
+                                <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border relative", fileInfo.bg, fileInfo.color, "border-slate-100")}>
+                                  <Icon className="w-7 h-7" />
+                                {material.isModelLesson && (
+                                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-amber-100 rounded-full flex items-center justify-center border border-amber-200 shadow-sm">
+                                    <Award className="w-3.5 h-3.5 text-amber-600" />
+                                  </div>
+                                )}
                               </div>
-
-                              <h5 className="font-black text-slate-900 text-lg mb-2 line-clamp-2">{material.lessonTitle}</h5>
-                              
-                              <div className="flex items-center gap-3 mb-4">
-                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-500">
-                                  {material.teacherName.charAt(0)}
-                                </div>
-                                <div>
-                                  <p className="text-xs font-black text-slate-900">{material.teacherName}</p>
-                                  <p className="text-[10px] font-bold text-slate-400">{new Date(material.createdAt).toLocaleDateString('ar-OM')}</p>
-                                </div>
-                              </div>
-
-                              <div className="flex flex-wrap gap-2">
-                                {material.attachments.map((attachment, idx) => (
-                                  <button 
-                                    key={attachment.id || `teacher-mat-att-${material.id}-${idx}`}
-                                    onClick={() => setPreviewAttachment(attachment)}
-                                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-slate-700 rounded-lg hover:bg-indigo-50 hover:text-indigo-700 transition-all font-bold text-[10px] border border-slate-100"
-                                  >
-                                    {attachment.type === 'link' ? <LinkIcon className="w-3 h-3" /> : 
-                                     attachment.type === 'image' ? <ImageIcon className="w-3 h-3" /> :
-                                     attachment.type === 'video' ? <Video className="w-3 h-3" /> :
-                                     attachment.type === 'audio' ? <Music className="w-3 h-3" /> :
-                                     <FileText className="w-3 h-3" />}
-                                    <span className="max-w-[80px] truncate">{attachment.name || `مرفق ${idx + 1}`}</span>
-                                  </button>
-                                ))}
+                              <div>
+                                <h5 className="font-black text-slate-900 text-base">{material.lessonTitle}</h5>
+                                  <div className="flex items-center gap-3 mt-1.5">
+                                    <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                                      {material.teacherName}
+                                    </span>
+                                    <span className="text-xs font-medium text-slate-400">
+                                      {new Date(material.createdAt).toLocaleDateString('ar-OM')}
+                                    </span>
+                                    <span className={cn("text-[10px] font-black px-2 py-0.5 rounded-full", fileInfo.bg, fileInfo.color)}>
+                                      {fileInfo.label}
+                                    </span>
+                                  </div>
                               </div>
                             </div>
-
-                            <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-2 w-full md:w-auto flex-wrap justify-end">
+                                {material.attachments.map((attachment, idx) => (
+                                  <button 
+                                    key={`${attachment.url || attachment.name || idx}-${idx}`}
+                                    onClick={() => {
+                                      downloadFile(attachment.url, `${attachment.name || material.lessonTitle}.${attachment.type === 'link' ? 'html' : 'bin'}`);
+                                    }}
+                                    className="flex-1 md:flex-none px-4 py-2 bg-slate-50 text-slate-700 rounded-xl hover:bg-blue-50 hover:text-blue-700 transition-all font-bold text-xs flex items-center justify-center gap-2 border border-slate-200"
+                                  >
+                                    {attachment.type === 'link' ? <LinkIcon className="w-4 h-4" /> : 
+                                     attachment.type === 'image' ? <ImageIcon className="w-4 h-4" /> :
+                                     attachment.type === 'video' ? <Video className="w-4 h-4" /> :
+                                     attachment.type === 'audio' ? <Music className="w-4 h-4" /> :
+                                     <FileText className="w-4 h-4" />}
+                                    {attachment.type === 'link' ? 'فتح' : 'تحميل'} {attachment.name || `مرفق ${idx + 1}`}
+                                  </button>
+                                ))}
                               <button 
                                 onClick={() => setExpandedLessonId(expandedLessonId === material.id ? null : material.id)}
                                 className={cn(
-                                  "flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-black text-[10px]",
+                                  "flex-1 md:flex-none px-4 py-2 rounded-xl transition-all font-bold text-xs flex items-center justify-center gap-2 border",
                                   expandedLessonId === material.id 
-                                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200" 
-                                    : "text-slate-600 hover:bg-white hover:shadow-sm"
+                                    ? "bg-blue-600 text-white border-blue-600" 
+                                    : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-blue-50 hover:text-blue-700"
                                 )}
                               >
-                                <MessageSquare className="w-3.5 h-3.5" />
+                                <MessageSquare className="w-4 h-4" />
                                 التعليقات ({material.comments?.length || 0})
                               </button>
-                              <span className={cn("text-[10px] font-black px-3 py-1 rounded-full", fileInfo.bg, fileInfo.color)}>
-                                {fileInfo.label}
-                              </span>
                             </div>
+                          </div>
 
-                            {/* Comments Section */}
-                            <AnimatePresence>
-                              {expandedLessonId === material.id && (
-                                <motion.div 
-                                  initial={{ height: 0, opacity: 0 }}
-                                  animate={{ height: 'auto', opacity: 1 }}
-                                  exit={{ height: 0, opacity: 0 }}
-                                  className="border-t border-slate-100 bg-slate-50/50 overflow-hidden"
-                                >
-                                  <div className="p-6 space-y-4">
-                                    <div className="space-y-3">
-                                      {material.comments && material.comments.length > 0 ? (
-                                        material.comments.map((comment, index) => (
-                                          <div key={comment.id || `comment-${comment.authorId}-${comment.createdAt}-${index}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                                            <div className="flex justify-between items-center mb-2">
-                                              <span className="text-xs font-black text-slate-900">{comment.authorName}</span>
-                                              <span className="text-[10px] font-bold text-slate-400">
-                                                {new Date(comment.createdAt).toLocaleDateString('ar-OM')} {new Date(comment.createdAt).toLocaleTimeString('ar-OM', { hour: '2-digit', minute: '2-digit' })}
-                                              </span>
-                                            </div>
-                                            <p className="text-sm text-slate-600 font-medium leading-relaxed">{comment.text}</p>
+                          {/* Comments Section */}
+                          <AnimatePresence>
+                            {expandedLessonId === material.id && (
+                              <motion.div 
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="border-t border-slate-100 bg-slate-50/50 overflow-hidden"
+                              >
+                                <div className="p-6 space-y-4">
+                                  <div className="space-y-3">
+                                    {material.comments && material.comments.length > 0 ? (
+                                      material.comments.map((comment, index) => (
+                                        <div key={`${comment.id}-${index}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                          <div className="flex justify-between items-center mb-2">
+                                            <span className="text-xs font-black text-slate-900">{comment.authorName}</span>
+                                            <span className="text-[10px] font-bold text-slate-400">
+                                              {new Date(comment.createdAt).toLocaleDateString('ar-OM')} {new Date(comment.createdAt).toLocaleTimeString('ar-OM', { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
                                           </div>
-                                        ))
-                                      ) : (
-                                        <div className="text-center py-4">
-                                          <p className="text-xs font-bold text-slate-400">لا توجد تعليقات بعد</p>
+                                          <p className="text-sm text-slate-600 font-medium leading-relaxed">{comment.text}</p>
                                         </div>
-                                      )}
-                                    </div>
-
-                                    <div className="pt-4 border-t border-slate-200">
-                                      <label className="text-xs font-black text-slate-700 block mb-2">ملاحظات للمشرفة:</label>
-                                      <div className="flex gap-2">
-                                        <textarea 
-                                          value={lessonNotes[material.id] || material.teacherNotes || ''}
-                                          onChange={(e) => setLessonNotes(prev => ({ ...prev, [material.id]: e.target.value }))}
-                                          placeholder="اكتبي ملاحظاتك للمشرفة بخصوص هذا الدرس..."
-                                          className="flex-1 px-4 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-xs font-bold"
-                                          rows={3}
-                                        />
-                                        <button 
-                                          onClick={() => {
-                                            const notes = lessonNotes[material.id] || material.teacherNotes || '';
-                                            onUpdateMaterial({ ...material, teacherNotes: notes });
-                                          }}
-                                          className="px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/10 flex items-center gap-2 text-xs font-bold self-end"
-                                        >
-                                          <CheckCircle2 className="w-3.5 h-3.5" />
-                                          حفظ
-                                        </button>
+                                      ))
+                                    ) : (
+                                      <div className="text-center py-4">
+                                        <p className="text-xs font-bold text-slate-400">لا توجد تعليقات بعد</p>
                                       </div>
-                                    </div>
+                                    )}
+                                  </div>
 
-                                    <div className="pt-4 border-t border-slate-200">
-                                      <div className="flex gap-2">
-                                        <input 
-                                          type="text" 
-                                          value={commentText}
-                                          onChange={(e) => setCommentText(e.target.value)}
-                                          placeholder="اكتبي تعليقك هنا..."
-                                          className="flex-1 px-4 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-xs font-bold"
-                                        />
-                                        <button 
-                                          onClick={() => handleAddComment(material)}
-                                          disabled={!commentText.trim()}
-                                          className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-blue-600/10 flex items-center gap-2 text-xs font-bold"
-                                        >
-                                          <Send className="w-3.5 h-3.5" />
-                                          إضافة
-                                        </button>
-                                      </div>
+                                  <div className="pt-4 border-t border-slate-200">
+                                    <label className="text-xs font-black text-slate-700 block mb-2">ملاحظات للمشرفة:</label>
+                                    <div className="flex gap-2">
+                                      <textarea 
+                                        value={lessonNotes[material.id] || material.teacherNotes || ''}
+                                        onChange={(e) => setLessonNotes(prev => ({ ...prev, [material.id]: e.target.value }))}
+                                        placeholder="اكتبي ملاحظاتك للمشرفة بخصوص هذا الدرس..."
+                                        className="flex-1 px-4 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-xs font-bold"
+                                        rows={3}
+                                      />
+                                      <button 
+                                        onClick={() => {
+                                          const notes = lessonNotes[material.id] || material.teacherNotes || '';
+                                          onUpdateMaterial({ ...material, teacherNotes: notes });
+                                        }}
+                                        className="px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/10 flex items-center gap-2 text-xs font-bold self-end"
+                                      >
+                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                        حفظ
+                                      </button>
                                     </div>
                                   </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        );
-                      })}
-                  </div>
 
-                  {lessonMaterials.filter(m => 
-                    m.academicYear === currentYear &&
-                    !m.isArchived &&
-                    (m.tags?.includes(viewingSubject) || m.lessonTitle.includes(viewingSubject)) && 
-                    (m.tags?.includes(selectedGrade) || m.grade === selectedGrade)
-                  ).length === 0 && (
-                    <div className="text-center py-20 bg-white rounded-[24px] border border-dashed border-slate-300">
-                      <FolderOpen className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-bold text-slate-900 mb-1">لا توجد دروس بعد</h3>
-                      <p className="text-slate-500 text-sm">لم يتم إضافة أي محتوى لهذا القسم</p>
-                    </div>
-                  )}
+                                  <div className="pt-4 border-t border-slate-200">
+                                    <div className="flex gap-2">
+                                      <input 
+                                        type="text" 
+                                        value={commentText}
+                                        onChange={(e) => setCommentText(e.target.value)}
+                                        placeholder="اكتبي تعليقك هنا..."
+                                        className="flex-1 px-4 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-xs font-bold"
+                                      />
+                                      <button 
+                                        onClick={() => handleAddComment(material)}
+                                        disabled={!commentText.trim()}
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-blue-600/10 flex items-center gap-2 text-xs font-bold"
+                                      >
+                                        <Send className="w-3.5 h-3.5" />
+                                        إضافة
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      );
+                    })}
+                      
+                      {lessonMaterials.filter(m => 
+                        m.academicYear === currentYear &&
+                        m.semester === semester &&
+                        !m.isArchived && m.isActive !== false &&
+                        (m.tags?.includes(viewingSubject) || m.lessonTitle.includes(viewingSubject)) && 
+                        (m.tags?.includes(selectedGrade) || m.grade === selectedGrade)
+                      ).length === 0 && (
+                        <div className="text-center py-20 bg-white rounded-[24px] border border-dashed border-slate-300">
+                          <FolderOpen className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                          <h3 className="text-lg font-bold text-slate-900 mb-1">لا توجد دروس بعد</h3>
+                          <p className="text-slate-500 text-sm">كوني أول من يضيف محتوى إبداعي لهذا الصف!</p>
+                        </div>
+                      )}
+                  </div>
                 </div>
               )}
             </>
@@ -1041,7 +828,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                 <div className="flex bg-slate-100 p-1 rounded-xl w-fit">
                   {(['all', 'pending', 'submitted', 'completed'] as const).map((filter, idx) => (
                     <button
-                      key={`project-filter-${filter}`}
+                      key={`project-filter-${filter}-${idx}`}
                       onClick={() => setProjectFilter(filter)}
                       className={cn(
                         "px-4 py-2 rounded-lg text-sm font-bold transition-all",
@@ -1078,7 +865,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   
                   return (
                     <motion.div 
-                      key={project.id}
+                      key={`${project.id}-${index}`} 
                       initial={{ opacity: 0, y: 50 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
@@ -1125,7 +912,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                             <span className="text-xs font-bold text-slate-500">فريق العمل:</span>
                             <div className="flex -space-x-2 space-x-reverse">
                               {project.assignedTeacherIds.map((teacherId, i) => (
-                                <div key={`teacher-${project.id}-${teacherId}`} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600" title={teacherId === user.id ? 'أنا' : 'زميلة'}>
+                                <div key={`teacher-${project.id}-${teacherId}-${i}`} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600" title={teacherId === user.id ? 'أنا' : 'زميلة'}>
                                   {teacherId === user.id ? 'أنا' : 'ز'}
                                 </div>
                               ))}
@@ -1197,14 +984,17 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                           <h5 className="font-bold text-slate-700 text-xs mb-3">مرفقات المشروع:</h5>
                           <div className="flex flex-wrap gap-2">
                             {selectedProject.attachments.map((att, idx) => (
-                              <button 
-                                key={att.id || `proj-view-att-${selectedProject.id}-${idx}`}
-                                onClick={() => setPreviewAttachment(att)}
+                              <a 
+                                key={`proj-att-${selectedProject.id}-${att.name}-${idx}`}
+                                href={att.url}
+                                download={att.name}
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-indigo-600 hover:bg-indigo-50 transition-all"
                               >
                                 <FileText className="w-3 h-3" />
                                 {att.name}
-                              </button>
+                              </a>
                             ))}
                           </div>
                         </div>
@@ -1220,7 +1010,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                           </h4>
                           <ul className="space-y-3">
                             {selectedProject.tasks.map((task, i) => (
-                              <li key={`proj-task-${selectedProject.id}-${i}`} className="flex items-start gap-3 text-sm text-slate-600">
+                              <li key={`proj-task-${selectedProject.id}-${task}-${i}`} className="flex items-start gap-3 text-sm text-slate-600">
                                 <span className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold mt-0.5 shrink-0">
                                   {i + 1}
                                 </span>
@@ -1238,7 +1028,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         
                         <div className="grid grid-cols-1 gap-3">
                           {submissionFiles.map((file, idx) => (
-                            <div key={file.id || `sub-file-item-${selectedProject.id}-${idx}`} className="bg-slate-50 rounded-xl border border-slate-100 p-3">
+                            <div key={`sub-file-${file.name}-${idx}`} className="bg-slate-50 rounded-xl border border-slate-100 p-3">
                               <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-3 overflow-hidden">
                                   <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-slate-100 text-slate-400">
@@ -1287,74 +1077,20 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                             <input 
                               type="file" 
                               className="hidden" 
-                              onChange={async (e) => {
-                                const rawFile = e.target.files?.[0];
-                                if (rawFile) {
-                                  // Optimize image before upload if it's an image
-                                  const file = await compressImage(rawFile);
-
-                                  const storageRef = ref(storage, `submissions/${Date.now()}_${file.name}`);
-                                  try {
-                                    const uploadTask = uploadBytesResumable(storageRef, file);
-                                    setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
-                                    const snapshot = await new Promise<UploadTaskSnapshot>((resolve, reject) => {
-                                      uploadTask.on('state_changed',
-                                        (snapshot) => {
-                                          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                                          setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
-                                        },
-                                        (error) => reject(error),
-                                        () => {
-                                          setUploadProgress(prev => {
-                                            const next = { ...prev };
-                                            delete next[file.name];
-                                            return next;
-                                          });
-                                          resolve(uploadTask.snapshot);
-                                        }
-                                      );
-                                    });
-                                    const downloadURL = await getDownloadURL(snapshot.ref);
-                                    setSubmissionFiles(prev => [...prev, {
-                                      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                                      type: file.type.startsWith('image/') ? 'image' : 'file',
-                                      url: downloadURL,
-                                      name: file.name,
-                                      comment: ''
-                                    }]);
-                                  } catch (error) {
-                                    console.error("Error uploading file:", error);
-                                    toast(`فشل رفع الملف ${file.name}`);
-                                    setUploadProgress(prev => {
-                                      const next = { ...prev };
-                                      delete next[file.name];
-                                      return next;
-                                    });
-                                  }
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setSubmissionFiles(prev => [...prev, {
+                                    type: file.type.startsWith('image/') ? 'image' : 'file',
+                                    url: URL.createObjectURL(file),
+                                    name: file.name,
+                                    comment: ''
+                                  }]);
                                 }
                               }}
                             />
                           </label>
                         </div>
-                        
-                        {Object.keys(uploadProgress).length > 0 && (
-                          <div className="space-y-2 mt-4">
-                            {Object.entries(uploadProgress).map(([fileName, progress]) => (
-                              <div key={`dash-upload-${fileName}`} className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                                <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
-                                  <span className="truncate max-w-[80%]">{fileName}</span>
-                                  <span>{Math.round(progress)}%</span>
-                                </div>
-                                <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
-                                  <div 
-                                    className="bg-indigo-600 h-1.5 rounded-full transition-all duration-300"
-                                    style={{ width: `${progress}%` }}
-                                  />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
 
                         {isAddingLink && (
                           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3 animate-in fade-in slide-in-from-top-2">
@@ -1424,137 +1160,6 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
 
 
 
-          {activeTab === 'lessons' && (
-            <div className="space-y-6 animate-in fade-in duration-500">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-black text-slate-900">دروسي المرفوعة</h2>
-                <div className="flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100">
-                  <BookOpen className="w-5 h-5 text-indigo-600" />
-                  <span className="text-sm font-black text-indigo-900">إجمالي الدروس: {lessonMaterials.filter(m => m.teacherId === user.id).length}</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {lessonMaterials.filter(m => m.teacherId === user.id).map((lesson, index) => {
-                  const { icon: Icon, color, bg } = getAttachmentIcon({ name: lesson.lessonTitle, type: 'file' } as Attachment);
-                  
-                  // Component for individual lesson attachment upload
-                  const LessonFileUpload = () => {
-                    const inputRef = React.useRef<HTMLInputElement>(null);
-                    return (
-                      <div className="mt-2">
-                        <input
-                          type="file"
-                          ref={inputRef}
-                          className="hidden"
-                          multiple
-                          onChange={(e) => {
-                            if (e.target.files) {
-                              Array.from(e.target.files).forEach(file => {
-                                handleUploadAttachmentToLesson(lesson, file);
-                              });
-                            }
-                          }}
-                        />
-                        <button
-                          onClick={() => inputRef.current?.click()}
-                          disabled={isSubmitting}
-                          className="flex items-center justify-center gap-2 w-full py-2.5 px-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-500 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all font-bold text-xs"
-                        >
-                          <Plus className="w-4 h-4" />
-                          إضافة مرفق جديد
-                        </button>
-                      </div>
-                    );
-                  };
-
-                  return (
-                    <div key={lesson.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className={cn("p-3 rounded-xl", lesson.attachments?.length > 0 ? "bg-indigo-600 text-white" : cn(bg, color))}>
-                          <BookOpen className="w-6 h-6" />
-                        </div>
-                        <span className={cn("px-3 py-1 rounded-full text-[10px] font-black", 
-                          lesson.status === 'approved' ? "bg-emerald-50 text-emerald-700" :
-                          lesson.status === 'rejected' ? "bg-red-50 text-red-700" :
-                          "bg-amber-50 text-amber-700"
-                        )}>
-                          {lesson.status === 'approved' ? 'معتمد' : lesson.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
-                        </span>
-                      </div>
-                      <h3 className="font-black text-slate-900 mb-1">{lesson.lessonTitle}</h3>
-                      <p className="text-xs text-slate-500 mb-4 line-clamp-2">{lesson.description}</p>
-                      
-                      <div className="pt-4 border-t border-slate-100 flex-1">
-                        <h4 className="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-wider flex justify-between">
-                          المرفقات الحالية
-                          <span className="text-indigo-600 font-black">{lesson.attachments?.length || 0}</span>
-                        </h4>
-                        
-                        <div className="space-y-2 mb-4">
-                          {lesson.attachments && lesson.attachments.length > 0 ? (
-                            lesson.attachments.map((att, idx) => {
-                              const { icon: AttIcon, color: AttColor } = getAttachmentIcon(att);
-                              return (
-                                <div key={att.id || `lesson-view-att-${lesson.id}-${idx}`} className="flex items-center justify-between text-xs p-2.5 bg-slate-50 rounded-xl group hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200">
-                                  <button 
-                                    onClick={() => setPreviewAttachment(att)}
-                                    className="flex items-center gap-2 flex-1 text-right"
-                                  >
-                                    <div className={cn("p-1.5 rounded-lg bg-white shadow-sm")}>
-                                      <AttIcon className={cn("w-3.5 h-3.5", AttColor)} />
-                                    </div>
-                                    <span className="font-bold text-slate-700 truncate max-w-[120px]">{att.name}</span>
-                                  </button>
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteAttachmentFromLesson(lesson, att.id);
-                                    }}
-                                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                                    title="حذف المرفق"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              );
-                            })
-                          ) : (
-                            <div className="text-center py-4 text-slate-400 text-[10px] font-bold">لا توجد مرفقات حالياً</div>
-                          )}
-
-                          {/* Upload Progress bars */}
-                          {Object.entries(uploadProgress).map(([fileName, progress]) => (
-                             <div key={fileName} className="p-2 bg-indigo-50 rounded-lg border border-indigo-100">
-                               <div className="flex justify-between text-[10px] font-bold text-indigo-700 mb-1">
-                                 <span className="truncate max-w-[150px]">{fileName}</span>
-                                 <span>{Math.round(progress)}%</span>
-                               </div>
-                               <div className="w-full bg-indigo-200 rounded-full h-1">
-                                 <div 
-                                   className="bg-indigo-600 h-1 rounded-full transition-all duration-300" 
-                                   style={{ width: `${progress}%` }}
-                                 />
-                               </div>
-                             </div>
-                          ))}
-                        </div>
-
-                        <LessonFileUpload />
-                      </div>
-
-                      <div className="mt-4 flex gap-2">
-                        <button onClick={() => setViewingLesson(lesson)} className="flex-1 text-xs font-black py-2.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-sm">
-                          عرض التعليقات
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {activeTab === 'messages' && (
             <div className="space-y-6 animate-in fade-in duration-500 h-[calc(100vh-12rem)] flex flex-col">
               <div className="flex justify-between items-center">
@@ -1577,7 +1182,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   ) : (
                     messages.map((msg, index) => (
                       <div 
-                        key={msg.id || `chat-msg-${msg.senderId}-${index}`}
+                        key={`${msg.id}-${index}`} 
                         className={cn(
                           "flex flex-col max-w-[80%]",
                           msg.senderId === user.id ? "mr-auto items-end" : "ml-auto items-start"
@@ -1599,16 +1204,12 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                           {msg.attachments && msg.attachments.length > 0 && (
                             <div className="mt-2 space-y-1">
                               {msg.attachments.map((att, idx) => (
-                                <button 
-                                  key={att.id || `msg-att-${msg.id || index}-${idx}`} 
-                                  onClick={() => setPreviewAttachment(att)}
-                                  className="flex items-center gap-2 bg-black/10 p-2 rounded-lg hover:bg-black/20 transition-all w-full text-right"
-                                >
+                                <div key={`msg-att-${msg.id}-${att.name}-${idx}`} className="flex items-center gap-2 bg-black/10 p-2 rounded-lg">
                                   {att.type === 'image' ? <ImageIcon className="w-4 h-4" /> : <FileIcon className="w-4 h-4" />}
-                                  <span className="text-xs truncate max-w-[150px] block font-bold">
+                                  <a href={att.url} download={att.name} target="_blank" rel="noopener noreferrer" className="underline text-xs truncate max-w-[150px] block">
                                     {att.name}
-                                  </span>
-                                </button>
+                                  </a>
+                                </div>
                               ))}
                             </div>
                           )}
@@ -1639,7 +1240,6 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                       e.preventDefault();
                       if (newMessageText.trim() || messageAttachment) {
                         const attachments = messageAttachment ? [{
-                          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                           type: messageAttachmentType,
                           url: messageAttachment,
                           name: messageAttachmentName
@@ -1665,35 +1265,16 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                       type="file"
                       id="msg-file-upload"
                       className="hidden"
-                      onChange={async (e) => {
-                        const rawFile = e.target.files?.[0];
-                        if (rawFile) {
-                          // Optimize image before upload if it's an image
-                          const file = await compressImage(rawFile);
-
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
                           setMessageAttachmentName(file.name);
                           setMessageAttachmentType(file.type.startsWith('image/') ? 'image' : 'file');
-                          const storageRef = ref(storage, `messages/${Date.now()}_${file.name}`);
-                          try {
-                            const uploadTask = uploadBytesResumable(storageRef, file);
-                            
-                            await new Promise<void>((resolve, reject) => {
-                              uploadTask.on('state_changed',
-                                (snapshot) => {
-                                  // Optional: set temporary progress if needed
-                                },
-                                (error) => reject(error),
-                                async () => {
-                                  const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                                  setMessageAttachment(downloadURL);
-                                  resolve();
-                                }
-                              );
-                            });
-                          } catch (error) {
-                            console.error("Error uploading file:", error);
-                            toast(`فشل رفع الملف ${file.name}`);
-                          }
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setMessageAttachment(reader.result as string);
+                          };
+                          reader.readAsDataURL(file);
                         }
                       }}
                     />
@@ -1719,190 +1300,151 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
         </div>
       </main>
 
-
-      {/* Post Preview Modal */}
+      {/* Multimedia Upload Hub Modal */}
       <AnimatePresence>
-        {viewingPost && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-            >
-              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <h3 className="font-black text-lg text-slate-800">{viewingPost.title}</h3>
-                <button onClick={() => setViewingPost(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
-                  <X className="w-5 h-5 text-slate-500" />
-                </button>
-              </div>
-              <div className="p-6 overflow-y-auto space-y-6">
-                <p className="text-slate-600 leading-relaxed">{viewingPost.content}</p>
-                {viewingPost.attachments && viewingPost.attachments.length > 0 && (
-                  <div className="space-y-3">
-                    <h4 className="font-bold text-slate-800">المرفقات:</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {viewingPost.attachments.map((att, idx) => {
-                        const iconInfo = getAttachmentIcon(att);
-                        const Icon = iconInfo.icon;
-                        return (
-                          <div key={att.id || `post-view-att-${viewingPost.id}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                            <div className="flex items-center gap-3">
-                              <div className={cn("p-2 rounded-lg", iconInfo.bg, iconInfo.color)}>
-                                <Icon className="w-4 h-4" />
-                              </div>
-                              <span className="text-xs font-bold text-slate-700 truncate max-w-[120px]">{att.name}</span>
-                            </div>
-                            <div className="flex gap-2">
-                              <button onClick={() => setPreviewAttachment(att)} className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-500">
-                                <Eye className="w-4 h-4" />
-                              </button>
-                              <button onClick={() => {
-                                const link = document.createElement('a');
-                                link.href = att.url;
-                                link.download = att.name;
-                                link.click();
-                              }} className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-500">
-                                <Download className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Lesson Preview Modal */}
-      <AnimatePresence>
-        {viewingLesson && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        {isUploadModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              className="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden border border-slate-100"
             >
               <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
-                <div className="flex items-center gap-4">
-                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center", getFileIcon(viewingLesson).bg, getFileIcon(viewingLesson).color)}>
-                    {React.createElement(getFileIcon(viewingLesson).icon, { className: "w-6 h-6" })}
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-black text-slate-900">{viewingLesson.lessonTitle}</h3>
-                    <p className="text-xs font-bold text-slate-400">{viewingLesson.grade} • {viewingLesson.subject}</p>
-                  </div>
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900">مركز إضافة المحتوى</h3>
+                  <p className="text-sm text-slate-500 font-bold mt-1">
+                    {selectedSubject} - {selectedGrade}
+                  </p>
                 </div>
                 <button 
-                  onClick={() => setViewingLesson(null)} 
-                  className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400"
+                  onClick={() => setIsUploadModalOpen(false)} 
+                  className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400 hover:text-slate-600"
                 >
-                  <X className="w-6 h-6" />
+                  <XCircle className="w-7 h-7" />
                 </button>
               </div>
-              
-              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                <div className="space-y-8">
-                  {/* Teacher Info */}
-                  <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div className="w-12 h-12 rounded-full bg-white border-2 border-indigo-100 flex items-center justify-center text-lg font-black text-indigo-600 shadow-sm">
-                      {viewingLesson.teacherName.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="text-sm font-black text-slate-900">{viewingLesson.teacherName}</p>
-                      <p className="text-[10px] font-bold text-slate-400">تاريخ النشر: {new Date(viewingLesson.createdAt).toLocaleDateString('ar-OM')}</p>
-                    </div>
-                  </div>
 
-                  {/* Description */}
-                  {viewingLesson.description && (
-                    <div className="space-y-3">
-                      <h4 className="font-black text-slate-800 flex items-center gap-2">
-                        <div className="w-1.5 h-6 bg-indigo-500 rounded-full" />
-                        وصف الدرس
-                      </h4>
-                      <p className="text-slate-600 font-bold text-sm leading-relaxed bg-slate-50/50 p-4 rounded-2xl border border-slate-50">
-                        {viewingLesson.description}
-                      </p>
-                    </div>
-                  )}
+              <div className="p-8 bg-slate-50/50 space-y-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-black text-slate-700 block">عنوان الدرس</label>
+                  <input 
+                    type="text" 
+                    value={newLessonTitle}
+                    onChange={e => setNewLessonTitle(e.target.value)}
+                    placeholder="مثال: درس المدود في اللغة العربية"
+                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-sm"
+                  />
+                </div>
 
-                  {/* Attachments */}
+                {!newLessonType ? (
                   <div className="space-y-4">
-                    <h4 className="font-black text-slate-800 flex items-center gap-2">
-                      <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
-                      المرفقات والمصادر ({viewingLesson.attachments.length})
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {viewingLesson.attachments.map((attachment, idx) => {
-                        const attachInfo = getAttachmentIcon(attachment);
-                        const AttachIcon = attachInfo.icon;
-                        return (
-                          <button 
-                            key={attachment.id || `lesson-modal-att-${viewingLesson.id}-${idx}`}
-                            onClick={() => setPreviewAttachment(attachment)}
-                            className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 hover:border-indigo-200 hover:shadow-md transition-all group text-right"
-                          >
-                            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", attachInfo.bg, attachInfo.color)}>
-                              <AttachIcon className="w-5 h-5" />
+                    {newLessonAttachments.length > 0 && (
+                      <div className="space-y-3 mb-6">
+                        <label className="text-sm font-black text-slate-700 block">المرفقات المضافة</label>
+                        <div className="space-y-2">
+                          {newLessonAttachments.map((att, idx) => (
+                            <div key={`new-lesson-att-${att.name}-${idx}`} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center">
+                                  {att.type === 'link' ? <LinkIcon className="w-5 h-5 text-indigo-500" /> : 
+                                   att.type === 'image' ? <ImageIcon className="w-5 h-5 text-emerald-500" /> :
+                                   att.type === 'video' ? <Video className="w-5 h-5 text-red-500" /> :
+                                   att.type === 'audio' ? <Music className="w-5 h-5 text-purple-500" /> :
+                                   <FileText className="w-5 h-5 text-blue-500" />}
+                                </div>
+                                <span className="text-sm font-bold text-slate-700">{att.name}</span>
+                              </div>
+                              <button onClick={() => handleRemoveAttachment(idx)} className="p-2 text-slate-400 hover:text-red-500 transition-colors">
+                                <X className="w-5 h-5" />
+                              </button>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-black text-slate-900 truncate">{attachment.name || `مرفق ${idx + 1}`}</p>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase">{attachment.type}</p>
-                            </div>
-                            <Download className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition-colors" />
-                          </button>
-                        );
-                      })}
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <label className="text-sm font-black text-slate-700 block">إضافة مرفق جديد</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      {uploadOptions.map((type, idx) => (
+                        <button
+                          key={`upload-option-${type.id}-${idx}`}
+                          onClick={() => setNewLessonType(type.id)}
+                          className={cn(
+                            "flex flex-col items-center justify-center p-6 rounded-[24px] border-2 transition-all group bg-white hover:shadow-md",
+                            type.border, "hover:border-transparent"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-16 h-16 rounded-2xl flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-1 shadow-sm", 
+                            type.bg, type.color
+                          )}>
+                            <type.icon className="w-8 h-8" />
+                          </div>
+                          <span className="text-sm font-black text-slate-700">{type.label}</span>
+                        </button>
+                      ))}
                     </div>
                   </div>
-
-                  {/* Comments Section */}
-                  {viewingLesson.comments && viewingLesson.comments.length > 0 && (
-                    <div className="space-y-4">
-                      <h4 className="font-black text-slate-800 flex items-center gap-2">
-                        <div className="w-1.5 h-6 bg-amber-500 rounded-full" />
-                        التعليقات والملاحظات
-                      </h4>
-                      <div className="space-y-3">
-                        {viewingLesson.comments.map((comment, idx) => (
-                          <div key={comment.id || `comment-${idx}`} className="p-4 bg-amber-50/30 rounded-2xl border border-amber-100/50">
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-xs font-black text-amber-700">{comment.authorName}</span>
-                              <span className="text-[10px] font-bold text-slate-400">{new Date(comment.createdAt).toLocaleDateString('ar-OM')}</span>
-                            </div>
-                            <p className="text-xs font-bold text-slate-600">{comment.text}</p>
-                          </div>
-                        ))}
-                      </div>
+                ) : (
+                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2 p-6 bg-white rounded-2xl border border-slate-200">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-black text-slate-700">إضافة {uploadOptions.find(o => o.id === newLessonType)?.label}</label>
+                      <button 
+                        onClick={() => { setNewLessonType(null); setNewLessonUrl(''); }}
+                        className="text-xs font-bold text-blue-600 hover:underline"
+                      >
+                        إلغاء
+                      </button>
                     </div>
-                  )}
-                </div>
+                    
+                    {newLessonType === 'link' ? (
+                      <input 
+                        type="url" 
+                        value={newLessonUrl}
+                        onChange={e => setNewLessonUrl(e.target.value)}
+                        placeholder="أدخل رابط المورد التعليمي هنا..."
+                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-sm"
+                      />
+                    ) : newLessonType !== 'text' ? (
+                      <input 
+                        type="file" 
+                        onChange={handleFileSelect}
+                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-sm"
+                      />
+                    ) : null}
+
+                    <button 
+                      onClick={handleAddAttachment}
+                      disabled={!newLessonUrl}
+                      className="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      تأكيد إضافة المرفق
+                    </button>
+                  </div>
+                )}
+
+                <button 
+                  onClick={handleAddLesson}
+                  disabled={isSubmitting || !newLessonTitle || newLessonAttachments.length === 0}
+                  className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+                >
+                  {isSubmitting ? 'جاري النشر...' : 'نشر الدرس الآن'}
+                </button>
               </div>
 
-              <div className="p-8 border-t border-slate-100 bg-slate-50/50 flex justify-end">
-                <button 
-                  onClick={() => setViewingLesson(null)}
-                  className="px-8 py-3 bg-white text-slate-600 rounded-xl font-black text-sm border border-slate-200 hover:bg-slate-50 transition-all"
-                >
-                  إغلاق المعاينة
-                </button>
+              <div className="px-8 py-6 bg-blue-50/50 border-t border-blue-100 flex items-start gap-3">
+                <div className="mt-0.5 text-blue-500">
+                  <Bell className="w-5 h-5" />
+                </div>
+                <p className="text-xs text-blue-800 font-bold leading-relaxed">
+                  التزامن مع الإدارة: بمجرد الضغط على "نشر" لأي محتوى، سيتم إرسال نسخة تلقائياً إلى "الأرشيف الزمني" وسيصل إشعار للمشرف للمراجعة والاعتماد.
+                </p>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
-
-      {/* Preview Modal */}
-      <FilePreviewModal 
-        attachment={previewAttachment} 
-        onClose={() => setPreviewAttachment(null)} 
-      />
     </div>
   );
 };

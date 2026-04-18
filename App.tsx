@@ -8,7 +8,6 @@ import ChangePasswordForm from './components/ChangePasswordForm';
 import { db, handleFirestoreError, OperationType } from './src/firebase';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield } from 'lucide-react';
-import { Toaster } from 'react-hot-toast';
 import { 
   collection, 
   onSnapshot, 
@@ -58,7 +57,6 @@ const App: React.FC = () => {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false);
   const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
-  const [isPreviewMode, setIsPreviewMode] = useState(false);
 
   // Firebase Auth Listener
   useEffect(() => {
@@ -800,38 +798,6 @@ const App: React.FC = () => {
 
   // Full-page layout for Supervisor
   if (auth.user?.role === UserRole.SUPERVISOR || auth.user?.role === UserRole.TEMP_SUPERVISOR) {
-    if (isPreviewMode) {
-      return (
-        <TeacherDashboard 
-          user={auth.user} 
-          posts={posts}
-          projects={projects}
-          lessonMaterials={lessonMaterials}
-          messages={messages}
-          onSendMessage={handleSendMessage}
-          onMarkMessageAsRead={handleMarkMessageAsRead}
-          onAddMaterial={handleAddLessonMaterial}
-          onUpdateMaterial={handleUpdateLessonMaterial}
-          updateProjectSubmission={async (pid, sub) => {
-            try {
-              const project = projects.find(p => p.id === pid);
-              if (project) {
-                const updatedSubmissions = { ...project.submissions, [auth.user!.id]: sub };
-                await updateDoc(doc(db, 'projects', pid), { submissions: updatedSubmissions });
-              }
-            } catch (error) {
-              handleFirestoreError(error, OperationType.UPDATE, `projects/${pid}`);
-            }
-          }}
-          currentYear={currentAcademicYear}
-          semester={currentSemester}
-          notifications={notifications.filter(n => n.userId === auth.user?.id)}
-          onMarkAsRead={handleMarkNotificationAsRead}
-          onAddNotification={handleAddNotification}
-          onSwitchBackToSupervisorView={() => setIsPreviewMode(false)}
-        />
-      );
-    }
     return (
       <SupervisorDashboard 
         user={auth.user}
@@ -1038,7 +1004,6 @@ const App: React.FC = () => {
         supervisorConfig={supervisorConfig}
         academicYear={currentAcademicYear}
         semester={currentSemester}
-        onSwitchToTeacherView={() => setIsPreviewMode(true)}
       />
     );
   }
@@ -1114,14 +1079,12 @@ const App: React.FC = () => {
           semester={currentSemester}
           notifications={notifications.filter(n => n.userId === auth.user?.id)}
           onMarkAsRead={handleMarkNotificationAsRead}
-          onAddNotification={handleAddNotification}
         />
       </main>
 
       <footer className="py-8 text-center text-slate-400 text-[10px] font-bold border-t border-slate-100 mt-12 bg-white/50">
         جميع الحقوق محفوظة - {APP_TITLE} © {currentAcademicYear}
       </footer>
-      <Toaster position="top-center" />
     </div>
   );
 };

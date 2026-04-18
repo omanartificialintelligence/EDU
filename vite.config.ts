@@ -8,11 +8,7 @@ export default defineConfig(({ mode }) => {
     return {
       server: {
         port: 3000,
-        host: true,
-        hmr: { overlay: false },
-        watch: {
-          usePolling: true,
-        },
+        host: '0.0.0.0',
       },
       plugins: [react(), tailwindcss()],
       define: {

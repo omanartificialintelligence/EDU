@@ -1,4 +1,3 @@
-import toast from 'react-hot-toast';
 import React, { useState } from 'react';
 import { SupervisorConfig } from '../types';
 import { Save, Upload, Building2 } from 'lucide-react';
@@ -14,7 +13,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ supervisorConfig, onUpdateC
 
   const handleSave = () => {
     onUpdateConfig({ schoolName, appLogoUrl: logoUrl });
-    toast('تم حفظ الإعدادات بنجاح');
+    alert('تم حفظ الإعدادات بنجاح');
   };
 
   return (
