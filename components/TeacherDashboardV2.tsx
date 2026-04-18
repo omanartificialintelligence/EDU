@@ -371,6 +371,82 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
     }
   };
 
+  const handleUploadAttachmentToLesson = async (lesson: LessonMaterial, rawFile: File) => {
+    setIsSubmitting(true);
+    const file = await compressImage(rawFile);
+    const attachmentId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const storageRef = ref(storage, `lessons/${lesson.id}/${attachmentId}_${file.name}`);
+    
+    try {
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
+      
+      const snapshot = await new Promise<UploadTaskSnapshot>((resolve, reject) => {
+        uploadTask.on('state_changed',
+          (snap) => {
+            const progress = (snap.bytesTransferred / snap.totalBytes) * 100;
+            setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
+          },
+          (error) => reject(error),
+          () => {
+            setUploadProgress(prev => {
+              const next = { ...prev };
+              delete next[file.name];
+              return next;
+            });
+            resolve(uploadTask.snapshot);
+          }
+        );
+      });
+      
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      const newAttachment: Attachment = {
+        id: attachmentId,
+        name: file.name,
+        url: downloadURL,
+        type: file.type.startsWith('image/') ? 'image' : 
+              file.name.toLowerCase().endsWith('.pdf') ? 'file' : 
+              file.type.startsWith('video/') ? 'video' : 'file',
+        uploadedAt: new Date().toISOString()
+      };
+      
+      const updatedLesson: LessonMaterial = {
+        ...lesson,
+        attachments: [...(lesson.attachments || []), newAttachment],
+        hasNewAttachments: true
+      };
+      
+      await onUpdateMaterial(updatedLesson);
+      toast.success('تم رفع المرفق بنجاح');
+    } catch (error) {
+      console.error("Error uploading attachment:", error);
+      toast.error('فشل رفع المرفق');
+      setUploadProgress(prev => {
+        const next = { ...prev };
+        delete next[file.name];
+        return next;
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteAttachmentFromLesson = async (lesson: LessonMaterial, attachmentId: string) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذا المرفق؟')) return;
+    
+    try {
+      const updatedLesson: LessonMaterial = {
+        ...lesson,
+        attachments: (lesson.attachments || []).filter(a => a.id !== attachmentId)
+      };
+      await onUpdateMaterial(updatedLesson);
+      toast.success('تم حذف المرفق');
+    } catch (error) {
+      console.error("Error deleting attachment:", error);
+      toast.error('فشل حذف المرفق');
+    }
+  };
+
   const getFileIcon = (material: LessonMaterial) => {
     const typeTag = material.tags?.find(tag => ['ppt', 'video', 'link', 'image', 'doc', 'audio', 'text'].includes(tag || ''));
     const attachment = material.attachments[0];
@@ -1350,14 +1426,52 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
 
           {activeTab === 'lessons' && (
             <div className="space-y-6 animate-in fade-in duration-500">
-              <h2 className="text-2xl font-black text-slate-900">دروسي المرفوعة</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-black text-slate-900">دروسي المرفوعة</h2>
+                <div className="flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100">
+                  <BookOpen className="w-5 h-5 text-indigo-600" />
+                  <span className="text-sm font-black text-indigo-900">إجمالي الدروس: {lessonMaterials.filter(m => m.teacherId === user.id).length}</span>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {lessonMaterials.filter(m => m.teacherId === user.id).map((lesson, index) => {
                   const { icon: Icon, color, bg } = getAttachmentIcon({ name: lesson.lessonTitle, type: 'file' } as Attachment);
+                  
+                  // Component for individual lesson attachment upload
+                  const LessonFileUpload = () => {
+                    const inputRef = React.useRef<HTMLInputElement>(null);
+                    return (
+                      <div className="mt-2">
+                        <input
+                          type="file"
+                          ref={inputRef}
+                          className="hidden"
+                          multiple
+                          onChange={(e) => {
+                            if (e.target.files) {
+                              Array.from(e.target.files).forEach(file => {
+                                handleUploadAttachmentToLesson(lesson, file);
+                              });
+                            }
+                          }}
+                        />
+                        <button
+                          onClick={() => inputRef.current?.click()}
+                          disabled={isSubmitting}
+                          className="flex items-center justify-center gap-2 w-full py-2.5 px-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-500 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all font-bold text-xs"
+                        >
+                          <Plus className="w-4 h-4" />
+                          إضافة مرفق جديد
+                        </button>
+                      </div>
+                    );
+                  };
+
                   return (
-                    <div key={lesson.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+                    <div key={lesson.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col">
                       <div className="flex items-start justify-between mb-4">
-                        <div className={cn("p-3 rounded-xl", bg, color)}>
+                        <div className={cn("p-3 rounded-xl", lesson.attachments?.length > 0 ? "bg-indigo-600 text-white" : cn(bg, color))}>
                           <BookOpen className="w-6 h-6" />
                         </div>
                         <span className={cn("px-3 py-1 rounded-full text-[10px] font-black", 
@@ -1371,28 +1485,66 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                       <h3 className="font-black text-slate-900 mb-1">{lesson.lessonTitle}</h3>
                       <p className="text-xs text-slate-500 mb-4 line-clamp-2">{lesson.description}</p>
                       
-                      <div className="pt-4 border-t border-slate-100 mb-4">
-                        <h4 className="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-wider">المرفقات الحالية</h4>
-                        <div className="space-y-2 mb-3">
-                          {lesson.attachments.map((att, idx) => {
-                            const { icon: AttIcon, color: AttColor } = getAttachmentIcon(att);
-                            return (
-                              <div key={att.id || `lesson-view-att-${lesson.id}-${idx}`} className="flex items-center justify-between text-xs p-2 bg-slate-50 rounded-lg group hover:bg-slate-100 transition-colors">
-                                <button 
-                                  onClick={() => setPreviewAttachment(att)}
-                                  className="flex items-center gap-2 flex-1 text-right"
-                                >
-                                  <AttIcon className={cn("w-4 h-4", AttColor)} />
-                                  <span className="font-bold text-slate-700 truncate max-w-[150px]">{att.name}</span>
-                                </button>
-                              </div>
-                            );
-                          })}
+                      <div className="pt-4 border-t border-slate-100 flex-1">
+                        <h4 className="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-wider flex justify-between">
+                          المرفقات الحالية
+                          <span className="text-indigo-600 font-black">{lesson.attachments?.length || 0}</span>
+                        </h4>
+                        
+                        <div className="space-y-2 mb-4">
+                          {lesson.attachments && lesson.attachments.length > 0 ? (
+                            lesson.attachments.map((att, idx) => {
+                              const { icon: AttIcon, color: AttColor } = getAttachmentIcon(att);
+                              return (
+                                <div key={att.id || `lesson-view-att-${lesson.id}-${idx}`} className="flex items-center justify-between text-xs p-2.5 bg-slate-50 rounded-xl group hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200">
+                                  <button 
+                                    onClick={() => setPreviewAttachment(att)}
+                                    className="flex items-center gap-2 flex-1 text-right"
+                                  >
+                                    <div className={cn("p-1.5 rounded-lg bg-white shadow-sm")}>
+                                      <AttIcon className={cn("w-3.5 h-3.5", AttColor)} />
+                                    </div>
+                                    <span className="font-bold text-slate-700 truncate max-w-[120px]">{att.name}</span>
+                                  </button>
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteAttachmentFromLesson(lesson, att.id);
+                                    }}
+                                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                    title="حذف المرفق"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <div className="text-center py-4 text-slate-400 text-[10px] font-bold">لا توجد مرفقات حالياً</div>
+                          )}
+
+                          {/* Upload Progress bars */}
+                          {Object.entries(uploadProgress).map(([fileName, progress]) => (
+                             <div key={fileName} className="p-2 bg-indigo-50 rounded-lg border border-indigo-100">
+                               <div className="flex justify-between text-[10px] font-bold text-indigo-700 mb-1">
+                                 <span className="truncate max-w-[150px]">{fileName}</span>
+                                 <span>{Math.round(progress)}%</span>
+                               </div>
+                               <div className="w-full bg-indigo-200 rounded-full h-1">
+                                 <div 
+                                   className="bg-indigo-600 h-1 rounded-full transition-all duration-300" 
+                                   style={{ width: `${progress}%` }}
+                                 />
+                               </div>
+                             </div>
+                          ))}
                         </div>
+
+                        <LessonFileUpload />
                       </div>
 
-                      <div className="flex gap-2">
-                        <button onClick={() => setViewingLesson(lesson)} className="flex-1 text-xs font-bold py-2 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors">
+                      <div className="mt-4 flex gap-2">
+                        <button onClick={() => setViewingLesson(lesson)} className="flex-1 text-xs font-black py-2.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-sm">
                           عرض التعليقات
                         </button>
                       </div>

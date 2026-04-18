@@ -1954,6 +1954,28 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           </div>
                         </div>
                       </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setAttachmentGrade(activeGradeTab);
+                            setAttachmentSubject(viewingSubject || AVAILABLE_SUBJECTS[0]);
+                            setIsAddAttachmentModalOpen(true);
+                          }}
+                          className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all font-black text-sm shadow-lg shadow-indigo-100"
+                        >
+                          <Plus className="w-5 h-5" />
+                          إضافة مرفق
+                        </button>
+                        <button 
+                          onClick={handleDownloadAllAttachments}
+                          disabled={isZipping}
+                          className="p-3 bg-slate-100 text-slate-600 rounded-2xl hover:bg-indigo-50 hover:text-indigo-600 transition-all"
+                          title="تحميل الكل"
+                        >
+                          <Download className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1974,8 +1996,13 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             <div key={material.id} className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all flex flex-col">
                               <div className="p-6 flex-1">
                                 <div className="flex justify-between items-start mb-4">
-                                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border relative", fileInfo.bg, fileInfo.color, "border-slate-50")}>
-                                    <Icon className="w-6 h-6" />
+                                  <div className={cn(
+                                    "w-12 h-12 rounded-2xl flex items-center justify-center border relative transition-all duration-500", 
+                                    material.attachments?.length > 0 
+                                      ? "bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-200 scale-110" 
+                                      : cn(fileInfo.bg, fileInfo.color, "border-slate-50")
+                                  )}>
+                                    <Icon className={cn("w-6 h-6", material.attachments?.length > 0 ? "text-white" : "")} />
                                     {material.isModelLesson && (
                                       <div className="absolute -top-2 -right-2 w-5 h-5 bg-amber-100 rounded-full flex items-center justify-center border border-amber-200 shadow-sm">
                                         <Award className="w-3 h-3 text-amber-600" />
@@ -1987,7 +2014,12 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   </div>
                                   <div className="flex gap-1">
                                     <button 
-                                      onClick={() => setViewingLesson(material)}
+                                      onClick={() => {
+                                        setViewingLesson(material);
+                                        if (material.hasNewAttachments) {
+                                          onUpdateLessonMaterial({ ...material, hasNewAttachments: false });
+                                        }
+                                      }}
                                       className="p-2 hover:bg-indigo-50 text-indigo-600 rounded-xl transition-colors"
                                       title="معاينة"
                                     >
@@ -4055,6 +4087,209 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isAddAttachmentModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[250] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
+            >
+              <div className="p-8 border-b border-slate-100 flex justify-between items-center">
+                <h3 className="text-xl font-black text-slate-900">إضافة مرفقات للدروس</h3>
+                <button 
+                  onClick={() => setIsAddAttachmentModalOpen(false)} 
+                  className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="p-8 space-y-6 overflow-y-auto max-h-[70vh]">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-600 mr-2">اختيار المعلمة</label>
+                    <select 
+                      value={attachmentTeacherId}
+                      onChange={(e) => {
+                        setAttachmentTeacherId(e.target.value);
+                        setAttachmentLessonId('new');
+                      }}
+                      className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 font-bold text-sm outline-none transition-all"
+                    >
+                      <option value="">اختر المعلمة...</option>
+                      {teachers.filter(t => t.isActive && t.role === UserRole.TEACHER).map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {attachmentTeacherId && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-slate-600 mr-2">اختيار الدرس</label>
+                      <select 
+                        value={attachmentLessonId}
+                        onChange={(e) => setAttachmentLessonId(e.target.value)}
+                        className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 font-bold text-sm outline-none transition-all"
+                      >
+                        <option value="new">درس جديد (إنشاء وثيقة جديدة)</option>
+                        {lessonMaterials
+                          .filter(l => l.teacherId === attachmentTeacherId && !l.isArchived)
+                          .map(l => (
+                            <option key={l.id} value={l.id}>{l.lessonTitle}</option>
+                          ))
+                        }
+                      </select>
+                    </div>
+                  )}
+
+                  {attachmentLessonId === 'new' && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-slate-600 mr-2">عنوان الدرس/المرفق</label>
+                      <input 
+                        type="text"
+                        value={attachmentNewLessonTitle}
+                        onChange={(e) => setAttachmentNewLessonTitle(e.target.value)}
+                        placeholder="مثلاً: الخطة الأسبوعية - الفصل الأول"
+                        className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 font-bold text-sm outline-none transition-all"
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-600 mr-2">رفع الملفات</label>
+                    <div className="relative">
+                      <input 
+                        type="file"
+                        multiple
+                        className="hidden"
+                        id="supervisor-lesson-file"
+                        onChange={async (e) => {
+                          if (e.target.files) {
+                            setIsSubmitting(true);
+                            const files = Array.from(e.target.files);
+                            const newAttachments: Attachment[] = [];
+
+                            for (const file of files) {
+                              try {
+                                const optFile = await compressImage(file);
+                                const attId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                                const storageRef = ref(storage, `lessons/supervisor/${attId}_${optFile.name}`);
+                                const uploadTask = uploadBytesResumable(storageRef, optFile);
+                                
+                                setUploadProgress(prev => ({ ...prev, [optFile.name]: 0 }));
+                                
+                                await new Promise<void>((resolve, reject) => {
+                                  uploadTask.on('state_changed',
+                                    (snap) => {
+                                      const progress = (snap.bytesTransferred / snap.totalBytes) * 100;
+                                      setUploadProgress(prev => ({ ...prev, [optFile.name]: progress }));
+                                    },
+                                    (error) => reject(error),
+                                    () => resolve()
+                                  );
+                                });
+
+                                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                                newAttachments.push({
+                                  id: attId,
+                                  name: optFile.name,
+                                  url: downloadURL,
+                                  type: optFile.type.startsWith('image/') ? 'image' : 
+                                        optFile.name.toLowerCase().endsWith('.pdf') ? 'file' : 
+                                        optFile.type.startsWith('video/') ? 'video' : 'file',
+                                  uploadedAt: new Date().toISOString()
+                                });
+                                setUploadProgress(prev => {
+                                  const next = { ...prev };
+                                  delete next[optFile.name];
+                                  return next;
+                                });
+                              } catch (err) {
+                                console.error(err);
+                                toast.error(`فشل رفع ${file.name}`);
+                              }
+                            }
+                            setAttachmentFiles(prev => [...prev, ...newAttachments]);
+                            setIsSubmitting(false);
+                          }
+                        }}
+                      />
+                      <label 
+                        htmlFor="supervisor-lesson-file"
+                        className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-slate-200 rounded-2xl hover:border-indigo-500 hover:bg-indigo-50 transition-all cursor-pointer"
+                      >
+                        <Plus className="w-8 h-8 text-slate-300 mb-2" />
+                        <span className="text-xs font-bold text-slate-500">اضغطي هنا لاختيار الملفات</span>
+                        <span className="text-[10px] text-slate-400 mt-1">يدعم الصور، PDF، ملفات الأوفيس</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {attachmentFiles.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">المرفقات المختارة</h4>
+                      {attachmentFiles.map((file, idx) => (
+                        <div key={file.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                           <div className="flex items-center gap-2">
+                             <FileIcon className="w-4 h-4 text-indigo-500" />
+                             <span className="text-xs font-bold text-slate-700 truncate max-w-[200px]">{file.name}</span>
+                           </div>
+                           <button 
+                             onClick={() => setAttachmentFiles(prev => prev.filter((_, i) => i !== idx))}
+                             className="text-slate-300 hover:text-red-500 transition-colors"
+                           >
+                             <Trash2 className="w-4 h-4" />
+                           </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {Object.entries(uploadProgress).map(([fileName, progress]) => (
+                    <div key={fileName} className="p-3 bg-indigo-50 rounded-xl">
+                      <div className="flex justify-between text-[10px] font-bold text-indigo-700 mb-2">
+                        <span className="truncate max-w-[200px]">{fileName}</span>
+                        <span>{Math.round(progress)}%</span>
+                      </div>
+                      <div className="w-full bg-indigo-200 rounded-full h-1.5">
+                        <div 
+                          className="bg-indigo-600 h-1.5 rounded-full transition-all duration-300" 
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-8 border-t border-slate-100 flex gap-4">
+                <button 
+                  onClick={handleAddAttachment}
+                  disabled={isSubmitting || attachmentFiles.length === 0}
+                  className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black text-base shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all disabled:opacity-50"
+                >
+                  {isSubmitting ? 'جاري الرفع...' : 'تأكيد الإضافة'}
+                </button>
+                <button 
+                  onClick={() => setIsAddAttachmentModalOpen(false)}
+                  className="flex-1 py-4 bg-white text-slate-600 rounded-2xl font-black text-base border border-slate-200 hover:bg-slate-50 transition-all"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
