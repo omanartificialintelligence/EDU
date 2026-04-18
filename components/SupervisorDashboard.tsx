@@ -214,30 +214,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [lessonStatusFilter, setLessonStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [onlyModelLessons, setOnlyModelLessons] = useState(false);
 
-  // Add Attachment State
-  const [isAddAttachmentModalOpen, setIsAddAttachmentModalOpen] = useState(false);
-  const [attachmentGrade, setAttachmentGrade] = useState(AVAILABLE_GRADES[0]);
-  const [attachmentSubject, setAttachmentSubject] = useState(AVAILABLE_SUBJECTS[0]);
-  const [attachmentSemester, setAttachmentSemester] = useState(semester);
-  const [attachmentLessonId, setAttachmentLessonId] = useState<string>('new');
-  const [attachmentNewLessonTitle, setAttachmentNewLessonTitle] = useState('');
-  const [attachmentFiles, setAttachmentFiles] = useState<Attachment[]>([]);
-  const [attachmentTeacherId, setAttachmentTeacherId] = useState('');
-  const [isZipping, setIsZipping] = useState(false);
-
   // Sync attachment form with current view
-  useEffect(() => {
-    setAttachmentSemester(semester);
-  }, [semester]);
-
-  useEffect(() => {
-    if (isAddAttachmentModalOpen) {
-      if (activeGradeTab) setAttachmentGrade(activeGradeTab);
-      if (viewingSubject) setAttachmentSubject(viewingSubject);
-    }
-  }, [isAddAttachmentModalOpen, activeGradeTab, viewingSubject]);
-
-
+  const [isZipping, setIsZipping] = useState(false);
 
   const handleDownloadAllAttachments = async () => {
     setIsZipping(true);
@@ -499,8 +477,16 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   useEffect(() => {
     if (viewingLesson) {
       setCurrentSupervisorNotes(viewingLesson.supervisorNotes || '');
+      
+      // Mark new attachments as seen if there are any
+      if (viewingLesson.hasNewAttachments) {
+        onUpdateLessonMaterial({
+          ...viewingLesson,
+          hasNewAttachments: false
+        });
+      }
     }
-  }, [viewingLesson]);
+  }, [viewingLesson, onUpdateLessonMaterial]);
 
   const [dashboardWidgets, setDashboardWidgets] = useState<string[]>(['stats', 'charts', 'quickActions', 'recentActivity']);
   const [isCustomizingDashboard, setIsCustomizingDashboard] = useState(false);
@@ -1344,8 +1330,11 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               {lessonMaterials.slice(0, 5).map((lesson, idx) => (
                                 <div key={lesson.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                                   <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-indigo-600 shadow-sm">
+                                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-indigo-600 shadow-sm relative">
                                       <BookOpen className="w-5 h-5" />
+                                      {lesson.hasNewAttachments && (
+                                        <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full border border-white animate-pulse" />
+                                      )}
                                     </div>
                                     <div>
                                       <p className="text-sm font-black text-slate-900">{lesson.lessonTitle}</p>
@@ -1779,13 +1768,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   </div>
                   <div className="flex gap-3">
                     <button 
-                      onClick={() => setIsAddAttachmentModalOpen(true)}
-                      className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-black text-xs flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"
-                    >
-                      <Plus className="w-4 h-4" />
-                      إضافة مرفق
-                    </button>
-                    <button 
                       onClick={() => exportLessonsCSV(lessonMaterials)}
                       className="px-6 py-3 rounded-xl bg-indigo-50 text-indigo-600 font-black text-xs flex items-center gap-2 hover:bg-indigo-100 transition-all"
                     >
@@ -1989,6 +1971,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                         <Award className="w-3 h-3 text-amber-600" />
                                       </div>
                                     )}
+                                    {material.hasNewAttachments && (
+                                      <div className="absolute -top-1 -left-1 w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-white shadow-sm ring-2 ring-blue-500/20 animate-pulse" title="مرفقات جديدة" />
+                                    )}
                                   </div>
                                   <div className="flex gap-1">
                                     <button 
@@ -2158,107 +2143,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               </motion.div>
             )}
 
-            {/* Add Attachment Modal */}
-            <AnimatePresence>
-              {isAddAttachmentModalOpen && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4"
-                  onClick={() => setIsAddAttachmentModalOpen(false)}
-                >
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    onClick={e => e.stopPropagation()}
-                    className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden"
-                  >
-                    <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center">
-                          <Plus className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-black text-slate-900">إضافة مرفق جديد</h3>
-                          <p className="text-slate-500 font-bold text-xs">أضيفي ملفات ومرفقات للدروس</p>
-                        </div>
-                      </div>
-                      <button onClick={() => setIsAddAttachmentModalOpen(false)} className="p-2 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors text-slate-400">
-                        <X className="w-6 h-6" />
-                      </button>
-                    </div>
-
-                    <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
-                      <div className="space-y-2">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">المعلمة</label>
-                        <select 
-                          value={attachmentTeacherId}
-                          onChange={e => setAttachmentTeacherId(e.target.value)}
-                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
-                        >
-                          <option value="">اختر المعلمة...</option>
-                          {[user, ...filteredTeachers.filter(t => t.id !== user.id)].map((t, idx) => (
-                            <option key={t.id} value={t.id}>{t.name}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">الصف الدراسي</label>
-                          <select 
-                            value={attachmentGrade}
-                            onChange={e => setAttachmentGrade(e.target.value)}
-                            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
-                          >
-                            {AVAILABLE_GRADES.map((g) => <option key={`grade-select-2-${g}`} value={g}>{g}</option>)}
-                          </select>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">المادة</label>
-                          <select 
-                            value={attachmentSubject}
-                            onChange={e => setAttachmentSubject(e.target.value)}
-                            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
-                          >
-                            {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-2-${s}`} value={s}>{s}</option>)}
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">الفصل الدراسي</label>
-                        <select 
-                          value={attachmentSemester}
-                          onChange={e => setAttachmentSemester(e.target.value)}
-                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
-                        >
-                          <option value="الفصل الدراسي الأول">الفصل الدراسي الأول</option>
-                          <option value="الفصل الدراسي الثاني">الفصل الدراسي الثاني</option>
-                          <option value="الفصل الأول">الفصل الأول</option>
-                          <option value="الفصل الثاني">الفصل الثاني</option>
-                        </select>
-                      </div>
-
-                      {/* Target Lesson Selection Removed - Always New Attachment */}
-                      
-                      <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">عنوان المرفق</label>
-                        <input 
-                          type="text" 
-                          value={attachmentNewLessonTitle}
-                          onChange={e => setAttachmentNewLessonTitle(e.target.value)}
-                          placeholder="مثال: أوراق عمل الوحدة الأولى"
-                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
-                        />
-                      </div>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
             {activeTab === 'feed' && (
               <motion.div 

@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
 import FilePreviewModal from './FilePreviewModal';
+import { LessonAttachmentUploader } from './LessonAttachmentUploader';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { storage } from '../src/firebase';
@@ -258,28 +259,6 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
     setIsUploadModalOpen(true);
   };
 
-  const handleAddAttachment = () => {
-    if (newLessonType !== 'text' && !newLessonUrl) return;
-    
-    if (newLessonType !== 'text') {
-      setNewLessonAttachments(prev => [...prev, {
-        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        type: newLessonType === 'link' ? 'link' : (newLessonType === 'image' ? 'image' : (newLessonType === 'video' ? 'video' : (newLessonType === 'audio' ? 'audio' : 'file'))),
-        url: newLessonUrl,
-        name: newLessonFileName || newLessonTitle || `مرفق ${prev.length + 1}`
-      }]);
-    }
-    
-    setNewLessonType(null);
-    setNewLessonUrl('');
-    setNewLessonFileName('');
-    setUploadError(null);
-    
-    // Clear file input if it exists
-    const fileInput = document.getElementById('lesson-file-upload') as HTMLInputElement;
-    if (fileInput) fileInput.value = '';
-  };
-
   const handleRemoveAttachment = (index: number) => {
     setNewLessonAttachments(prev => prev.filter((_, i) => i !== index));
   };
@@ -306,7 +285,8 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
         attachments: newLessonAttachments,
         grade: selectedGrade,
         subject: selectedSubject,
-        tags: [selectedSubject, selectedGrade]
+        tags: [selectedSubject, selectedGrade],
+        hasNewAttachments: true // Flag for supervisor
       };
         await onUpdateMaterial(updatedMaterial);
         toast('تم تحديث الدرس بنجاح.');
@@ -327,7 +307,8 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
         status: 'pending',
         isActive: true,
         isModelLesson: false,
-        tags: [selectedSubject, selectedGrade]
+        tags: [selectedSubject, selectedGrade],
+        hasNewAttachments: true // Flag for supervisor
       };
         await onAddMaterial(newMaterial);
         toast('تمت إضافة الدرس بنجاح وسيتم مراجعته من قبل المشرفة.');
@@ -1390,23 +1371,24 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                       <h3 className="font-black text-slate-900 mb-1">{lesson.lessonTitle}</h3>
                       <p className="text-xs text-slate-500 mb-4 line-clamp-2">{lesson.description}</p>
                       
-                      <div className="space-y-2 mb-4">
-                        {lesson.attachments.map((att, idx) => {
-                          const { icon: AttIcon, color: AttColor } = getAttachmentIcon(att);
-                          return (
-                            <button 
-                              key={att.id || `lesson-view-att-${lesson.id}-${idx}`} 
-                              onClick={() => setPreviewAttachment(att)}
-                              className="w-full flex items-center justify-between text-xs p-2 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
-                            >
-                              <div className="flex items-center gap-2">
-                                <AttIcon className={cn("w-4 h-4", AttColor)} />
-                                <span className="font-bold text-slate-700">{att.name}</span>
+                      <div className="pt-4 border-t border-slate-100 mb-4">
+                        <h4 className="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-wider">المرفقات الحالية</h4>
+                        <div className="space-y-2 mb-3">
+                          {lesson.attachments.map((att, idx) => {
+                            const { icon: AttIcon, color: AttColor } = getAttachmentIcon(att);
+                            return (
+                              <div key={att.id || `lesson-view-att-${lesson.id}-${idx}`} className="flex items-center justify-between text-xs p-2 bg-slate-50 rounded-lg group hover:bg-slate-100 transition-colors">
+                                <button 
+                                  onClick={() => setPreviewAttachment(att)}
+                                  className="flex items-center gap-2 flex-1 text-right"
+                                >
+                                  <AttIcon className={cn("w-4 h-4", AttColor)} />
+                                  <span className="font-bold text-slate-700 truncate max-w-[150px]">{att.name}</span>
+                                </button>
                               </div>
-                              <Eye className="w-4 h-4 text-slate-400" />
-                            </button>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
                       </div>
 
                       <div className="flex gap-2">
@@ -1585,191 +1567,6 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
         </div>
       </main>
 
-      {/* Multimedia Upload Hub Modal */}
-      <AnimatePresence>
-        {isUploadModalOpen && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              className="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden border border-slate-100"
-            >
-              <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-900">{editingLesson ? 'تعديل المحتوى' : 'مركز إضافة المحتوى'}</h3>
-                  <p className="text-sm text-slate-500 font-bold mt-1">
-                    {selectedSubject} - {selectedGrade}
-                  </p>
-                </div>
-                <button 
-                  onClick={() => {
-                    setIsUploadModalOpen(false);
-                    setEditingLesson(null);
-                    setNewLessonTitle('');
-                    setNewLessonAttachments([]);
-                  }} 
-                  className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400 hover:text-slate-600"
-                >
-                  <XCircle className="w-7 h-7" />
-                </button>
-              </div>
-
-              <div className="p-8 bg-slate-50/50 space-y-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-black text-slate-700 block">عنوان الدرس</label>
-                  <input 
-                    type="text" 
-                    value={newLessonTitle}
-                    onChange={e => setNewLessonTitle(e.target.value)}
-                    placeholder="مثال: درس المدود في اللغة العربية"
-                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-sm"
-                  />
-                </div>
-
-                {!newLessonType ? (
-                  <div className="space-y-4">
-                    {newLessonAttachments.length > 0 && (
-                      <div className="space-y-3 mb-6">
-                        <label className="text-sm font-black text-slate-700 block">المرفقات المضافة</label>
-                        <div className="space-y-2">
-                          {newLessonAttachments.map((att, idx) => (
-                            <div key={att.id || `teacher-new-lesson-att-${idx}-${att.name || ''}`} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center">
-                                  {att.type === 'link' ? <LinkIcon className="w-5 h-5 text-indigo-500" /> : 
-                                   att.type === 'image' ? <ImageIcon className="w-5 h-5 text-emerald-500" /> :
-                                   att.type === 'video' ? <Video className="w-5 h-5 text-red-500" /> :
-                                   att.type === 'audio' ? <Music className="w-5 h-5 text-purple-500" /> :
-                                   <FileText className="w-5 h-5 text-blue-500" />}
-                                </div>
-                                <span className="text-sm font-bold text-slate-700">{att.name}</span>
-                              </div>
-                              <button onClick={() => handleRemoveAttachment(idx)} className="p-2 text-slate-400 hover:text-red-500 transition-colors">
-                                <X className="w-5 h-5" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <label className="text-sm font-black text-slate-700 block">إضافة مرفق جديد</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                      {uploadOptions.map((type, idx) => (
-                        <button
-                          key={`upload-option-${type.id}`}
-                          onClick={() => setNewLessonType(type.id)}
-                          className={cn(
-                            "flex flex-col items-center justify-center p-6 rounded-[24px] border-2 transition-all group bg-white hover:shadow-md",
-                            type.border, "hover:border-transparent"
-                          )}
-                        >
-                          <div className={cn(
-                            "w-16 h-16 rounded-2xl flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-1 shadow-sm", 
-                            type.bg, type.color
-                          )}>
-                            <type.icon className="w-8 h-8" />
-                          </div>
-                          <span className="text-sm font-black text-slate-700">{type.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2 p-6 bg-white rounded-2xl border border-slate-200">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-black text-slate-700">إضافة {uploadOptions.find(o => o.id === newLessonType)?.label}</label>
-                      <button 
-                        onClick={() => { setNewLessonType(null); setNewLessonUrl(''); }}
-                        className="text-xs font-bold text-blue-600 hover:underline"
-                      >
-                        إلغاء
-                      </button>
-                    </div>
-                    
-                    {newLessonType === 'link' ? (
-                      <div className="space-y-3">
-                        <input 
-                          type="text" 
-                          value={newLessonFileName}
-                          onChange={e => setNewLessonFileName(e.target.value)}
-                          placeholder="اسم الرابط (مثال: فيديو شرح الدرس)"
-                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-sm"
-                        />
-                        <input 
-                          type="url" 
-                          value={newLessonUrl}
-                          onChange={e => setNewLessonUrl(e.target.value)}
-                          placeholder="أدخل رابط المورد التعليمي هنا..."
-                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-sm"
-                        />
-                      </div>
-                    ) : newLessonType !== 'text' ? (
-                      <div className="space-y-3">
-                        <input 
-                          type="text" 
-                          value={newLessonFileName}
-                          onChange={e => setNewLessonFileName(e.target.value)}
-                          placeholder="اسم الملف (اختياري)"
-                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-sm"
-                        />
-                        <input 
-                          type="file" 
-                          id="lesson-file-upload"
-                          onChange={handleFileSelect}
-                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-bold text-sm"
-                        />
-                      </div>
-                    ) : null}
-
-                    {uploadError && (
-                      <p className="text-[10px] font-bold text-red-500 bg-red-50 p-2 rounded-lg border border-red-100">{uploadError}</p>
-                    )}
-
-                    <button 
-                      onClick={handleAddAttachment}
-                      disabled={!newLessonUrl || isUploading}
-                      className={cn(
-                        "w-full py-3.5 rounded-xl font-black transition-all flex items-center justify-center gap-2",
-                        !newLessonUrl || isUploading
-                          ? "bg-slate-100 text-slate-400"
-                          : "bg-blue-600 text-white shadow-lg shadow-blue-100 hover:bg-blue-700"
-                      )}
-                    >
-                      {isUploading ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          <span>جاري الرفع...</span>
-                        </>
-                      ) : (
-                        'تأكيد إضافة المرفق'
-                      )}
-                    </button>
-                  </div>
-                )}
-
-                <button 
-                  onClick={handleAddLesson}
-                  disabled={isSubmitting || !newLessonTitle || newLessonAttachments.length === 0}
-                  className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4"
-                >
-                  {isSubmitting ? 'جاري النشر...' : 'نشر الدرس الآن'}
-                </button>
-              </div>
-
-              <div className="px-8 py-6 bg-blue-50/50 border-t border-blue-100 flex items-start gap-3">
-                <div className="mt-0.5 text-blue-500">
-                  <Bell className="w-5 h-5" />
-                </div>
-                <p className="text-xs text-blue-800 font-bold leading-relaxed">
-                  التزامن مع الإدارة: بمجرد الضغط على "نشر" لأي محتوى، سيتم إرسال نسخة تلقائياً إلى "الأرشيف الزمني" وسيصل إشعار للمشرف للمراجعة والاعتماد.
-                </p>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* Post Preview Modal */}
       <AnimatePresence>

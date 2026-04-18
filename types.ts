@@ -83,6 +83,7 @@ export interface LessonMaterial {
   supervisorNotes?: string;
   teacherNotes?: string; // ملاحظات المعلمة للمشرفة
   isStarred?: boolean;
+  hasNewAttachments?: boolean; // مؤشر للمشرفة بوجود مرفقات جديدة
   publishDate?: string; // ISO date string for scheduling
   tags?: string[];
   voiceNoteUrl?: string;
@@ -115,6 +116,7 @@ export interface Attachment {
   name: string;
   isFeatured?: boolean;
   comment?: string; // Optional comment for the attachment
+  uploadedAt?: string; // تاريخ الرفع
 }
 
 export interface Post {
