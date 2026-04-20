@@ -742,6 +742,30 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     alert('تم حفظ الملاحظات بنجاح');
   };
 
+  const handleUpdateLessonStatus = async (status: 'approved' | 'rejected' | 'pending') => {
+    if (!viewingLesson) return;
+    const updatedLesson = {
+      ...viewingLesson,
+      status
+    };
+    await onUpdateLessonMaterial(updatedLesson);
+    setViewingLesson(updatedLesson);
+
+    if (viewingLesson.teacherId !== user.id) {
+      const statusText = status === 'approved' ? 'قبول' : status === 'rejected' ? 'رفض' : 'تعليق';
+      onAddNotification({
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        userId: viewingLesson.teacherId,
+        message: `قامت المشرفة بتغيير حالة درسك "${viewingLesson.lessonTitle}" إلى: ${statusText}`,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        type: 'system',
+      });
+    }
+
+    alert(`تم تحديث حالة الدرس بنجاح (${status})`);
+  };
+
   const handleAddLesson = async () => {
     if (!newLessonTitle || !newLessonDescription) {
       alert('يرجى إكمال جميع الحقول');
@@ -1080,7 +1104,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-black truncate text-slate-200">{user.name}</p>
-              <p className="text-[10px] text-indigo-400 font-bold truncate">{user.role === UserRole.SUPERVISOR ? 'مشرفة رئيسية' : 'مشرفة مؤقتة'}</p>
+              <p className="text-[10px] text-indigo-400 font-bold truncate">{user.role === UserRole.SUPERVISOR ? 'مشرفة رئيسية' : 'مشرفة'}</p>
             </div>
           </div>
           <motion.button 
@@ -1202,7 +1226,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
 
         <main className="p-4 sm:p-8 space-y-6 sm:space-y-8 overflow-y-auto">
           <AnimatePresence mode="wait">
-            {activeTab === 'overview' && (
+            {activeTab === 'overview' ? (
               <motion.div 
                 key="overview"
                 initial={{ opacity: 0, y: 20 }}
@@ -1297,7 +1321,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                 <option>آخر 30 يوم</option>
                               </select>
                             </div>
-                            <div className="h-[300px] w-full">
+                            <div className="h-[300px] w-full" style={{ minWidth: 0 }}>
                               <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={statsData}>
                                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -1415,9 +1439,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   </div>
                 )}
               </motion.div>
-            )}
-
-            {activeTab === 'teachers' && (
+            ) : activeTab === 'teachers' ? (
               <motion.div 
                 key="teachers"
                 initial={{ opacity: 0, x: 20 }}
@@ -1802,11 +1824,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 </div>
                 </div>
               </motion.div>
-            )}
-
-
-
-            {activeTab === 'lessons' && (
+            ) : activeTab === 'lessons' ? (
               <motion.div 
                 key="lessons"
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -1984,37 +2002,49 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                       </div>
                                     )}
                                   </div>
-                                  <div className="flex gap-1">
-                                    <button 
-                                      onClick={() => setViewingLesson(material)}
-                                      className="p-2 hover:bg-indigo-50 text-indigo-600 rounded-xl transition-colors"
-                                      title="معاينة"
-                                    >
-                                      <Eye className="w-4 h-4" />
-                                    </button>
-                                    <button 
-                                      onClick={() => setEditingLesson(material)}
-                                      className="p-2 hover:bg-blue-50 text-blue-600 rounded-xl transition-colors"
-                                      title="تعديل"
-                                    >
-                                      <Edit className="w-4 h-4" />
-                                    </button>
-                                    {isMainSupervisor && (
+                                  <div className="flex gap-1 flex-col items-end">
+                                    <div className="flex gap-1">
                                       <button 
-                                        onClick={() => {
-                                            onUpdateLessonMaterial({
-                                                ...material,
-                                                isArchived: true,
-                                                isActive: false
-                                            });
-                                            alert('تم نقل الملف إلى الأرشيف');
-                                        }}
-                                        className="p-2 hover:bg-amber-50 text-amber-600 rounded-xl transition-colors"
-                                        title="أرشفة"
+                                        onClick={() => setViewingLesson(material)}
+                                        className="p-2 hover:bg-indigo-50 text-indigo-600 rounded-xl transition-colors"
+                                        title="معاينة"
                                       >
-                                        <Archive className="w-4 h-4" />
+                                        <Eye className="w-4 h-4" />
                                       </button>
-                                    )}
+                                      <button 
+                                        onClick={() => setEditingLesson(material)}
+                                        className="p-2 hover:bg-blue-50 text-blue-600 rounded-xl transition-colors"
+                                        title="تعديل"
+                                      >
+                                        <Edit className="w-4 h-4" />
+                                      </button>
+                                      {isMainSupervisor && (
+                                        <button 
+                                          onClick={() => {
+                                              onUpdateLessonMaterial({
+                                                  ...material,
+                                                  isArchived: true,
+                                                  isActive: false
+                                              });
+                                              alert('تم نقل الملف إلى الأرشيف');
+                                          }}
+                                          className="p-2 hover:bg-amber-50 text-amber-600 rounded-xl transition-colors"
+                                          title="أرشفة"
+                                        >
+                                          <Archive className="w-4 h-4" />
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div className={cn(
+                                        "px-2 py-1 rounded-lg text-[9px] font-black uppercase mt-1",
+                                        material.status === 'approved' ? "bg-emerald-100 text-emerald-700" :
+                                        material.status === 'rejected' ? "bg-rose-100 text-rose-700" :
+                                        "bg-amber-100 text-amber-700"
+                                    )}>
+                                        {material.status === 'approved' ? 'معتمد' :
+                                         material.status === 'rejected' ? 'مرفوض' : 
+                                         'قيد المراجعة'}
+                                    </div>
                                   </div>
                                 </div>
 
@@ -2156,194 +2186,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   </div>
                 )}
               </motion.div>
-            )}
-
-            {/* Add Attachment Modal */}
-            <AnimatePresence>
-              {isAddAttachmentModalOpen && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4"
-                  onClick={() => setIsAddAttachmentModalOpen(false)}
-                >
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    onClick={e => e.stopPropagation()}
-                    className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden"
-                  >
-                    <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center">
-                          <Plus className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-black text-slate-900">إضافة مرفق جديد</h3>
-                          <p className="text-slate-500 font-bold text-xs">أضيفي ملفات ومرفقات للدروس</p>
-                        </div>
-                      </div>
-                      <button onClick={() => setIsAddAttachmentModalOpen(false)} className="p-2 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors text-slate-400">
-                        <X className="w-6 h-6" />
-                      </button>
-                    </div>
-
-                    <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
-                      <div className="space-y-2">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">المعلمة</label>
-                        <select 
-                          value={attachmentTeacherId}
-                          onChange={e => setAttachmentTeacherId(e.target.value)}
-                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
-                        >
-                          <option value="">اختر المعلمة...</option>
-                          {[user, ...filteredTeachers.filter(t => t.id !== user.id)].map((t, idx) => (
-                            <option key={`teacher-option-${t.id}-${idx}`} value={t.id}>{t.name}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">الصف الدراسي</label>
-                          <select 
-                            value={attachmentGrade}
-                            onChange={e => setAttachmentGrade(e.target.value)}
-                            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
-                          >
-                            {AVAILABLE_GRADES.map((g) => <option key={`grade-select-2-${g}`} value={g}>{g}</option>)}
-                          </select>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">المادة</label>
-                          <select 
-                            value={attachmentSubject}
-                            onChange={e => setAttachmentSubject(e.target.value)}
-                            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
-                          >
-                            {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-2-${s}`} value={s}>{s}</option>)}
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">الفصل الدراسي</label>
-                        <select 
-                          value={attachmentSemester}
-                          onChange={e => setAttachmentSemester(e.target.value)}
-                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
-                        >
-                          <option value="الفصل الدراسي الأول">الفصل الدراسي الأول</option>
-                          <option value="الفصل الدراسي الثاني">الفصل الدراسي الثاني</option>
-                          <option value="الفصل الأول">الفصل الأول</option>
-                          <option value="الفصل الثاني">الفصل الثاني</option>
-                        </select>
-                      </div>
-
-                      {/* Target Lesson Selection Removed - Always New Attachment */}
-                      
-                      <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">عنوان المرفق</label>
-                        <input 
-                          type="text" 
-                          value={attachmentNewLessonTitle}
-                          onChange={e => setAttachmentNewLessonTitle(e.target.value)}
-                          placeholder="مثال: أوراق عمل الوحدة الأولى"
-                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">المرفقات</label>
-                        <div className="border-2 border-dashed border-slate-200 rounded-3xl p-8 text-center hover:bg-slate-50 transition-colors cursor-pointer relative group">
-                          <input 
-                            type="file" 
-                            multiple
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            onChange={async (e) => {
-                              if (e.target.files) {
-                                const files = Array.from(e.target.files);
-                                const validFiles = files.filter(f => f.size <= 700 * 1024);
-                                if (validFiles.length < files.length) {
-                                  alert('تم تجاهل بعض الملفات لأن حجمها يتجاوز 700 كيلوبايت.');
-                                }
-                                const newAttachments = await Promise.all(validFiles.map(file => {
-                                  return new Promise<Attachment>((resolve) => {
-                                    const reader = new FileReader();
-                                    reader.onload = () => {
-                                      resolve({
-                                        type: 'file' as const,
-                                        url: reader.result as string,
-                                        name: file.name
-                                      });
-                                    };
-                                    reader.readAsDataURL(file);
-                                  });
-                                }));
-                                setAttachmentFiles(prev => [...prev, ...newAttachments]);
-                              }
-                            }}
-                          />
-                          <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                            <Plus className="w-8 h-8" />
-                          </div>
-                          <p className="font-black text-slate-900 text-sm">اسحبي الملفات هنا أو اضغطي للرفع</p>
-                          <p className="text-slate-400 text-xs font-bold mt-2">PDF, Word, Images, PowerPoint</p>
-                        </div>
-
-                        {attachmentFiles.length > 0 && (
-                          <div className="space-y-2 mt-4">
-                            {attachmentFiles.map((file, idx) => (
-                              <div key={`att-file-${file.name}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-indigo-600 shadow-sm">
-                                    <FileText className="w-4 h-4" />
-                                  </div>
-                                  <span className="text-xs font-bold text-slate-700">{file.name}</span>
-                                </div>
-                                <button 
-                                  onClick={() => setAttachmentFiles(attachmentFiles.filter((_, i) => i !== idx))}
-                                  className="text-slate-400 hover:text-red-500 transition-colors"
-                                >
-                                  <X className="w-4 h-4" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex gap-4">
-                      <button 
-                        onClick={() => setIsAddAttachmentModalOpen(false)}
-                        className="flex-1 py-4 rounded-2xl font-black text-sm text-slate-500 hover:bg-slate-100 transition-all"
-                      >
-                        إلغاء
-                      </button>
-                      <button 
-                        onClick={handleAddAttachment}
-                        disabled={isSubmitting}
-                        className="flex-[2] bg-indigo-600 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 hover:shadow-indigo-600/40 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                      >
-                        {isSubmitting ? (
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <>
-                            <CheckCircle className="w-5 h-5" />
-                            حفظ المرفقات
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {activeTab === 'feed' && (
+            ) : activeTab === 'feed' ? (
               <motion.div 
                 key="feed"
                 initial={{ opacity: 0, y: 20 }}
@@ -2541,9 +2384,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   ))}
                 </div>
               </motion.div>
-            )}
-
-            {activeTab === 'archive' && (
+            ) : activeTab === 'archive' ? (
               <motion.div 
                 key="archive"
                 initial={{ opacity: 0 }}
@@ -2874,9 +2715,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   </div>
                 )}
               </motion.div>
-            )}
-
-            {activeTab === 'projects' && (
+            ) : activeTab === 'projects' ? (
               <motion.div 
                 key="projects"
                 initial={{ opacity: 0, y: 20 }}
@@ -2967,146 +2806,12 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   ))}
                 </div>
               </motion.div>
-            )}
-
-            {/* Project Review Modal */}
-            <AnimatePresence>
-              {viewingProject && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
-                  <motion.div 
-                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                    className="bg-white w-full max-w-3xl rounded-[32px] shadow-2xl overflow-hidden border border-slate-100 max-h-[90vh] overflow-y-auto"
-                  >
-                    <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
-                      <div>
-                        <h3 className="text-2xl font-black text-slate-900">{viewingProject.name}</h3>
-                        <p className="text-sm text-slate-500 font-bold mt-1">متابعة تسليمات المعلمات</p>
-                      </div>
-                      <button 
-                        onClick={() => setViewingProject(null)} 
-                        className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400 hover:text-slate-600"
-                      >
-                        <XCircle className="w-7 h-7" />
-                      </button>
-                    </div>
-
-                    <div className="p-8 space-y-8">
-                      {viewingProject.tasks && viewingProject.tasks.length > 0 && (
-                        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                          <h4 className="font-black text-slate-800 mb-3 text-sm">مهام المشروع المطلوبة:</h4>
-                          <ul className="space-y-2">
-                            {viewingProject.tasks.map((task, i) => (
-                                  <li key={`proj-task-${viewingProject.id}-${task}-${i}`} className="flex items-start gap-2 text-sm text-slate-600">
-                                    <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold mt-0.5 shrink-0">
-                                      {i + 1}
-                                    </span>
-                                    {task}
-                                  </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {viewingProject.assignedTeacherIds.map((teacherId, idx) => {
-                        const teacher = teachers.find(t => t.id === teacherId);
-                        const submission = viewingProject.submissions?.[teacherId];
-                        const status = submission?.status || 'pending';
-
-                        return (
-                          <div key={`view-proj-teacher-${viewingProject.id}-${teacherId}-${idx}`} className="bg-slate-50 rounded-[24px] border border-slate-100 overflow-hidden">
-                            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-black">
-                                  {teacher?.name.charAt(0)}
-                                </div>
-                                <div>
-                                  <h4 className="font-black text-slate-900">{teacher?.name}</h4>
-                                  <p className="text-xs text-slate-500 font-bold">
-                                    {status === 'pending' ? 'لم يتم التسليم بعد' : 
-                                     status === 'submitted' ? `تم التسليم: ${new Date(submission!.submittedAt!).toLocaleDateString('ar-SA')}` :
-                                     status === 'approved' ? 'تم الاعتماد' : 'طلب تعديل'}
-                                  </p>
-                                </div>
-                              </div>
-                              <span className={cn(
-                                "px-3 py-1 rounded-full text-xs font-black",
-                                status === 'approved' ? "bg-emerald-100 text-emerald-700" :
-                                status === 'submitted' ? "bg-blue-100 text-blue-700" :
-                                status === 'needs_work' ? "bg-amber-100 text-amber-700" :
-                                "bg-slate-100 text-slate-500"
-                              )}>
-                                {status === 'approved' ? 'مكتمل' :
-                                 status === 'submitted' ? 'بانتظار المراجعة' :
-                                 status === 'needs_work' ? 'يحتاج تعديل' : 'قيد العمل'}
-                              </span>
-                            </div>
-
-                            {submission && submission.status !== 'pending' && (
-                              <div className="p-6 space-y-6">
-                                {submission.notes && (
-                                  <div className="bg-white p-4 rounded-xl border border-slate-100">
-                                    <p className="text-xs font-bold text-slate-400 mb-1">ملاحظات المعلمة:</p>
-                                    <p className="text-sm text-slate-700">{submission.notes}</p>
-                                  </div>
-                                )}
-
-                                {submission.files && submission.files.length > 0 && (
-                                  <div className="flex flex-wrap gap-3">
-                                    {submission.files.map((file, i) => (
-                                      <button 
-                                        key={`sub-file-${file.name}-${i}`}
-                                        onClick={() => downloadFile(file.url, file.name)}
-                                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:text-indigo-600 hover:border-indigo-200 transition-all"
-                                      >
-                                        <Download className="w-4 h-4" />
-                                        {file.name}
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
-
-                                {(isMainSupervisor || (isTempSupervisor && (user.tempPermissions?.hasFullAccess || user.tempPermissions?.canApproveProjects))) && (
-                                  <div className="flex gap-3 pt-4 border-t border-slate-200">
-                                    <button 
-                                      onClick={() => handleUpdateSubmissionStatus(viewingProject.id, teacherId, 'approved', 'عمل ممتاز، تم الاعتماد.')}
-                                      className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-black text-xs hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"
-                                    >
-                                      اعتماد المشروع
-                                    </button>
-                                    <button 
-                                      onClick={() => {
-                                        const feedback = prompt('أدخل ملاحظات التعديل:');
-                                        if (feedback) handleUpdateSubmissionStatus(viewingProject.id, teacherId, 'needs_work', feedback);
-                                      }}
-                                      className="flex-1 py-3 bg-amber-500 text-white rounded-xl font-black text-xs hover:bg-amber-600 transition-all shadow-lg shadow-amber-500/20"
-                                    >
-                                      طلب تعديل
-                                    </button>
-                                  </div>
-                                )}
-                                {submission.feedback && (
-                                  <p className="text-xs text-slate-400 font-bold text-center">
-                                    آخر ملاحظات: {submission.feedback}
-                                  </p>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </motion.div>
-                </div>
-              )}
-            </AnimatePresence>
-
-            {activeTab === 'messages' && (
+            ) : activeTab === 'messages' ? (
               <motion.div 
                 key="messages"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
                 className="h-[calc(100vh-12rem)] flex flex-col space-y-6"
               >
                 <div className="flex justify-between items-center">
@@ -3268,9 +2973,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   </div>
                 </div>
               </motion.div>
-            )}
-
-            {activeTab === 'temp-supervisors' && isMainSupervisor && (
+            ) : activeTab === 'temp-supervisors' && isMainSupervisor ? (
               <motion.div 
                 key="temp-supervisors"
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -3425,9 +3128,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   </div>
                 </div>
               </motion.div>
-            )}
-
-            {activeTab === 'security' && isMainSupervisor && (
+            ) : activeTab === 'security' && isMainSupervisor ? (
               <motion.div 
                 key="security"
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -3683,7 +3384,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   </div>
                 </div>
               </motion.div>
-            )}
+            ) : null}
           </AnimatePresence>
         </main>
       </div>
@@ -3803,6 +3504,138 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               </button>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {viewingProject && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              className="bg-white w-full max-w-3xl rounded-[32px] shadow-2xl overflow-hidden border border-slate-100 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900">{viewingProject.name}</h3>
+                  <p className="text-sm text-slate-500 font-bold mt-1">متابعة تسليمات المعلمات</p>
+                </div>
+                <button 
+                  onClick={() => setViewingProject(null)} 
+                  className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400 hover:text-slate-600"
+                >
+                  <XCircle className="w-7 h-7" />
+                </button>
+              </div>
+
+              <div className="p-8 space-y-8">
+                {viewingProject.tasks && viewingProject.tasks.length > 0 && (
+                  <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                    <h4 className="font-black text-slate-800 mb-3 text-sm">مهام المشروع المطلوبة:</h4>
+                    <ul className="space-y-2">
+                      {viewingProject.tasks.map((task, i) => (
+                            <li key={`proj-task-${viewingProject.id}-${task}-${i}`} className="flex items-start gap-2 text-sm text-slate-600">
+                              <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold mt-0.5 shrink-0">
+                                {i + 1}
+                              </span>
+                              {task}
+                            </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                <div className="space-y-6">
+                  {viewingProject.assignedTeacherIds.map((teacherId, index) => {
+                    const teacher = teachers.find(t => t.id === teacherId);
+                    const submission = viewingProject.submissions?.[teacherId];
+                    
+                    return (
+                      <div key={`sub-review-${viewingProject.id}-${teacherId}-${index}`} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                        <div className="flex justify-between items-center mb-6">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-slate-100 rounded-2xl flex items-center justify-center font-black text-slate-500">
+                              {teacher?.name?.charAt(0) || '?'}
+                            </div>
+                            <div>
+                              <h4 className="font-black text-slate-900 text-sm">{teacher?.name || 'معلمة غير معروفة'}</h4>
+                              <p className="text-[10px] text-slate-400 font-bold">الحالة: {
+                                submission?.status === 'approved' ? 'تم الاعتماد' :
+                                submission?.status === 'submitted' ? 'قيد المراجعة' :
+                                submission?.status === 'needs_work' ? 'مطلوب تعديل' : 'لم يتم التسليم'
+                              }</p>
+                            </div>
+                          </div>
+                          {submission && submission.status !== 'pending' && (
+                            <div className="flex gap-2">
+                              {(isMainSupervisor || (isTempSupervisor && (user.tempPermissions?.hasFullAccess || user.tempPermissions?.canApproveProjects))) && submission.status === 'submitted' && (
+                                <button 
+                                  onClick={() => handleUpdateSubmissionStatus(viewingProject.id, teacherId, 'approved', 'عمل ممتاز، تم الاعتماد.')}
+                                  className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-black text-[10px] hover:bg-emerald-700 transition-all flex items-center gap-2"
+                                >
+                                  <CheckCircle className="w-3.5 h-3.5" /> اعتماد
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {submission ? (
+                          <div className="space-y-4">
+                            {submission.notes && (
+                              <div className="bg-slate-50 p-4 rounded-xl text-xs font-bold text-slate-600 leading-relaxed">
+                                {submission.notes}
+                              </div>
+                            )}
+                            {submission.files && submission.files.length > 0 && (
+                              <div className="flex flex-wrap gap-2">
+                                {submission.files.map((file, idx) => (
+                                  <button 
+                                    key={file.url + idx}
+                                    onClick={() => {
+                                      if(file.type === 'image' || file.type === 'video' || file.type === 'link') setPreviewAttachment(file);
+                                      else downloadFile(file.url, file.name || 'مرفق');
+                                    }}
+                                    className="px-3 py-1.5 bg-white border border-slate-100 rounded-lg text-[10px] font-black text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm flex items-center gap-2"
+                                  >
+                                    <FileText className="w-3.5 h-3.5" />
+                                    <span className="truncate max-w-[100px]">{file.name}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            {(isMainSupervisor || (isTempSupervisor && (user.tempPermissions?.hasFullAccess || user.tempPermissions?.canApproveProjects))) && (
+                              <div className="flex gap-2 pt-2 border-t border-slate-100 mt-4">
+                                <button 
+                                  onClick={() => {
+                                    const feedback = prompt('أدخل ملاحظات التعديل:');
+                                    if (feedback) handleUpdateSubmissionStatus(viewingProject.id, teacherId, 'needs_work', feedback);
+                                  }}
+                                  className="flex-1 py-3 bg-amber-500 text-white rounded-xl font-black text-xs hover:bg-amber-600 transition-all shadow-lg shadow-amber-500/20"
+                                >
+                                  طلب تعديل
+                                </button>
+                              </div>
+                            )}
+                            {submission.feedback && (
+                              <p className="text-xs text-slate-400 font-bold text-center">
+                                آخر ملاحظات: {submission.feedback}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="py-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                            <span className="text-xs font-bold text-slate-400">لا يوجد تسليم بعد</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
@@ -4209,6 +4042,52 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       </p>
                     </div>
                   )}
+
+                  {/* Lesson Status (For Supervisors) */}
+                  <div className="space-y-4">
+                    <h4 className="font-black text-slate-800 flex items-center gap-2">
+                      <div className="w-1.5 h-6 bg-amber-500 rounded-full" />
+                      حالة الدرس
+                    </h4>
+                    <div className="grid grid-cols-3 gap-3">
+                      <button
+                        onClick={() => handleUpdateLessonStatus('approved')}
+                        className={cn(
+                          "py-3 rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 border-2",
+                          viewingLesson.status === 'approved' 
+                            ? "bg-emerald-50 border-emerald-500 text-emerald-700" 
+                            : "bg-white border-slate-100 text-slate-400 hover:border-emerald-200"
+                        )}
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        اعتماد
+                      </button>
+                      <button
+                        onClick={() => handleUpdateLessonStatus('pending')}
+                        className={cn(
+                          "py-3 rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 border-2",
+                          viewingLesson.status === 'pending' || !viewingLesson.status
+                            ? "bg-amber-50 border-amber-500 text-amber-700" 
+                            : "bg-white border-slate-100 text-slate-400 hover:border-amber-200"
+                        )}
+                      >
+                        <Clock className="w-4 h-4" />
+                        قيد المراجعة
+                      </button>
+                      <button
+                        onClick={() => handleUpdateLessonStatus('rejected')}
+                        className={cn(
+                          "py-3 rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 border-2",
+                          viewingLesson.status === 'rejected' 
+                            ? "bg-rose-50 border-rose-500 text-rose-700" 
+                            : "bg-white border-slate-100 text-slate-400 hover:border-rose-200"
+                        )}
+                      >
+                        <XCircle className="w-4 h-4" />
+                        رفض
+                      </button>
+                    </div>
+                  </div>
 
                   {/* Attachments */}
                   <div className="space-y-4">
