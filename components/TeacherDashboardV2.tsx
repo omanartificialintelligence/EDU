@@ -1471,9 +1471,9 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              className="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden border border-slate-100"
+              className="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden border border-slate-100 max-h-[90vh] flex flex-col"
             >
-              <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
+              <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                 <div>
                   <h3 className="text-2xl font-black text-slate-900">{editingLesson ? 'تعديل المحتوى' : 'مركز إضافة المحتوى'}</h3>
                   <p className="text-sm text-slate-500 font-bold mt-1">
@@ -1487,13 +1487,13 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                     setNewLessonTitle('');
                     setNewLessonAttachments([]);
                   }} 
-                  className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400 hover:text-slate-600"
+                  className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400 hover:text-slate-600 shrink-0"
                 >
                   <XCircle className="w-7 h-7" />
                 </button>
               </div>
 
-              <div className="p-8 bg-slate-50/50 space-y-6">
+              <div className="p-8 bg-slate-50/50 space-y-6 overflow-y-auto">
                 <div className="space-y-2">
                   <label className="text-sm font-black text-slate-700 block">عنوان الدرس</label>
                   <input 
@@ -1616,15 +1616,6 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                 >
                   {isSubmitting ? 'جاري النشر...' : 'نشر الدرس الآن'}
                 </button>
-              </div>
-
-              <div className="px-8 py-6 bg-blue-50/50 border-t border-blue-100 flex items-start gap-3">
-                <div className="mt-0.5 text-blue-500">
-                  <Bell className="w-5 h-5" />
-                </div>
-                <p className="text-xs text-blue-800 font-bold leading-relaxed">
-                  التزامن مع الإدارة: بمجرد الضغط على "نشر" لأي محتوى، سيتم إرسال نسخة تلقائياً إلى "الأرشيف الزمني" وسيصل إشعار للمشرف للمراجعة والاعتماد.
-                </p>
               </div>
             </motion.div>
           </div>
