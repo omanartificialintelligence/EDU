@@ -99,11 +99,14 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [isAddLessonModalOpen, setIsAddLessonModalOpen] = useState(false);
   const [editingLesson, setEditingLesson] = useState<LessonMaterial | null>(null);
   const [newLessonTitle, setNewLessonTitle] = useState('');
+  const [newLessonTeacherId, setNewLessonTeacherId] = useState('');
   const [newLessonSubject, setNewLessonSubject] = useState(AVAILABLE_SUBJECTS[0]);
   const [newLessonGrade, setNewLessonGrade] = useState(AVAILABLE_GRADES[0]);
   const [newLessonSemester, setNewLessonSemester] = useState(semester);
   const [newLessonDescription, setNewLessonDescription] = useState('');
   const [newLessonAttachments, setNewLessonAttachments] = useState<Attachment[]>([]);
+  const [newAttachmentType, setNewAttachmentType] = useState<string | null>(null);
+  const [newLessonUploadMethod, setNewLessonUploadMethod] = useState<'link' | 'file'>('link');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // تنظيف تلقائي: حذف المعلمات اللاتي ليس لديهن صفوف دراسية (غير مسجلات) أو بيانات غير صحيحة
@@ -765,10 +768,13 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
         await onUpdateLessonMaterial(updatedMaterial);
         alert('تم تحديث الدرس بنجاح.');
       } else {
+        const targetTeacherId = newLessonTeacherId || user.id;
+        const targetTeacher = teachers.find(t => t.id === targetTeacherId) || user;
+        
         const newMaterial: LessonMaterial = {
           id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-          teacherId: user.id,
-          teacherName: user.name,
+          teacherId: targetTeacher.id,
+          teacherName: targetTeacher.name,
           lessonTitle: newLessonTitle,
           description: newLessonDescription,
           attachments: newLessonAttachments,
@@ -1810,11 +1816,11 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   <div className="flex gap-3">
                     {isMainSupervisor && (
                       <button 
-                        onClick={() => setIsAddAttachmentModalOpen(true)}
+                        onClick={() => setIsAddLessonModalOpen(true)}
                         className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-black text-xs flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"
                       >
                         <Plus className="w-4 h-4" />
-                        إضافة مرفق
+                        إضافة درس جديد
                       </button>
                     )}
                     <button 
@@ -3417,6 +3423,18 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
             >
               <h3 className="text-xl font-black text-slate-900 mb-6">{editingLesson ? 'تعديل الدرس' : 'إضافة درس جديد'}</h3>
               <div className="space-y-4">
+                {!editingLesson && (
+                  <select 
+                    value={newLessonTeacherId} 
+                    onChange={e => setNewLessonTeacherId(e.target.value)} 
+                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm"
+                  >
+                    <option value="">-- المشرفة (أنتِ) --</option>
+                    {teachers.filter(t => t.isActive && t.role === UserRole.TEACHER).map(t => (
+                      <option key={`teacher-option-${t.id}`} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                )}
                 <input type="text" placeholder="عنوان الدرس" value={newLessonTitle} onChange={e => setNewLessonTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm" />
                 <select value={newLessonGrade} onChange={e => setNewLessonGrade(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm">
                   {AVAILABLE_GRADES.map((g) => <option key={`grade-select-3-${g}`} value={g}>{g}</option>)}
@@ -3438,18 +3456,64 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       <button onClick={() => setNewLessonAttachments(newLessonAttachments.filter((_, idx) => idx !== i))} className="text-red-500">حذف</button>
                     </div>
                   ))}
+                  <div className="flex gap-2 p-1 bg-slate-100 rounded-lg mb-2">
+                    <button
+                      onClick={() => setNewLessonUploadMethod('file')}
+                      className={cn("flex-1 py-1 text-xs font-bold rounded-md transition-all", newLessonUploadMethod === 'file' ? "bg-white shadow-sm text-slate-800" : "text-slate-500 hover:text-slate-700")}
+                    >
+                      رفع ملف
+                    </button>
+                    <button
+                      onClick={() => setNewLessonUploadMethod('link')}
+                      className={cn("flex-1 py-1 text-xs font-bold rounded-md transition-all", newLessonUploadMethod === 'link' ? "bg-white shadow-sm text-slate-800" : "text-slate-500 hover:text-slate-700")}
+                    >
+                      رابط خارجي
+                    </button>
+                  </div>
                   <div className="flex gap-2">
                     <input type="text" placeholder="اسم المرفق" id="newAttName" className="flex-1 px-3 py-2 rounded-lg bg-slate-50 border-none font-bold text-xs" />
-                    <input type="text" placeholder="رابط المرفق" id="newAttUrl" className="flex-1 px-3 py-2 rounded-lg bg-slate-50 border-none font-bold text-xs" />
-                    <button onClick={() => {
-                      const nameInput = document.getElementById('newAttName') as HTMLInputElement;
-                      const urlInput = document.getElementById('newAttUrl') as HTMLInputElement;
-                      if (nameInput.value && urlInput.value) {
-                        setNewLessonAttachments([...newLessonAttachments, { name: nameInput.value, url: urlInput.value, type: 'link' }]);
-                        nameInput.value = '';
-                        urlInput.value = '';
-                      }
-                    }} className="px-3 py-2 rounded-lg bg-indigo-600 text-white font-black text-xs">+</button>
+                    {newLessonUploadMethod === 'link' ? (
+                      <>
+                        <input type="text" placeholder="رابط المرفق" id="newAttUrl" className="flex-1 px-3 py-2 rounded-lg bg-slate-50 border-none font-bold text-xs" />
+                        <button onClick={() => {
+                          const nameInput = document.getElementById('newAttName') as HTMLInputElement;
+                          const urlInput = document.getElementById('newAttUrl') as HTMLInputElement;
+                          if (nameInput.value && urlInput.value) {
+                            setNewLessonAttachments([...newLessonAttachments, { name: nameInput.value, url: urlInput.value, type: 'link' }]);
+                            nameInput.value = '';
+                            urlInput.value = '';
+                          }
+                        }} className="px-3 py-2 rounded-lg bg-indigo-600 text-white font-black text-xs">+</button>
+                      </>
+                    ) : (
+                      <>
+                        <input 
+                          type="file" 
+                          id="newAttFile"
+                          className="flex-1 px-3 py-1.5 rounded-lg bg-slate-50 border-none font-bold text-xs" 
+                        />
+                        <button onClick={() => {
+                          const nameInput = document.getElementById('newAttName') as HTMLInputElement;
+                          const fileInput = document.getElementById('newAttFile') as HTMLInputElement;
+                          if (nameInput.value && fileInput.files && fileInput.files[0]) {
+                            const file = fileInput.files[0];
+                            if (file.size > 700 * 1024) {
+                              alert('حجم الملف كبير جداً. يرجى اختيار ملف بحجم أقل من 700 كيلوبايت.');
+                              return;
+                            }
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              setNewLessonAttachments([...newLessonAttachments, { name: nameInput.value, url: reader.result as string, type: 'file' }]);
+                              nameInput.value = '';
+                              fileInput.value = '';
+                            };
+                            reader.readAsDataURL(file);
+                          } else {
+                            alert('يرجى تحديد اسم المرفق واختيار ملف.');
+                          }
+                        }} className="px-3 py-2 rounded-lg bg-indigo-600 text-white font-black text-xs">+</button>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -4094,6 +4158,90 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       })}
                     </div>
                   </div>
+
+                  {isMainSupervisor && (
+                    <div className="space-y-4">
+                      <h4 className="font-black text-slate-800 flex items-center gap-2">
+                        <div className="w-1.5 h-6 bg-blue-500 rounded-full" />
+                        إضافة مرفق جديد للدرس
+                      </h4>
+                      <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div className="flex gap-2 p-1 bg-white rounded-lg mb-4 border border-slate-200">
+                          <button
+                            onClick={() => setNewLessonUploadMethod('file')}
+                            className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-all", newLessonUploadMethod === 'file' ? "bg-indigo-50 shadow-sm text-indigo-700" : "text-slate-500 hover:text-slate-700")}
+                          >
+                            رفع ملف
+                          </button>
+                          <button
+                            onClick={() => setNewLessonUploadMethod('link')}
+                            className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-all", newLessonUploadMethod === 'link' ? "bg-indigo-50 shadow-sm text-indigo-700" : "text-slate-500 hover:text-slate-700")}
+                          >
+                            رابط خارجي
+                          </button>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <input type="text" placeholder="اسم المرفق" id="viewAttName" className="flex-1 px-4 py-3 rounded-xl bg-white border border-slate-200 font-bold text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none" />
+                          {newLessonUploadMethod === 'link' ? (
+                            <>
+                              <input type="text" placeholder="رابط المرفق" id="viewAttUrl" className="flex-1 px-4 py-3 rounded-xl bg-white border border-slate-200 font-bold text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none" />
+                              <button onClick={async () => {
+                                const nameInput = document.getElementById('viewAttName') as HTMLInputElement;
+                                const urlInput = document.getElementById('viewAttUrl') as HTMLInputElement;
+                                if (nameInput.value && urlInput.value) {
+                                  const updatedLesson = {
+                                    ...viewingLesson,
+                                    attachments: [...viewingLesson.attachments, { name: nameInput.value, url: urlInput.value, type: 'link' } as Attachment]
+                                  };
+                                  await onUpdateLessonMaterial(updatedLesson);
+                                  setViewingLesson(updatedLesson);
+                                  nameInput.value = '';
+                                  urlInput.value = '';
+                                  alert('تمت إضافة المرفق بنجاح');
+                                } else {
+                                  alert('يرجى إدخال اسم ورابط المرفق');
+                                }
+                              }} className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-black text-xs hover:bg-indigo-700 transition-colors whitespace-nowrap">إضافة المرفق</button>
+                            </>
+                          ) : (
+                            <>
+                              <input 
+                                type="file" 
+                                id="viewAttFile"
+                                className="flex-1 px-4 py-2.5 rounded-xl bg-white border border-slate-200 font-bold text-xs" 
+                              />
+                              <button onClick={async () => {
+                                const nameInput = document.getElementById('viewAttName') as HTMLInputElement;
+                                const fileInput = document.getElementById('viewAttFile') as HTMLInputElement;
+                                if (nameInput.value && fileInput.files && fileInput.files[0]) {
+                                  const file = fileInput.files[0];
+                                  if (file.size > 700 * 1024) {
+                                    alert('حجم الملف كبير جداً. يرجى اختيار ملف بحجم أقل من 700 كيلوبايت.');
+                                    return;
+                                  }
+                                  const reader = new FileReader();
+                                  reader.onload = async () => {
+                                    const updatedLesson = {
+                                      ...viewingLesson,
+                                      attachments: [...viewingLesson.attachments, { name: nameInput.value, url: reader.result as string, type: 'file' } as Attachment]
+                                    };
+                                    await onUpdateLessonMaterial(updatedLesson);
+                                    setViewingLesson(updatedLesson);
+                                    nameInput.value = '';
+                                    fileInput.value = '';
+                                    alert('تمت إضافة المرفق بنجاح');
+                                  };
+                                  reader.readAsDataURL(file);
+                                } else {
+                                  alert('يرجى تحديد اسم المرفق واختيار ملف.');
+                                }
+                              }} className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-black text-xs hover:bg-indigo-700 transition-colors whitespace-nowrap">إضافة المرفق</button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Comments Section */}
                   {viewingLesson.comments && viewingLesson.comments.length > 0 && (

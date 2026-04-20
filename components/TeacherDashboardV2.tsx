@@ -62,6 +62,7 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   // New Lesson State
   const [newLessonTitle, setNewLessonTitle] = useState('');
   const [newLessonType, setNewLessonType] = useState<string | null>(null);
+  const [newLessonUploadMethod, setNewLessonUploadMethod] = useState<'file' | 'link'>('file');
   const [newLessonUrl, setNewLessonUrl] = useState('');
   const [newLessonAttachments, setNewLessonAttachments] = useState<Attachment[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1564,8 +1565,25 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         إلغاء
                       </button>
                     </div>
+
+                    {newLessonType !== 'text' && newLessonType !== 'link' && (
+                      <div className="flex gap-2 p-1 bg-slate-100 rounded-lg mb-4">
+                        <button
+                          onClick={() => setNewLessonUploadMethod('file')}
+                          className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-all", newLessonUploadMethod === 'file' ? "bg-white shadow-sm text-slate-800" : "text-slate-500 hover:text-slate-700")}
+                        >
+                          رفع ملف
+                        </button>
+                        <button
+                          onClick={() => setNewLessonUploadMethod('link')}
+                          className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-all", newLessonUploadMethod === 'link' ? "bg-white shadow-sm text-slate-800" : "text-slate-500 hover:text-slate-700")}
+                        >
+                          رابط خارجي
+                        </button>
+                      </div>
+                    )}
                     
-                    {newLessonType === 'link' ? (
+                    {newLessonType === 'link' || newLessonUploadMethod === 'link' ? (
                       <input 
                         type="url" 
                         value={newLessonUrl}
