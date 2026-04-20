@@ -742,30 +742,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     alert('تم حفظ الملاحظات بنجاح');
   };
 
-  const handleUpdateLessonStatus = async (status: 'approved' | 'rejected' | 'pending') => {
-    if (!viewingLesson) return;
-    const updatedLesson = {
-      ...viewingLesson,
-      status
-    };
-    await onUpdateLessonMaterial(updatedLesson);
-    setViewingLesson(updatedLesson);
-
-    if (viewingLesson.teacherId !== user.id) {
-      const statusText = status === 'approved' ? 'قبول' : status === 'rejected' ? 'رفض' : 'تعليق';
-      onAddNotification({
-        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        userId: viewingLesson.teacherId,
-        message: `قامت المشرفة بتغيير حالة درسك "${viewingLesson.lessonTitle}" إلى: ${statusText}`,
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        type: 'system',
-      });
-    }
-
-    alert(`تم تحديث حالة الدرس بنجاح (${status})`);
-  };
-
   const handleAddLesson = async () => {
     if (!newLessonTitle || !newLessonDescription) {
       alert('يرجى إكمال جميع الحقول');
@@ -1002,10 +978,10 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const sidebarItems = [
     { id: 'overview', label: 'الرئيسية', icon: LayoutDashboard, visible: true },
     { id: 'teachers', label: 'المعلمات', icon: Users, visible: isMainSupervisor || (isTempSupervisor && (user.tempPermissions?.hasFullAccess || user.tempPermissions?.canViewTeachers)) },
-    { id: 'lessons', label: 'الدروس', icon: Palette, visible: true },
+    { id: 'lessons', label: 'الدروس', icon: Palette, visible: isMainSupervisor || (isTempSupervisor && (user.tempPermissions?.hasFullAccess || user.tempPermissions?.canComment || (user.tempPermissions?.allowedSubjects && user.tempPermissions.allowedSubjects.length > 0))) },
     { id: 'feed', label: 'التعاميم', icon: MessageSquare, visible: true },
-    { id: 'archive', label: 'الأرشيف', icon: Archive, visible: true },
-    { id: 'projects', label: 'المشاريع', icon: Rocket, visible: true },
+    { id: 'archive', label: 'الأرشيف', icon: Archive, visible: isMainSupervisor || (isTempSupervisor && !!user.tempPermissions?.hasFullAccess) },
+    { id: 'projects', label: 'المشاريع', icon: Rocket, visible: isMainSupervisor || (isTempSupervisor && (user.tempPermissions?.hasFullAccess || user.tempPermissions?.canApproveProjects)) },
     { id: 'messages', label: 'الرسائل', icon: MessageSquare, visible: true },
     { id: 'temp-supervisors', label: 'المشرفين المؤقتين', icon: Shield, visible: isMainSupervisor },
     { id: 'settings', label: 'إعدادات النظام', icon: Settings, visible: isMainSupervisor },
@@ -1084,7 +1060,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               )}
             </motion.button>
           ))}
-          {onSwitchToTeacherView && (
+          {onSwitchToTeacherView && !isTempSupervisor && (
             <motion.button
               whileHover={{ scale: 1.02, x: -4 }}
               whileTap={{ scale: 0.98 }}
@@ -1351,7 +1327,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             <div className="grid grid-cols-2 gap-4">
                               {[
                                 { label: 'إضافة تعميم', icon: MessageSquare, color: 'indigo', action: () => setActiveTab('feed') },
-                                { label: 'تسجيل معلمة', icon: Users, color: 'amber', action: () => setActiveTab('teachers') },
+                                { label: 'صفحة المعلمات', icon: Users, color: 'amber', action: () => setActiveTab('teachers') },
                               ].map((btn, i) => (
                                 <button 
                                   key={`${btn.label}-${i}`} 
@@ -1389,12 +1365,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                       <p className="text-[10px] text-slate-400 font-bold">{lesson.teacherName} • {new Date(lesson.createdAt).toLocaleDateString('ar-SA')}</p>
                                     </div>
                                   </div>
-                                  <span className={cn(
-                                    "px-3 py-1 rounded-full text-[10px] font-black",
-                                    lesson.status === 'approved' ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"
-                                  )}>
-                                    {lesson.status === 'approved' ? 'معتمد' : 'قيد المراجعة'}
-                                  </span>
                                 </div>
                               ))}
                               {lessonMaterials.length === 0 && (
@@ -1838,13 +1808,15 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     <p className="text-slate-500 mt-1 font-medium">متابعة إبداعات المعلمات وتقييم المحتوى التعليمي</p>
                   </div>
                   <div className="flex gap-3">
-                    <button 
-                      onClick={() => setIsAddAttachmentModalOpen(true)}
-                      className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-black text-xs flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"
-                    >
-                      <Plus className="w-4 h-4" />
-                      إضافة مرفق
-                    </button>
+                    {isMainSupervisor && (
+                      <button 
+                        onClick={() => setIsAddAttachmentModalOpen(true)}
+                        className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-black text-xs flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"
+                      >
+                        <Plus className="w-4 h-4" />
+                        إضافة مرفق
+                      </button>
+                    )}
                     <button 
                       onClick={() => exportLessonsCSV(lessonMaterials)}
                       className="px-6 py-3 rounded-xl bg-indigo-50 text-indigo-600 font-black text-xs flex items-center gap-2 hover:bg-indigo-100 transition-all"
@@ -2011,13 +1983,15 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                       >
                                         <Eye className="w-4 h-4" />
                                       </button>
-                                      <button 
-                                        onClick={() => setEditingLesson(material)}
-                                        className="p-2 hover:bg-blue-50 text-blue-600 rounded-xl transition-colors"
-                                        title="تعديل"
-                                      >
-                                        <Edit className="w-4 h-4" />
-                                      </button>
+                                      {isMainSupervisor && (
+                                        <button 
+                                          onClick={() => setEditingLesson(material)}
+                                          className="p-2 hover:bg-blue-50 text-blue-600 rounded-xl transition-colors"
+                                          title="تعديل"
+                                        >
+                                          <Edit className="w-4 h-4" />
+                                        </button>
+                                      )}
                                       {isMainSupervisor && (
                                         <button 
                                           onClick={() => {
@@ -2034,16 +2008,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                           <Archive className="w-4 h-4" />
                                         </button>
                                       )}
-                                    </div>
-                                    <div className={cn(
-                                        "px-2 py-1 rounded-lg text-[9px] font-black uppercase mt-1",
-                                        material.status === 'approved' ? "bg-emerald-100 text-emerald-700" :
-                                        material.status === 'rejected' ? "bg-rose-100 text-rose-700" :
-                                        "bg-amber-100 text-amber-700"
-                                    )}>
-                                        {material.status === 'approved' ? 'معتمد' :
-                                         material.status === 'rejected' ? 'مرفوض' : 
-                                         'قيد المراجعة'}
                                     </div>
                                   </div>
                                 </div>
@@ -2194,146 +2158,148 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 exit={{ opacity: 0, y: -20 }}
                 className="max-w-4xl mx-auto space-y-8"
               >
-                <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100">
-                  <h3 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-4">
-                    <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
-                      <Plus className="w-6 h-6" />
-                    </div>
-                    نشر تعميم جديد
-                  </h3>
-                  <form className="space-y-6" onSubmit={(e) => {
-                    e.preventDefault();
-                    if (!newPostTitle || !newPostContent) return alert('يرجى إدخال العنوان والمحتوى');
-                    onAddPost({
-                      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-                      authorId: user.id,
-                      authorName: user.name,
-                      title: newPostTitle,
-                      content: newPostContent,
-                      attachments: newPostAttachments,
-                      isPinned: newPostIsPinned,
-                      createdAt: new Date().toLocaleString('ar-SA'),
-                      academicYear: academicYear,
-                      semester: semester
-                    });
+                {(isMainSupervisor || isTempSupervisor) && (
+                  <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100">
+                    <h3 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-4">
+                      <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
+                        <Plus className="w-6 h-6" />
+                      </div>
+                      نشر تعميم جديد
+                    </h3>
+                    <form className="space-y-6" onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!newPostTitle || !newPostContent) return alert('يرجى إدخال العنوان والمحتوى');
+                      onAddPost({
+                        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+                        authorId: user.id,
+                        authorName: user.name,
+                        title: newPostTitle,
+                        content: newPostContent,
+                        attachments: newPostAttachments,
+                        isPinned: newPostIsPinned,
+                        createdAt: new Date().toLocaleString('ar-SA'),
+                        academicYear: academicYear,
+                        semester: semester
+                      });
 
-                    // Notify all teachers
-                    teachers.forEach(t => {
-                      if (t.isActive) {
-                        onAddNotification({
-                          id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-                          userId: t.id,
-                          message: `تعميم جديد: ${newPostTitle}`,
-                          isRead: false,
-                          createdAt: new Date().toISOString(),
-                          type: 'system'
-                        });
-                      }
-                    });
+                      // Notify all teachers
+                      teachers.forEach(t => {
+                        if (t.isActive) {
+                          onAddNotification({
+                            id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+                            userId: t.id,
+                            message: `تعميم جديد: ${newPostTitle}`,
+                            isRead: false,
+                            createdAt: new Date().toISOString(),
+                            type: 'system'
+                          });
+                        }
+                      });
 
-                    setNewPostTitle('');
-                    setNewPostContent('');
-                    setNewPostIsPinned(false);
-                    setNewPostAttachments([]);
-                    alert('تم نشر التعميم بنجاح');
-                  }}>
-                    <div className="space-y-2">
-                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">عنوان التعميم</label>
-                      <input 
-                        type="text" 
-                        value={newPostTitle}
-                        onChange={e => setNewPostTitle(e.target.value)}
-                        placeholder="مثال: هام بخصوص خطط الأسبوع القادم" 
-                        className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">محتوى التعميم</label>
-                      <textarea 
-                        rows={6}
-                        value={newPostContent}
-                        onChange={e => setNewPostContent(e.target.value)}
-                        placeholder="اكتب تفاصيل التعميم هنا..." 
-                        className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all resize-none"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex gap-2 items-center">
-                        <button 
-                          type="button" 
-                          onClick={() => document.getElementById('post-file-upload')?.click()}
-                          className="p-4 rounded-2xl bg-slate-100 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition-all relative"
-                        >
-                          <FileText className="w-5 h-5" />
-                          {newPostAttachments.length > 0 && (
-                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-indigo-600 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
-                              {newPostAttachments.length}
-                            </span>
-                          )}
-                        </button>
+                      setNewPostTitle('');
+                      setNewPostContent('');
+                      setNewPostIsPinned(false);
+                      setNewPostAttachments([]);
+                      alert('تم نشر التعميم بنجاح');
+                    }}>
+                      <div className="space-y-2">
+                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">عنوان التعميم</label>
                         <input 
-                          type="file" 
-                          id="post-file-upload"
-                          multiple
-                          className="hidden"
-                          onChange={async (e) => {
-                            if (e.target.files) {
-                              const files = Array.from(e.target.files);
-                              const validFiles = files.filter(f => f.size <= 700 * 1024);
-                              if (validFiles.length < files.length) {
-                                alert('تم تجاهل بعض الملفات لأن حجمها يتجاوز 700 كيلوبايت.');
-                              }
-                              const newAtts = await Promise.all(validFiles.map(file => {
-                                return new Promise<Attachment>((resolve) => {
-                                  const reader = new FileReader();
-                                  reader.onload = () => {
-                                    resolve({
-                                      type: 'file' as const,
-                                      url: reader.result as string,
-                                      name: file.name
-                                    });
-                                  };
-                                  reader.readAsDataURL(file);
-                                });
-                              }));
-                              setNewPostAttachments([...newPostAttachments, ...newAtts]);
-                            }
-                          }}
+                          type="text" 
+                          value={newPostTitle}
+                          onChange={e => setNewPostTitle(e.target.value)}
+                          placeholder="مثال: هام بخصوص خطط الأسبوع القادم" 
+                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
                         />
-                        {newPostAttachments.length > 0 && (
-                          <div className="flex flex-wrap gap-2">
-                            {newPostAttachments.map((att, idx) => (
-                              <div key={`new-post-att-${att.name}-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
-                                <span className="truncate max-w-[100px]">{att.name}</span>
-                                <button 
-                                  type="button"
-                                  onClick={() => setNewPostAttachments(newPostAttachments.filter((_, i) => i !== idx))} 
-                                  className="hover:text-red-500"
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
                       </div>
-                      <div className="flex items-center gap-4">
-                        <label className="flex items-center gap-2 cursor-pointer group">
+                      <div className="space-y-2">
+                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">محتوى التعميم</label>
+                        <textarea 
+                          rows={6}
+                          value={newPostContent}
+                          onChange={e => setNewPostContent(e.target.value)}
+                          placeholder="اكتب تفاصيل التعميم هنا..." 
+                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all resize-none"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex gap-2 items-center">
+                          <button 
+                            type="button" 
+                            onClick={() => document.getElementById('post-file-upload')?.click()}
+                            className="p-4 rounded-2xl bg-slate-100 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition-all relative"
+                          >
+                            <FileText className="w-5 h-5" />
+                            {newPostAttachments.length > 0 && (
+                              <span className="absolute -top-1 -right-1 w-4 h-4 bg-indigo-600 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
+                                {newPostAttachments.length}
+                              </span>
+                            )}
+                          </button>
                           <input 
-                            type="checkbox" 
-                            checked={newPostIsPinned}
-                            onChange={e => setNewPostIsPinned(e.target.checked)}
-                            className="w-5 h-5 rounded-lg border-slate-300 text-indigo-600 focus:ring-indigo-500" 
+                            type="file" 
+                            id="post-file-upload"
+                            multiple
+                            className="hidden"
+                            onChange={async (e) => {
+                              if (e.target.files) {
+                                const files = Array.from(e.target.files);
+                                const validFiles = files.filter(f => f.size <= 700 * 1024);
+                                if (validFiles.length < files.length) {
+                                  alert('تم تجاهل بعض الملفات لأن حجمها يتجاوز 700 كيلوبايت.');
+                                }
+                                const newAtts = await Promise.all(validFiles.map(file => {
+                                  return new Promise<Attachment>((resolve) => {
+                                    const reader = new FileReader();
+                                    reader.onload = () => {
+                                      resolve({
+                                        type: 'file' as const,
+                                        url: reader.result as string,
+                                        name: file.name
+                                      });
+                                    };
+                                    reader.readAsDataURL(file);
+                                  });
+                                }));
+                                setNewPostAttachments([...newPostAttachments, ...newAtts]);
+                              }
+                            }}
                           />
-                          <span className="text-xs font-black text-slate-500 group-hover:text-indigo-600 transition-colors">تثبيت في المقدمة</span>
-                        </label>
-                        <button type="submit" className="bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black text-sm shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all">
-                          نشر الآن
-                        </button>
+                          {newPostAttachments.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              {newPostAttachments.map((att, idx) => (
+                                <div key={`new-post-att-${att.name}-${idx}`} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2">
+                                  <span className="truncate max-w-[100px]">{att.name}</span>
+                                  <button 
+                                    type="button"
+                                    onClick={() => setNewPostAttachments(newPostAttachments.filter((_, i) => i !== idx))} 
+                                    className="hover:text-red-500"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer group">
+                            <input 
+                              type="checkbox" 
+                              checked={newPostIsPinned}
+                              onChange={e => setNewPostIsPinned(e.target.checked)}
+                              className="w-5 h-5 rounded-lg border-slate-300 text-indigo-600 focus:ring-indigo-500" 
+                            />
+                            <span className="text-xs font-black text-slate-500 group-hover:text-indigo-600 transition-colors">تثبيت في المقدمة</span>
+                          </label>
+                          <button type="submit" className="bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black text-sm shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all">
+                            نشر الآن
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  </form>
-                </div>
+                    </form>
+                  </div>
+                )}
 
                 <div className="space-y-6">
                   {filteredPosts.map((post, index) => (
@@ -2352,12 +2318,16 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={() => onTogglePinPost(post.id)} className={cn("p-2 rounded-lg transition-all", post.isPinned ? "bg-indigo-50 text-indigo-600" : "bg-slate-50 text-slate-400 hover:bg-slate-100")}>
-                            <Pin className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => onDeletePost(post.id)} className="p-2 rounded-lg bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all">
-                            <XCircle className="w-4 h-4" />
-                          </button>
+                          {(isMainSupervisor || post.authorId === user.id) && (
+                            <>
+                              <button onClick={() => onTogglePinPost(post.id)} className={cn("p-2 rounded-lg transition-all", post.isPinned ? "bg-indigo-50 text-indigo-600" : "bg-slate-50 text-slate-400 hover:bg-slate-100")} title="تثبيت التعميم">
+                                <Pin className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => onDeletePost(post.id)} className="p-2 rounded-lg bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all" title="حذف التعميم">
+                                <XCircle className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                       <p className="text-slate-600 font-bold text-sm leading-relaxed mb-6">{post.content}</p>
@@ -2725,7 +2695,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               >
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-black text-slate-900">إدارة المشاريع</h2>
-                  {isMainSupervisor && (
+                  {(isMainSupervisor || (isTempSupervisor && (user.tempPermissions?.hasFullAccess || user.tempPermissions?.canApproveProjects))) && (
                     <button 
                       onClick={() => setIsAddProjectModalOpen(true)}
                       className="px-6 py-3 bg-indigo-600 text-white rounded-xl text-sm font-black shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center gap-2"
@@ -2793,10 +2763,11 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         >
                           <Eye className="w-4 h-4" /> متابعة التسليمات
                         </button>
-                        {isMainSupervisor && (
+                        {(isMainSupervisor || (isTempSupervisor && (user.tempPermissions?.hasFullAccess || user.tempPermissions?.canApproveProjects))) && (
                           <button 
                             onClick={() => onDeleteProject(project.id)}
                             className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all"
+                            title="حذف المشروع"
                           >
                             <XCircle className="w-5 h-5" />
                           </button>
@@ -2979,124 +2950,165 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="max-w-4xl mx-auto space-y-8"
+                className="max-w-6xl mx-auto space-y-8"
               >
-                <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100">
-                  <h3 className="text-2xl font-black text-slate-900 mb-10 flex items-center gap-4">
-                    <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
-                      <Shield className="w-6 h-6" />
-                    </div>
-                    إدارة المشرفين المؤقتين
-                  </h3>
-                  
-                  <div className="space-y-10">
-                    <section className="space-y-6">
-                      <h4 className="font-black text-slate-800 text-sm border-r-4 border-indigo-500 pr-4">إضافة مشرف مؤقت جديد</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">اسم المشرف</label>
-                          <input type="text" value={newTempName} onChange={e => setNewTempName(e.target.value)} className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">الرقم الوظيفي</label>
-                          <input type="text" value={newTempId} onChange={e => setNewTempId(e.target.value)} className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" />
-                        </div>
-                        <div className="space-y-2 md:col-span-2">
-                          <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">كلمة المرور</label>
-                          <input type="password" value={newTempPass} onChange={e => setNewTempPass(e.target.value)} className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" />
-                        </div>
+                <div className="flex flex-col lg:flex-row gap-8">
+                  {/* Form Section */}
+                  <div className="flex-1 space-y-8">
+                    <div className="bg-white p-8 sm:p-10 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col items-start gap-4 hover:shadow-xl hover:shadow-indigo-500/5 transition-all">
+                      <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                        <Shield className="w-8 h-8" />
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-black text-slate-900 leading-tight">صلاحيات الإشراف المؤقت</h3>
+                        <p className="text-slate-500 mt-2 font-medium text-sm">امنحي صلاحيات محددة لزميلاتك لمساعدتك في الإشراف لفترة مؤقتة. يمكنك تحديد مهام معينة كالوصول لمعلمات أو مواد محددة.</p>
                       </div>
 
-                      <div className="space-y-4 p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                        <h5 className="font-black text-slate-700 text-sm">صلاحيات المشرف المؤقت</h5>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <label className="flex items-center gap-3 cursor-pointer">
-                            <input type="checkbox" checked={tempPermView} onChange={e => setTempPermView(e.target.checked)} className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                            <span className="text-sm font-bold text-slate-700">الاطلاع على المعلمات</span>
-                          </label>
-                          <label className="flex items-center gap-3 cursor-pointer">
-                            <input type="checkbox" checked={tempPermComment} onChange={e => setTempPermComment(e.target.checked)} className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                            <span className="text-sm font-bold text-slate-700">إضافة تعليقات</span>
-                          </label>
-                          <label className="flex items-center gap-3 cursor-pointer">
-                            <input type="checkbox" checked={tempPermApprove} onChange={e => setTempPermApprove(e.target.checked)} className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                            <span className="text-sm font-bold text-slate-700">اعتماد المشاريع</span>
-                          </label>
-                          <label className="flex items-center gap-3 cursor-pointer">
-                            <input type="checkbox" checked={tempPermManage} onChange={e => setTempPermManage(e.target.checked)} className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                            <span className="text-sm font-bold text-slate-700">إدارة المستخدمين</span>
-                          </label>
-                          <label className="flex items-center gap-3 cursor-pointer">
-                            <input type="checkbox" checked={tempPermDownload} onChange={e => setTempPermDownload(e.target.checked)} className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                            <span className="text-sm font-bold text-slate-700">تنزيل المرفقات</span>
-                          </label>
-                          <label className="flex items-center gap-3 cursor-pointer">
-                            <input type="checkbox" checked={tempPermFull} onChange={e => setTempPermFull(e.target.checked)} className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                            <span className="text-sm font-bold text-slate-700">صلاحيات كاملة</span>
-                          </label>
-                        </div>
-                        
-                        {!tempPermFull && (
-                          <div className="mt-6 border-t border-slate-200 pt-6">
-                            <h6 className="font-bold text-slate-700 text-xs mb-3">المواد المسموح بمتابعتها (اتركه فارغاً للسماح بالكل)</h6>
-                            <div className="flex flex-wrap gap-2">
-                              {AVAILABLE_SUBJECTS.map((subject, idx) => (
-                                <label key={`subject-filter-${subject}-${idx}`} className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
-                                  <input 
-                                    type="checkbox" 
-                                    checked={tempPermSubjects.includes(subject)}
-                                    onChange={e => {
-                                      if (e.target.checked) {
-                                        setTempPermSubjects([...tempPermSubjects, subject]);
-                                      } else {
-                                        setTempPermSubjects(tempPermSubjects.filter(s => s !== subject));
-                                      }
-                                    }}
-                                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                                  />
-                                  <span className="text-xs font-bold text-slate-600">{subject}</span>
-                                </label>
-                              ))}
-                            </div>
+                      <div className="w-full mt-6 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">اسم المشرفة</label>
+                            <input type="text" value={newTempName} onChange={e => setNewTempName(e.target.value)} placeholder="مثال: أ. نورة محمد" className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" />
                           </div>
-                        )}
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">الرقم الوظيفي</label>
+                            <input type="text" value={newTempId} onChange={e => setNewTempId(e.target.value)} placeholder="مثال: 123456" className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" />
+                          </div>
+                          <div className="space-y-2 md:col-span-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">كلمة المرور المؤقتة</label>
+                            <input type="password" value={newTempPass} onChange={e => setNewTempPass(e.target.value)} placeholder="••••••••" className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" />
+                          </div>
+                        </div>
+
+                        <div className="space-y-5 mt-8 border-t border-slate-100 pt-8">
+                          <h5 className="font-black text-slate-800 flex items-center gap-2">
+                            <Settings className="w-4 h-4 text-indigo-500" />
+                            تخصيص الصلاحيات
+                          </h5>
+                          
+                          <div className="grid grid-cols-1 gap-3">
+                            <label className={cn("flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all", tempPermFull ? "bg-indigo-50 border-indigo-500" : "bg-white border-slate-200 hover:border-indigo-200")}>
+                                <div className="flex items-center gap-3">
+                                  <input type="checkbox" checked={tempPermFull} onChange={e => setTempPermFull(e.target.checked)} className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                                  <span className={cn("font-black text-sm", tempPermFull ? "text-indigo-900" : "text-slate-700")}>صلاحيات كاملة كمشرفة رئيسية</span>
+                                </div>
+                                <p className="text-xs text-slate-500 mt-1 mr-8">إعطاء وصول غير محدود لجميع الصلاحيات المتاحة في النظام</p>
+                            </label>
+
+                            {!tempPermFull && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 pr-4 border-r-2 border-slate-100">
+                                <label className={cn("flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer", tempPermView ? "bg-indigo-50/50 border-indigo-200 text-indigo-700" : "bg-white border-slate-100 text-slate-600 hover:bg-slate-50")}>
+                                  <input type="checkbox" checked={tempPermView} onChange={e => setTempPermView(e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                                  <span className="text-xs font-bold">الاطلاع على المعلمات</span>
+                                </label>
+                                <label className={cn("flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer", tempPermComment ? "bg-indigo-50/50 border-indigo-200 text-indigo-700" : "bg-white border-slate-100 text-slate-600 hover:bg-slate-50")}>
+                                  <input type="checkbox" checked={tempPermComment} onChange={e => setTempPermComment(e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                                  <span className="text-xs font-bold">إضافة تعليقات واعتماد</span>
+                                </label>
+                                <label className={cn("flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer", tempPermApprove ? "bg-emerald-50/50 border-emerald-200 text-emerald-700" : "bg-white border-slate-100 text-slate-600 hover:bg-slate-50")}>
+                                  <input type="checkbox" checked={tempPermApprove} onChange={e => setTempPermApprove(e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                                  <span className="text-xs font-bold">اعتماد المشاريع</span>
+                                </label>
+                                <label className={cn("flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer", tempPermManage ? "bg-rose-50/50 border-rose-200 text-rose-700" : "bg-white border-slate-100 text-slate-600 hover:bg-slate-50")}>
+                                  <input type="checkbox" checked={tempPermManage} onChange={e => setTempPermManage(e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500" />
+                                  <span className="text-xs font-bold">إدارة وحذف رسائل وأشخاص</span>
+                                </label>
+                                <label className={cn("flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer", tempPermDownload ? "bg-amber-50/50 border-amber-200 text-amber-700" : "bg-white border-slate-100 text-slate-600 hover:bg-slate-50")}>
+                                  <input type="checkbox" checked={tempPermDownload} onChange={e => setTempPermDownload(e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500" />
+                                  <span className="text-xs font-bold">تنزيل المرفقات</span>
+                                </label>
+                              </div>
+                            )}
+
+                            {!tempPermFull && (
+                              <div className="mt-4 bg-slate-50 p-5 rounded-2xl border border-slate-200">
+                                <h6 className="font-bold text-slate-800 text-sm mb-3 flex items-center gap-2">
+                                  <BookOpen className="w-4 h-4 text-slate-500" />
+                                  المواد المسموح بمتابعتها
+                                </h6>
+                                <p className="text-[10px] text-slate-500 mb-4 font-medium">إذا تركتي هذا القسم فارغاً، فسيتم السماح بمتابعة كافة المواد.</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {AVAILABLE_SUBJECTS.map((subject, idx) => (
+                                    <label key={`subject-filter-${subject}-${idx}`} className={cn("flex items-center gap-2 px-3 py-2 rounded-xl transition-all cursor-pointer select-none border-2", tempPermSubjects.includes(subject) ? "bg-white border-indigo-500 shadow-sm" : "bg-white border-transparent hover:border-slate-300")}>
+                                      <input 
+                                        type="checkbox" 
+                                        checked={tempPermSubjects.includes(subject)}
+                                        onChange={e => {
+                                          if (e.target.checked) {
+                                            setTempPermSubjects([...tempPermSubjects, subject]);
+                                          } else {
+                                            setTempPermSubjects(tempPermSubjects.filter(s => s !== subject));
+                                          }
+                                        }}
+                                        className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                      />
+                                      <span className={cn("text-xs font-black", tempPermSubjects.includes(subject) ? "text-indigo-900" : "text-slate-600")}>{subject}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <button onClick={handleAddNewTempSupervisor} className="w-full bg-gradient-to-l from-indigo-500 to-purple-600 text-white py-5 rounded-[1.5rem] font-black text-sm shadow-xl shadow-indigo-600/20 hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex justify-center items-center gap-2">
+                          <Plus className="w-5 h-5" />
+                          إعتماد المشرفة المؤقتة
+                        </button>
                       </div>
+                    </div>
+                  </div>
 
-                      <button onClick={handleAddNewTempSupervisor} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all">إضافة المشرف المؤقت</button>
-                    </section>
-
-                    <section className="space-y-6">
-                      <h4 className="font-black text-slate-800 text-sm border-r-4 border-red-500 pr-4">المشرفين المؤقتين الحاليين</h4>
+                  {/* List Section */}
+                  <div className="lg:w-[400px] flex-shrink-0 space-y-6">
+                    <div className="bg-slate-900 p-8 rounded-[2.5rem] shadow-xl text-white">
+                      <h4 className="font-black text-xl mb-6 flex items-center gap-3">
+                        <Users className="w-6 h-6 text-indigo-400" />
+                        المشرفات المعتمدات
+                      </h4>
+                      
                       <div className="space-y-4">
                         {teachers.filter(t => t.role === UserRole.TEMP_SUPERVISOR).map((supervisor) => {
                           return (
-                            <div key={`supervisor-${supervisor.id}`} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-slate-50 rounded-xl border border-slate-100 gap-4">
-                              <div>
-                                <span className="font-bold text-slate-700 block">{supervisor.name}</span>
-                                <span className="text-xs text-slate-500 font-mono mt-1 block">الرقم الوظيفي: {supervisor.code}</span>
-                                <div className="flex flex-wrap gap-1 mt-2">
-                                  {supervisor.tempPermissions?.hasFullAccess ? (
-                                    <span className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-[10px] font-bold">صلاحيات كاملة</span>
-                                  ) : (
-                                    <>
-                                      {supervisor.tempPermissions?.canViewTeachers && <span className="px-2 py-1 bg-slate-200 text-slate-600 rounded text-[10px] font-bold">الاطلاع على المعلمات</span>}
-                                      {supervisor.tempPermissions?.canComment && <span className="px-2 py-1 bg-slate-200 text-slate-600 rounded text-[10px] font-bold">إضافة تعليقات</span>}
-                                      {supervisor.tempPermissions?.canApproveProjects && <span className="px-2 py-1 bg-slate-200 text-slate-600 rounded text-[10px] font-bold">اعتماد المشاريع</span>}
-                                      {supervisor.tempPermissions?.canManageUsers && <span className="px-2 py-1 bg-slate-200 text-slate-600 rounded text-[10px] font-bold">إدارة المستخدمين</span>}
-                                      {supervisor.tempPermissions?.canDownloadAttachments && <span className="px-2 py-1 bg-slate-200 text-slate-600 rounded text-[10px] font-bold">تنزيل المرفقات</span>}
-                                    </>
-                                  )}
-                                </div>
-                                {!supervisor.tempPermissions?.hasFullAccess && supervisor.tempPermissions?.allowedSubjects && supervisor.tempPermissions.allowedSubjects.length > 0 && (
-                                  <div className="flex flex-wrap gap-1 mt-1">
-                                    <span className="text-[10px] text-slate-500">المواد:</span>
-                                    {supervisor.tempPermissions.allowedSubjects.map((s, index) => (
-                                      <span key={`${supervisor.id}-${s}-${index}`} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">{s}</span>
-                                    ))}
+                            <div key={`supervisor-${supervisor.id}`} className="bg-white/10 backdrop-blur border border-white/10 p-5 rounded-2xl relative overflow-hidden group hover:bg-white/20 transition-all">
+                              {supervisor.tempPermissions?.hasFullAccess && (
+                                <div className="absolute top-0 right-0 w-12 h-12 overflow-hidden pointer-events-none">
+                                  <div className="absolute top-1 -right-4 w-16 h-4 bg-amber-500 rotate-45 text-[8px] font-black text-amber-900 flex justify-center items-center">
+                                    كاملة
                                   </div>
+                                </div>
+                              )}
+                              <div className="mb-4">
+                                <h5 className="font-black text-lg text-white mb-0.5">{supervisor.name}</h5>
+                                <p className="text-[10px] text-slate-400 font-mono tracking-widest">{supervisor.code}</p>
+                              </div>
+                              
+                              <div className="flex flex-wrap gap-1.5 mb-4 max-h-[80px] overflow-y-auto pr-2 custom-scrollbar">
+                                {supervisor.tempPermissions?.hasFullAccess ? (
+                                  <span className="px-2 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg text-[10px] font-bold">وصول بصلاحيات كاملة 👑</span>
+                                ) : (
+                                  <>
+                                    {supervisor.tempPermissions?.canViewTeachers && <span className="px-2 py-1 bg-white/5 border border-white/10 text-slate-300 rounded text-[10px] font-bold">معلمات</span>}
+                                    {supervisor.tempPermissions?.canComment && <span className="px-2 py-1 bg-white/5 border border-white/10 text-slate-300 rounded text-[10px] font-bold">تعليقات</span>}
+                                    {supervisor.tempPermissions?.canApproveProjects && <span className="px-2 py-1 bg-white/5 border border-white/10 text-slate-300 rounded text-[10px] font-bold">مشاريع</span>}
+                                    {supervisor.tempPermissions?.canManageUsers && <span className="px-2 py-1 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded text-[10px] font-bold">إدارة</span>}
+                                    {supervisor.tempPermissions?.canDownloadAttachments && <span className="px-2 py-1 bg-white/5 border border-white/10 text-slate-300 rounded text-[10px] font-bold">تنزيل</span>}
+                                  </>
                                 )}
                               </div>
-                              <div className="flex gap-2 w-full sm:w-auto">
+
+                              {!supervisor.tempPermissions?.hasFullAccess && supervisor.tempPermissions?.allowedSubjects && supervisor.tempPermissions.allowedSubjects.length > 0 && (
+                                <div className="mb-4 bg-black/20 p-2.5 rounded-xl border border-white/5">
+                                  <span className="text-[9px] text-slate-400 font-bold block mb-1">المواد المخصصة:</span>
+                                  <div className="flex flex-wrap gap-1">
+                                    {supervisor.tempPermissions.allowedSubjects.map((s, index) => (
+                                      <span key={`${supervisor.id}-${s}-${index}`} className="px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded text-[9px] font-bold">{s}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="flex gap-2">
                                 <button 
                                   onClick={async () => {
                                     const pass = await onResetPassword(supervisor.id);
@@ -3106,25 +3118,29 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                     setResetTeacherId(supervisor.code || supervisor.id);
                                     setShowPasswordModal(true);
                                   }}
-                                  className="flex-1 sm:flex-none px-3 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-lg font-bold text-xs transition-colors"
+                                  className="flex-1 py-2 bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 rounded-xl font-bold text-[10px] transition-colors border border-indigo-500/30"
                                 >
                                   كلمة المرور
                                 </button>
                                 <button 
                                   onClick={() => onDeleteTempSupervisor(supervisor.id)}
-                                  className="flex-1 sm:flex-none px-3 py-2 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-lg font-bold text-xs transition-colors"
+                                  className="flex-1 py-2 bg-rose-500/10 hover:bg-rose-500/30 text-rose-400 rounded-xl font-bold text-[10px] transition-colors border border-rose-500/20"
                                 >
-                                  حذف
+                                  إلغاء التكليف
                                 </button>
                               </div>
                             </div>
                           );
                         })}
+                        
                         {teachers.filter(t => t.role === UserRole.TEMP_SUPERVISOR).length === 0 && (
-                          <p className="text-sm font-bold text-slate-500 text-center py-4">لا يوجد مشرفين مؤقتين حالياً</p>
+                          <div className="text-center py-12 bg-white/5 rounded-2xl border border-white/5 border-dashed">
+                            <Shield className="w-8 h-8 text-slate-600 mx-auto mb-3 opacity-50" />
+                            <p className="text-xs font-bold text-slate-400">لا يوجد مشرفات مؤقتات حالياً</p>
+                          </div>
                         )}
                       </div>
-                    </section>
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -4042,52 +4058,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       </p>
                     </div>
                   )}
-
-                  {/* Lesson Status (For Supervisors) */}
-                  <div className="space-y-4">
-                    <h4 className="font-black text-slate-800 flex items-center gap-2">
-                      <div className="w-1.5 h-6 bg-amber-500 rounded-full" />
-                      حالة الدرس
-                    </h4>
-                    <div className="grid grid-cols-3 gap-3">
-                      <button
-                        onClick={() => handleUpdateLessonStatus('approved')}
-                        className={cn(
-                          "py-3 rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 border-2",
-                          viewingLesson.status === 'approved' 
-                            ? "bg-emerald-50 border-emerald-500 text-emerald-700" 
-                            : "bg-white border-slate-100 text-slate-400 hover:border-emerald-200"
-                        )}
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                        اعتماد
-                      </button>
-                      <button
-                        onClick={() => handleUpdateLessonStatus('pending')}
-                        className={cn(
-                          "py-3 rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 border-2",
-                          viewingLesson.status === 'pending' || !viewingLesson.status
-                            ? "bg-amber-50 border-amber-500 text-amber-700" 
-                            : "bg-white border-slate-100 text-slate-400 hover:border-amber-200"
-                        )}
-                      >
-                        <Clock className="w-4 h-4" />
-                        قيد المراجعة
-                      </button>
-                      <button
-                        onClick={() => handleUpdateLessonStatus('rejected')}
-                        className={cn(
-                          "py-3 rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 border-2",
-                          viewingLesson.status === 'rejected' 
-                            ? "bg-rose-50 border-rose-500 text-rose-700" 
-                            : "bg-white border-slate-100 text-slate-400 hover:border-rose-200"
-                        )}
-                      >
-                        <XCircle className="w-4 h-4" />
-                        رفض
-                      </button>
-                    </div>
-                  </div>
 
                   {/* Attachments */}
                   <div className="space-y-4">

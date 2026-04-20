@@ -1289,13 +1289,6 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                         <div className={cn("p-3 rounded-xl", bg, color)}>
                           <BookOpen className="w-6 h-6" />
                         </div>
-                        <span className={cn("px-3 py-1 rounded-full text-[10px] font-black", 
-                          lesson.status === 'approved' ? "bg-emerald-50 text-emerald-700" :
-                          lesson.status === 'rejected' ? "bg-red-50 text-red-700" :
-                          "bg-amber-50 text-amber-700"
-                        )}>
-                          {lesson.status === 'approved' ? 'معتمد' : lesson.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
-                        </span>
                       </div>
                       <h3 className="font-black text-slate-900 mb-1">{lesson.lessonTitle}</h3>
                       <p className="text-xs text-slate-500 mb-4 line-clamp-2">{lesson.description}</p>
