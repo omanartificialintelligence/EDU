@@ -19,7 +19,9 @@ import {
   where, 
   getDocs,
   getDoc,
-  Unsubscribe
+  Unsubscribe,
+  orderBy,
+  limit
 } from 'firebase/firestore';
 import { auth as firebaseAuth, googleProvider, microsoftProvider } from './src/firebase';
 import { 
@@ -142,13 +144,13 @@ const App: React.FC = () => {
       }, (error) => handleFirestoreError(error, OperationType.GET, 'config/supervisor'));
       unsubs.push(unsubConfig);
 
-      const unsubTeachers = onSnapshot(collection(db, 'users'), (snapshot) => {
+      const unsubTeachers = onSnapshot(query(collection(db, 'users'), limit(300)), (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
         setTeachers(list);
       }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
       unsubs.push(unsubTeachers);
       
-      const unsubPosts = onSnapshot(collection(db, 'posts'), (snapshot) => {
+      const unsubPosts = onSnapshot(query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(50)), (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Post));
         setPosts(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       }, (error) => handleFirestoreError(error, OperationType.LIST, 'posts'));
@@ -157,32 +159,32 @@ const App: React.FC = () => {
 
     // Private listeners (only for authenticated users with roles)
     const setupPrivateListeners = () => {
-      const unsubLessons = onSnapshot(collection(db, 'lessonMaterials'), (snapshot) => {
+      const unsubLessons = onSnapshot(query(collection(db, 'lessonMaterials'), orderBy('createdAt', 'desc'), limit(300)), (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as LessonMaterial));
         setLessonMaterials(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       }, (error) => handleFirestoreError(error, OperationType.LIST, 'lessonMaterials'));
       unsubs.push(unsubLessons);
 
-      const unsubProjects = onSnapshot(collection(db, 'projects'), (snapshot) => {
+      const unsubProjects = onSnapshot(query(collection(db, 'projects'), limit(100)), (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Project));
         setProjects(list);
       }, (error) => handleFirestoreError(error, OperationType.LIST, 'projects'));
       unsubs.push(unsubProjects);
 
-      const unsubNotifications = onSnapshot(collection(db, 'notifications'), (snapshot) => {
+      const unsubNotifications = onSnapshot(query(collection(db, 'notifications'), orderBy('createdAt', 'desc'), limit(100)), (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Notification));
         setNotifications(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       }, (error) => handleFirestoreError(error, OperationType.LIST, 'notifications'));
       unsubs.push(unsubNotifications);
 
-      const unsubMessages = onSnapshot(collection(db, 'messages'), (snapshot) => {
+      const unsubMessages = onSnapshot(query(collection(db, 'messages'), orderBy('createdAt', 'desc'), limit(250)), (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Message));
         setMessages(list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
       }, (error) => handleFirestoreError(error, OperationType.LIST, 'messages'));
       unsubs.push(unsubMessages);
 
       if (auth.user?.role === UserRole.SUPERVISOR || auth.user?.role === UserRole.TEMP_SUPERVISOR) {
-        const unsubReset = onSnapshot(collection(db, 'resetRequests'), (snapshot) => {
+        const unsubReset = onSnapshot(query(collection(db, 'resetRequests'), limit(50)), (snapshot) => {
           const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as ResetRequest));
           setResetRequests(list);
         }, (error) => handleFirestoreError(error, OperationType.LIST, 'resetRequests'));
