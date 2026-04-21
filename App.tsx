@@ -493,17 +493,24 @@ const App: React.FC = () => {
   };
 
   const handleRestoreAllArchivedLessons = async () => {
-    const archivedLessons = lessonMaterials.filter(m => m.isArchived === true || m.isActive === false);
-    if (archivedLessons.length === 0) {
-      alert('لا توجد دروس في الأرشيف للتراجع عنها.');
+    if (lessonMaterials.length === 0) {
+      alert('لا توجد دروس للتراجع عنها.');
       return;
     }
-    if (window.confirm(`هل أنت متأكد من استعادة ${archivedLessons.length} درساً من الأرشيف؟`)) {
+    const currentYear = supervisorConfig?.academicYear || '2023-2024';
+    const currentSemester = supervisorConfig?.semester || 'الفصل الأول';
+    
+    if (window.confirm(`هل أنت متأكد من استعادة وتحويل جميع الدروس (${lessonMaterials.length} درس) لعام ${currentYear} ${currentSemester}؟`)) {
       try {
-        for (const lesson of archivedLessons) {
-          await updateDoc(doc(db, 'lessonMaterials', lesson.id), { isActive: true, isArchived: false });
+        for (const lesson of lessonMaterials) {
+          await updateDoc(doc(db, 'lessonMaterials', lesson.id), { 
+            isActive: true, 
+            isArchived: false,
+            academicYear: currentYear,
+            semester: currentSemester
+          });
         }
-        alert('تمت استعادة جميع الدروس بنجاح.');
+        alert(`تمت استعادة جميع الدروس لعام ${currentYear} بنجاح.`);
       } catch (error) {
         console.error("Error restoring lessons:", error);
         alert('حدث خطأ أثناء عملية الاستعادة.');

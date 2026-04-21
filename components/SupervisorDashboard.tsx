@@ -2375,12 +2375,12 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       <h2 className="text-2xl font-black text-slate-900">الأرشيف التاريخي الذكي</h2>
                       <p className="text-slate-500 font-bold text-sm mb-4">تصفح سجلات السنوات السابقة والدروس المؤرشفة</p>
                       
-                      {isMainSupervisor && onRestoreAllLessons && lessonMaterials.filter(m => m.isArchived === true || m.isActive === false).length > 0 && (
+                      {isMainSupervisor && onRestoreAllLessons && lessonMaterials.length > 0 && (
                         <button
                           onClick={onRestoreAllLessons}
                           className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-black hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-lg shadow-emerald-600/20"
                         >
-                          <CheckCircle className="w-4 h-4" /> استعادة جميع الدروس من الأرشيف
+                          <CheckCircle className="w-4 h-4" /> استعادة جميع الدروس والإصلاح (إلى العام الحالي)
                         </button>
                       )}
                     </div>
