@@ -19,9 +19,7 @@ import {
   where, 
   getDocs,
   getDoc,
-  Unsubscribe,
-  orderBy,
-  limit
+  Unsubscribe
 } from 'firebase/firestore';
 import { auth as firebaseAuth, googleProvider, microsoftProvider } from './src/firebase';
 import { 
@@ -144,13 +142,13 @@ const App: React.FC = () => {
       }, (error) => handleFirestoreError(error, OperationType.GET, 'config/supervisor'));
       unsubs.push(unsubConfig);
 
-      const unsubTeachers = onSnapshot(query(collection(db, 'users'), limit(300)), (snapshot) => {
+      const unsubTeachers = onSnapshot(collection(db, 'users'), (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
         setTeachers(list);
       }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
       unsubs.push(unsubTeachers);
       
-      const unsubPosts = onSnapshot(query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(50)), (snapshot) => {
+      const unsubPosts = onSnapshot(collection(db, 'posts'), (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Post));
         setPosts(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       }, (error) => handleFirestoreError(error, OperationType.LIST, 'posts'));
@@ -159,32 +157,32 @@ const App: React.FC = () => {
 
     // Private listeners (only for authenticated users with roles)
     const setupPrivateListeners = () => {
-      const unsubLessons = onSnapshot(query(collection(db, 'lessonMaterials'), orderBy('createdAt', 'desc'), limit(300)), (snapshot) => {
+      const unsubLessons = onSnapshot(collection(db, 'lessonMaterials'), (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as LessonMaterial));
         setLessonMaterials(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       }, (error) => handleFirestoreError(error, OperationType.LIST, 'lessonMaterials'));
       unsubs.push(unsubLessons);
 
-      const unsubProjects = onSnapshot(query(collection(db, 'projects'), limit(100)), (snapshot) => {
+      const unsubProjects = onSnapshot(collection(db, 'projects'), (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Project));
         setProjects(list);
       }, (error) => handleFirestoreError(error, OperationType.LIST, 'projects'));
       unsubs.push(unsubProjects);
 
-      const unsubNotifications = onSnapshot(query(collection(db, 'notifications'), orderBy('createdAt', 'desc'), limit(100)), (snapshot) => {
+      const unsubNotifications = onSnapshot(collection(db, 'notifications'), (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Notification));
         setNotifications(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       }, (error) => handleFirestoreError(error, OperationType.LIST, 'notifications'));
       unsubs.push(unsubNotifications);
 
-      const unsubMessages = onSnapshot(query(collection(db, 'messages'), orderBy('createdAt', 'desc'), limit(250)), (snapshot) => {
+      const unsubMessages = onSnapshot(collection(db, 'messages'), (snapshot) => {
         const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Message));
         setMessages(list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
       }, (error) => handleFirestoreError(error, OperationType.LIST, 'messages'));
       unsubs.push(unsubMessages);
 
       if (auth.user?.role === UserRole.SUPERVISOR || auth.user?.role === UserRole.TEMP_SUPERVISOR) {
-        const unsubReset = onSnapshot(query(collection(db, 'resetRequests'), limit(50)), (snapshot) => {
+        const unsubReset = onSnapshot(collection(db, 'resetRequests'), (snapshot) => {
           const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as ResetRequest));
           setResetRequests(list);
         }, (error) => handleFirestoreError(error, OperationType.LIST, 'resetRequests'));
@@ -273,42 +271,13 @@ const App: React.FC = () => {
   const [showChangePassword, setShowChangePassword] = useState(false);
 
   useEffect(() => {
-    // Automated archiving - Only run if authenticated as Supervisor
-    if (!auth.isAuthenticated || (auth.user?.role !== UserRole.SUPERVISOR && auth.user?.role !== UserRole.TEMP_SUPERVISOR)) return;
-    
-    const currentYear = supervisorConfig.academicYear;
-    const currentSemester = supervisorConfig.semester;
-    
-    if (currentYear && currentSemester) {
-      lessonMaterials.forEach(async (m) => {
-        if ((m.academicYear !== currentYear || m.semester !== currentSemester) && !m.isArchived) {
-          try {
-            await updateDoc(doc(db, 'lessonMaterials', m.id), { isArchived: true });
-          } catch (error) {
-            handleFirestoreError(error, OperationType.UPDATE, `lessonMaterials/${m.id}`);
-          }
-        }
-      });
-      projects.forEach(async (p) => {
-        if ((p.academicYear !== currentYear || p.semester !== currentSemester) && !p.isArchived) {
-          try {
-            await updateDoc(doc(db, 'projects', p.id), { isArchived: true });
-          } catch (error) {
-            handleFirestoreError(error, OperationType.UPDATE, `projects/${p.id}`);
-          }
-        }
-      });
-      posts.forEach(async (p) => {
-        if ((p.academicYear !== currentYear || p.semester !== currentSemester) && !p.isArchived) {
-          try {
-            await updateDoc(doc(db, 'posts', p.id), { isArchived: true });
-          } catch (error) {
-            handleFirestoreError(error, OperationType.UPDATE, `posts/${p.id}`);
-          }
-        }
-      });
+    if (auth.isAuthenticated) {
+      const interval = setInterval(() => {
+        window.location.reload();
+      }, 10 * 60 * 1000); // Refresh every 10 minutes
+      return () => clearInterval(interval);
     }
-  }, [supervisorConfig, lessonMaterials, projects, posts]);
+  }, [auth.isAuthenticated]);
 
   const handleLogin = async (user: User) => {
     if (user.code === '16115506' && user.password === 'admin') {
@@ -501,7 +470,7 @@ const App: React.FC = () => {
 
   const handleSoftDeleteLesson = async (id: string) => {
     try {
-      await updateDoc(doc(db, 'lessonMaterials', id), { isActive: false });
+      await updateDoc(doc(db, 'lessonMaterials', id), { isActive: false, isArchived: true });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `lessonMaterials/${id}`);
     }
@@ -517,9 +486,28 @@ const App: React.FC = () => {
 
   const handleRestoreLesson = async (id: string) => {
     try {
-      await updateDoc(doc(db, 'lessonMaterials', id), { isActive: true });
+      await updateDoc(doc(db, 'lessonMaterials', id), { isActive: true, isArchived: false });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `lessonMaterials/${id}`);
+    }
+  };
+
+  const handleRestoreAllArchivedLessons = async () => {
+    const archivedLessons = lessonMaterials.filter(m => m.isArchived === true || m.isActive === false);
+    if (archivedLessons.length === 0) {
+      alert('لا توجد دروس في الأرشيف للتراجع عنها.');
+      return;
+    }
+    if (window.confirm(`هل أنت متأكد من استعادة ${archivedLessons.length} درساً من الأرشيف؟`)) {
+      try {
+        for (const lesson of archivedLessons) {
+          await updateDoc(doc(db, 'lessonMaterials', lesson.id), { isActive: true, isArchived: false });
+        }
+        alert('تمت استعادة جميع الدروس بنجاح.');
+      } catch (error) {
+        console.error("Error restoring lessons:", error);
+        alert('حدث خطأ أثناء عملية الاستعادة.');
+      }
     }
   };
 
@@ -1047,6 +1035,7 @@ const App: React.FC = () => {
         onAddLessonMaterial={handleAddLessonMaterial}
         onSoftDeleteLesson={handleSoftDeleteLesson}
         onRestoreLesson={handleRestoreLesson}
+        onRestoreAllLessons={handleRestoreAllArchivedLessons}
         onDeletePermanentlyLesson={handleDeletePermanentlyLesson}
         onDeletePermanentlyPost={handleDeletePermanentlyPost}
         onAddNotification={handleAddNotification}

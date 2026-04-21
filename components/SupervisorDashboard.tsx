@@ -56,6 +56,7 @@ interface SupervisorDashboardProps {
   onAddLessonMaterial: (material: LessonMaterial) => Promise<void>;
   onSoftDeleteLesson: (id: string) => void;
   onRestoreLesson: (id: string) => void;
+  onRestoreAllLessons?: () => void;
   onDeletePermanentlyLesson: (id: string) => void;
   onDeletePermanentlyTeacher: (id: string) => void;
   onDeletePermanentlyProject: (id: string) => void;
@@ -79,7 +80,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   onAddTeacher, onSoftDeleteTeacher, onRestoreTeacher, onUpdateTeacher, onResetPassword,
   onAddProject, onDeleteProject, onUpdateProjectSubmission,
   onAddTempSupervisor, onDeleteTempSupervisor, onUpdateSecurity, onUpdateLessonMaterial, onAddLessonMaterial,
-  onSoftDeleteLesson, onRestoreLesson, onDeletePermanentlyLesson, onDeletePermanentlyTeacher, onDeletePermanentlyProject, onDeletePermanentlyPost, 
+  onSoftDeleteLesson, onRestoreLesson, onRestoreAllLessons, onDeletePermanentlyLesson, onDeletePermanentlyTeacher, onDeletePermanentlyProject, onDeletePermanentlyPost, 
   onCleanupOrphanedLessons,
   onAddNotification,
   notifications, onMarkNotificationAsRead,
@@ -953,8 +954,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   }, [teachers, isTempSupervisor, user.tempPermissions]);
 
   const statsLessons = useMemo(() => {
-    let list = lessonMaterials.filter(m => m.isActive !== false && m.academicYear === academicYear && m.semester === semester && !m.isArchived);
-    
+    let list = lessonMaterials.filter(m => m.isActive !== false);
+
     if (isTempSupervisor && !user.tempPermissions?.hasFullAccess && user.tempPermissions?.allowedSubjects) {
       const allowed = user.tempPermissions.allowedSubjects;
       if (allowed.length > 0) {
@@ -968,11 +969,11 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     }
     
     return list;
-  }, [lessonMaterials, academicYear, semester, isTempSupervisor, user.tempPermissions, isMainSupervisor, statsTeachers]);
+  }, [lessonMaterials, isTempSupervisor, user.tempPermissions, isMainSupervisor, statsTeachers]);
 
   const statsPosts = useMemo(() => {
-    return posts.filter(p => p.academicYear === academicYear && p.semester === semester && !p.isArchived);
-  }, [posts, academicYear, semester]);
+    return posts;
+  }, [posts]);
 
   // Stats for Charts
   const statsData = useMemo(() => [
@@ -2372,7 +2373,16 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-10">
                     <div>
                       <h2 className="text-2xl font-black text-slate-900">الأرشيف التاريخي الذكي</h2>
-                      <p className="text-slate-500 font-bold text-sm">تصفح سجلات السنوات السابقة والدروس المؤرشفة</p>
+                      <p className="text-slate-500 font-bold text-sm mb-4">تصفح سجلات السنوات السابقة والدروس المؤرشفة</p>
+                      
+                      {isMainSupervisor && onRestoreAllLessons && lessonMaterials.filter(m => m.isArchived === true || m.isActive === false).length > 0 && (
+                        <button
+                          onClick={onRestoreAllLessons}
+                          className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-black hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-lg shadow-emerald-600/20"
+                        >
+                          <CheckCircle className="w-4 h-4" /> استعادة جميع الدروس من الأرشيف
+                        </button>
+                      )}
                     </div>
                     <div className="flex flex-col gap-2">
                       {availableArchiveYears.map((year, idx) => (
@@ -2456,7 +2466,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                       m.academicYear === selectedArchiveYear && 
                                       m.grade === selectedArchiveGrade && 
                                       m.subject === subject.name && 
-                                      m.semester === sem
+                                      m.semester === sem &&
+                                      (m.isArchived === true || m.isActive === false)
                                     );
                                     
                                     if (!hasMaterials && selectedArchiveSemester !== sem) return null;
@@ -2482,7 +2493,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                       m.academicYear === selectedArchiveYear && 
                                       m.grade === selectedArchiveGrade && 
                                       m.subject === subject.name && 
-                                      m.semester === sem
+                                      m.semester === sem &&
+                                      (m.isArchived === true || m.isActive === false)
                                     )
                                   ) && (
                                     <div className="w-full text-center py-4 text-xs font-bold text-slate-400 bg-slate-50 rounded-xl">
@@ -2517,7 +2529,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             m.academicYear === selectedArchiveYear && 
                             m.grade === selectedArchiveGrade && 
                             m.subject === selectedArchiveSubject && 
-                            m.semester === selectedArchiveSemester
+                            m.semester === selectedArchiveSemester &&
+                            (m.isArchived === true || m.isActive === false)
                           ).length} درس مؤرشف
                         </div>
                       </div>
@@ -2527,7 +2540,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           m.academicYear === selectedArchiveYear && 
                           m.grade === selectedArchiveGrade && 
                           m.subject === selectedArchiveSubject && 
-                          m.semester === selectedArchiveSemester
+                          m.semester === selectedArchiveSemester &&
+                          (m.isArchived === true || m.isActive === false)
                         ).map((lesson, idx) => {
                           const fileInfo = getFileIcon(lesson);
                           const Icon = fileInfo.icon;
@@ -2590,7 +2604,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           m.academicYear === selectedArchiveYear && 
                           m.grade === selectedArchiveGrade && 
                           m.subject === selectedArchiveSubject && 
-                          m.semester === selectedArchiveSemester
+                          m.semester === selectedArchiveSemester &&
+                          (m.isArchived === true || m.isActive === false)
                         ).length === 0 && (
                           <div className="col-span-full text-center py-20">
                             <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">

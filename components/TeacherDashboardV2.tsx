@@ -569,9 +569,9 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                     <h3 className="font-black text-lg text-slate-800">أحدث التعاميم</h3>
                   </div>
                   
-                  <div className="flex-1 overflow-y-auto pr-2 space-y-4 max-h-[200px] scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+                  <div className="flex-1 overflow-y-auto pr-2 space-y-4 max-h-[400px] scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
                     {posts.filter(p => !p.isArchived).length > 0 ? (
-                      posts.filter(p => !p.isArchived).slice(0, 3).map((post, index) => (
+                      posts.filter(p => !p.isArchived).map((post, index) => (
                         <div 
                           key={`post-${post.id}`} 
                           onClick={() => setViewingPost(post)}
@@ -622,8 +622,6 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   {subjects.map((subject, i) => {
                     // Filter materials for this subject and grade
                     const subjectMaterials = lessonMaterials.filter(m => 
-                      m.academicYear === currentYear &&
-                      m.semester === semester &&
                       !m.isArchived && m.isActive !== false &&
                       (m.tags?.includes(subject.name) || m.lessonTitle.includes(subject.name)) && 
                       (m.tags?.includes(selectedGrade) || m.grade === selectedGrade)
@@ -737,7 +735,6 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                     {/* Render actual materials here */}
                     {lessonMaterials
                       .filter(m => 
-                        m.academicYear === currentYear &&
                         !m.isArchived &&
                         (m.tags?.includes(viewingSubject) || m.lessonTitle.includes(viewingSubject)) && 
                         (m.tags?.includes(selectedGrade) || m.grade === selectedGrade)
@@ -914,7 +911,6 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   </div>
 
                   {lessonMaterials.filter(m => 
-                    m.academicYear === currentYear &&
                     !m.isArchived &&
                     (m.tags?.includes(viewingSubject) || m.lessonTitle.includes(viewingSubject)) && 
                     (m.tags?.includes(selectedGrade) || m.grade === selectedGrade)
@@ -956,7 +952,6 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
 
               <div className="flex flex-col gap-6 max-h-[70vh] overflow-y-auto snap-y snap-mandatory pr-2 custom-scrollbar focus:outline-none" tabIndex={0}>
                 {projects.filter(p => {
-                  if (p.academicYear !== currentYear) return false;
                   const isAssigned = p.assignedTeacherIds.includes(user.id);
                   if (!isAssigned) return false;
                   
