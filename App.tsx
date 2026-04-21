@@ -424,7 +424,7 @@ const App: React.FC = () => {
     }
 
     setAuth({ user, isAuthenticated: true });
-    if (user.role === UserRole.TEACHER && user.mustChangePassword) {
+    if ((user.role === UserRole.TEACHER || user.role === UserRole.TEMP_SUPERVISOR) && user.mustChangePassword) {
       setShowChangePassword(true);
     } else {
       setShowChangePassword(false);

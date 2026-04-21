@@ -347,6 +347,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [newTempName, setNewTempName] = useState('');
   const [newTempId, setNewTempId] = useState('');
   const [newTempPass, setNewTempPass] = useState('');
+  const [newTempPhone, setNewTempPhone] = useState('');
   const [tempPermView, setTempPermView] = useState(false);
   const [tempPermComment, setTempPermComment] = useState(false);
   const [tempPermApprove, setTempPermApprove] = useState(false);
@@ -370,6 +371,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
       role: UserRole.TEMP_SUPERVISOR,
       code: newTempId,
       password: newTempPass,
+      phoneNumber: newTempPhone,
+      mustChangePassword: true,
       isActive: true,
       joinedAt: new Date().toISOString(),
       tempPermissions: {
@@ -386,6 +389,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     setNewTempName('');
     setNewTempId('');
     setNewTempPass('');
+    setNewTempPhone('');
     setTempPermView(false);
     setTempPermComment(false);
     setTempPermApprove(false);
@@ -401,6 +405,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [resetTeacherName, setResetTeacherName] = useState<string | null>(null);
   const [resetTeacherPhone, setResetTeacherPhone] = useState<string | null>(null);
   const [resetTeacherId, setResetTeacherId] = useState<string | null>(null);
+  const [resetTeacherRole, setResetTeacherRole] = useState<UserRole | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   // Security & Config State
@@ -1683,6 +1688,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                           setResetTeacherName(teacher.name);
                           setResetTeacherPhone(teacher.phoneNumber || '');
                           setResetTeacherId(teacher.code || teacher.id);
+                          setResetTeacherRole(teacher.role);
                           setShowPasswordModal(true);
                         }}
                         className="text-indigo-600 hover:text-indigo-800 font-bold text-xs mb-4"
@@ -1759,7 +1765,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                   setResetTeacherName(teacher.name);
                                   setResetTeacherPhone(teacher.phoneNumber || '');
                                   setResetTeacherId(teacher.code || teacher.id);
-                              }}
+                                  setResetTeacherRole(teacher.role);
+                                  setShowPasswordModal(true);
+                                }}
                               className="flex-1 py-2.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors font-bold text-xs flex items-center justify-center gap-2"
                             >
                               <Shield className="w-3.5 h-3.5" />
@@ -2995,7 +3003,11 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">الرقم الوظيفي</label>
                             <input type="text" value={newTempId} onChange={e => setNewTempId(e.target.value)} placeholder="مثال: 123456" className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" />
                           </div>
-                          <div className="space-y-2 md:col-span-2">
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">رقم الهاتف (الواتساب)</label>
+                            <input type="text" value={newTempPhone} onChange={e => setNewTempPhone(e.target.value)} placeholder="مثال: 9XXXXXXXX" className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" dir="ltr" />
+                          </div>
+                          <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">كلمة المرور المؤقتة</label>
                             <input type="password" value={newTempPass} onChange={e => setNewTempPass(e.target.value)} placeholder="••••••••" className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" />
                           </div>
@@ -3101,7 +3113,14 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                               )}
                               <div className="mb-4">
                                 <h5 className="font-black text-lg text-white mb-0.5">{supervisor.name}</h5>
-                                <p className="text-[10px] text-slate-400 font-mono tracking-widest">{supervisor.code}</p>
+                                <div className="flex items-center gap-3">
+                                  <p className="text-[10px] text-slate-400 font-mono tracking-widest">{supervisor.code}</p>
+                                  {supervisor.phoneNumber && (
+                                    <span className="text-[10px] text-indigo-300 font-bold bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20" dir="ltr">
+                                      +968 {supervisor.phoneNumber.replace(/^968/, '')}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                               
                               <div className="flex flex-wrap gap-1.5 mb-4 max-h-[80px] overflow-y-auto pr-2 custom-scrollbar">
@@ -3137,12 +3156,28 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                     setResetTeacherName(supervisor.name);
                                     setResetTeacherPhone(supervisor.phoneNumber || '');
                                     setResetTeacherId(supervisor.code || supervisor.id);
+                                    setResetTeacherRole(supervisor.role);
                                     setShowPasswordModal(true);
                                   }}
                                   className="flex-1 py-2 bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 rounded-xl font-bold text-[10px] transition-colors border border-indigo-500/30"
                                 >
                                   كلمة المرور
                                 </button>
+                                {supervisor.phoneNumber && (
+                                  <button 
+                                    onClick={() => {
+                                      let formattedPhone = supervisor.phoneNumber?.replace(/\D/g, '') || '';
+                                      if (formattedPhone && !formattedPhone.startsWith('968')) {
+                                          formattedPhone = '968' + formattedPhone;
+                                      }
+                                      window.open(`https://api.whatsapp.com/send?phone=${formattedPhone}`, '_blank');
+                                    }}
+                                    className="flex-none px-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 rounded-xl font-bold text-[10px] transition-colors border border-emerald-500/30 w-auto flex items-center justify-center m-0"
+                                    title="مراسلة واتساب"
+                                  >
+                                    واتساب
+                                  </button>
+                                )}
                                 <button 
                                   onClick={() => onDeleteTempSupervisor(supervisor.id)}
                                   className="flex-1 py-2 bg-rose-500/10 hover:bg-rose-500/30 text-rose-400 rounded-xl font-bold text-[10px] transition-colors border border-rose-500/20"
@@ -4394,10 +4429,30 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
               className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl p-8"
             >
               <h3 className="text-xl font-black text-slate-900 mb-2">كلمة المرور الجديدة</h3>
-              <p className="text-slate-500 font-bold text-xs mb-6">تم إعادة تعيين كلمة مرور المعلمة {resetTeacherName}</p>
+              <p className="text-slate-500 font-bold text-xs mb-6">تم إعادة تعيين كلمة مرور {resetTeacherRole === UserRole.TEMP_SUPERVISOR ? 'المشرفة' : 'المعلمة'} {resetTeacherName}</p>
               
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 text-center">
                 <span className="text-2xl font-mono font-bold text-indigo-600 tracking-widest">{resetPassword}</span>
+              </div>
+
+              <div className="mb-6 space-y-2 text-right">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">رقم هاتف الواتساب للمراسلة</label>
+                <div className="flex bg-slate-50 border-2 border-transparent focus-within:border-indigo-500 rounded-2xl overflow-hidden transition-all">
+                   <div className="px-4 flex items-center justify-center bg-slate-100 border-r border-slate-200 text-slate-500 font-bold text-sm">
+                     +968
+                   </div>
+                   <input 
+                    type="text" 
+                    value={(resetTeacherPhone || '').replace(/^968/, '')} 
+                    onChange={(e) => setResetTeacherPhone(e.target.value.replace(/\D/g, ''))}
+                    placeholder="79XXXXXX"
+                    className="w-full px-4 py-4 bg-transparent font-bold text-sm outline-none"
+                    dir="ltr"
+                   />
+                </div>
+                {resetTeacherRole === UserRole.TEMP_SUPERVISOR && (
+                   <p className="text-xs text-indigo-500 mt-1">تحديد رقم الهاتف سيُمكنك من إرسال كلمة المرور لتجديد التكليف عبر واتساب.</p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -4412,7 +4467,14 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                 </button>
                 <button
                   onClick={() => {
-                    const message = `السلام عليكم الأستاذة ${resetTeacherName}\n` +
+                    const message = resetTeacherRole === UserRole.TEMP_SUPERVISOR ?
+                                    `السلام عليكم الأستاذة ${resetTeacherName}\n` +
+                                    `تم تجديد تكليفك الإشرافي في منصة إبداع المجال الأول وتحديث بيانات دخولك.\n` +
+                                    `الرقم الوظيفي (كود الدخول): ${resetTeacherId}\n` +
+                                    `كلمة المرور: ${resetPassword}\n` +
+                                    `رابط المنصة: https://edu-zeta-eight.vercel.app/?_vercel_share=zsvQDzYhYLZHTy9yNa362lFn37TBsEHz`
+                                    :
+                                    `السلام عليكم الأستاذة ${resetTeacherName}\n` +
                                     `تم تحديث بيانات دخولك لمنصة إبداع المجال الأول\n` +
                                     `الرقم الوظيفي: ${resetTeacherId}\n` +
                                     `كلمة المرور: ${resetPassword}\n` +
@@ -4422,6 +4484,11 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     let formattedPhone = (resetTeacherPhone || '').replace(/\D/g, '');
                     if (formattedPhone && !formattedPhone.startsWith('968')) {
                         formattedPhone = '968' + formattedPhone;
+                    }
+                    
+                    if (!formattedPhone) {
+                        alert("يرجى إدخال رقم الهاتف لإرسال الرسالة.");
+                        return;
                     }
                     
                     const whatsappUrl = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodedMessage}`;
