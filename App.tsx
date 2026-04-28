@@ -266,7 +266,7 @@ const App: React.FC = () => {
   };
 
   const currentAcademicYear = supervisorConfig.academicYear || "2025-2026";
-  const currentSemester = supervisorConfig.semester || "الفصل الأول";
+  const currentSemester = supervisorConfig.semester || "الفصل الدراسي الأول";
 
   const [showChangePassword, setShowChangePassword] = useState(false);
 
@@ -498,7 +498,7 @@ const App: React.FC = () => {
       return;
     }
     const currentYear = supervisorConfig?.academicYear || '2023-2024';
-    const currentSemester = supervisorConfig?.semester || 'الفصل الأول';
+    const currentSemester = supervisorConfig?.semester || 'الفصل الدراسي الأول';
     
     if (window.confirm(`هل أنت متأكد من استعادة وتحويل جميع الدروس (${lessonMaterials.length} درس) لعام ${currentYear} ${currentSemester}؟`)) {
       try {

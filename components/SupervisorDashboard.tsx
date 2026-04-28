@@ -10,7 +10,7 @@ import {
   LogOut, Search, Plus, Filter, CheckCircle, XCircle, X,
   Clock, Shield, MessageSquare, Pin, FileText, Download, Calendar,
   TrendingUp, Award, Activity, Settings, Share2, Send, Trash2,
-  Phone, Hash, BookOpen, GraduationCap, User as UserIcon,
+  Phone, Hash, BookOpen, GraduationCap, User as UserIcon, LayoutGrid,
   FileIcon, Link as LinkIcon, Video, Music, Image as ImageIcon, ChevronDown, ChevronUp, GripVertical, Eye, ListTodo, Edit
 } from 'lucide-react';
 import { 
@@ -424,6 +424,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [selectedArchiveGrade, setSelectedArchiveGrade] = useState<string | null>(null);
   const [selectedArchiveSubject, setSelectedArchiveSubject] = useState<string | null>(null);
   const [selectedArchiveSemester, setSelectedArchiveSemester] = useState<string | null>(null);
+  const [selectedArchiveTeacher, setSelectedArchiveTeacher] = useState<string | null | 'ALL'>(null);
 
   const handleAddArchiveYear = () => {
     const year = window.prompt('أدخل العام الدراسي الجديد (مثال: 2022-2023)');
@@ -909,8 +910,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   }, [projects, academicYear, semester, isTempSupervisor, filteredTeachers]);
 
   const filteredPosts = useMemo(() => {
-    return posts.filter(p => p.academicYear === academicYear && p.semester === semester && !p.isArchived);
-  }, [posts, academicYear, semester]);
+    return posts.filter(p => !p.isArchived);
+  }, [posts]);
 
   const filteredLessons = useMemo(() => {
     let list = lessonMaterials.filter(m => m.isActive !== false && m.academicYear === academicYear && m.semester === semester && !m.isArchived);
@@ -997,7 +998,6 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     { id: 'messages', label: 'الرسائل', icon: MessageSquare, visible: true },
     { id: 'temp-supervisors', label: 'المشرفين المؤقتين', icon: Shield, visible: isMainSupervisor },
     { id: 'settings', label: 'إعدادات النظام', icon: Settings, visible: isMainSupervisor },
-    { id: 'security', label: 'الأمن والإعدادات', icon: Shield, visible: isMainSupervisor },
   ];
 
   return (
@@ -2392,235 +2392,277 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         </button>
                       )}
                     </div>
-                    <div className="flex flex-col gap-2">
-                      {availableArchiveYears.map((year, idx) => (
-                        <button 
-                          key={`archive-year-${year}-${idx}`}
-                          onClick={() => {
-                            setSelectedArchiveYear(year);
-                            setSelectedArchiveSemester(getSemesterForYear(year));
-                            setSelectedArchiveGrade(null);
-                            setSelectedArchiveSubject(null);
-                          }}
-                          className={cn(
-                            "px-6 py-4 rounded-2xl text-xs font-black transition-all text-right flex justify-between items-center",
-                            year === selectedArchiveYear ? "bg-indigo-50 text-indigo-600 shadow-sm border border-indigo-100" : "bg-slate-50 text-slate-500 hover:text-slate-700 hover:bg-slate-100"
-                          )}
-                        >
-                          <span>{year}</span>
-                          <span className="text-[10px] opacity-70 bg-white px-2 py-1 rounded-lg">{getSemesterForYear(year)}</span>
-                        </button>
-                      ))}
-                      <button 
-                        onClick={handleAddArchiveYear}
-                        className="px-6 py-4 rounded-2xl text-xs font-black bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all flex items-center justify-center gap-2"
+                    <div className="flex items-center gap-3">
+                      <select 
+                        value={selectedArchiveYear}
+                        onChange={(e) => {
+                          setSelectedArchiveYear(e.target.value);
+                          setSelectedArchiveGrade(null);
+                          setSelectedArchiveSemester(null);
+                          setSelectedArchiveTeacher(null);
+                        }}
+                        className="px-6 py-4 rounded-xl text-sm font-black bg-slate-50 text-indigo-700 border border-slate-200 outline-none transition-all cursor-pointer shadow-sm min-w-[200px]"
+                        dir="rtl"
                       >
-                        <Plus className="w-4 h-4" /> إضافة عام
-                      </button>
+                        {availableArchiveYears.map((year, idx) => (
+                          <option key={`archive-year-${year}-${idx}`} value={year}>{year}</option>
+                        ))}
+                      </select>
+                      {isMainSupervisor && (
+                        <button 
+                          onClick={handleAddArchiveYear}
+                          className="px-4 py-4 rounded-xl text-xs font-black bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-all flex items-center justify-center gap-2"
+                          title="إضافة عام"
+                        >
+                          <Plus className="w-5 h-5" />
+                        </button>
+                      )}
                     </div>
                   </div>
 
                   {selectedArchiveYear && (
                     <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
-                      {/* Grade Tabs */}
-                      <div className="flex flex-wrap gap-2 p-1.5 bg-slate-50 rounded-2xl">
+                      {/* Grade Cards */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         {AVAILABLE_GRADES.map((grade, idx) => (
-                          <button
+                          <div
                             key={`archive-grade-${grade}-${idx}`}
                             onClick={() => {
                               setSelectedArchiveGrade(grade);
-                              setSelectedArchiveSubject(null);
                               setSelectedArchiveSemester(null);
+                              setSelectedArchiveTeacher(null);
                             }}
                             className={cn(
-                              "px-6 py-3 rounded-xl text-xs font-black transition-all",
-                              selectedArchiveGrade === grade ? "bg-white text-indigo-600 shadow-sm border border-slate-100" : "text-slate-500 hover:text-slate-700"
+                              "relative p-6 rounded-3xl border-2 transition-all cursor-pointer overflow-hidden group shadow-sm hover:shadow-md",
+                              selectedArchiveGrade === grade 
+                                ? "bg-indigo-50 border-indigo-500" 
+                                : "bg-white border-slate-100 hover:border-indigo-200"
                             )}
                           >
-                            {grade}
-                          </button>
+                            <div className="relative z-10 flex flex-col items-center justify-center gap-3">
+                              <div className={cn(
+                                "w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-black transition-all",
+                                selectedArchiveGrade === grade 
+                                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30" 
+                                  : "bg-slate-50 text-indigo-600 group-hover:bg-indigo-100 group-hover:scale-110"
+                              )}>
+                                {idx + 1}
+                              </div>
+                              <h3 className={cn("font-black text-lg", selectedArchiveGrade === grade ? "text-indigo-900" : "text-slate-700")}>
+                                {grade}
+                              </h3>
+                            </div>
+                            {selectedArchiveGrade === grade && (
+                               <div className="absolute top-2 right-2 flex items-center justify-center w-6 h-6 bg-emerald-500 rounded-full text-white shadow-sm">
+                                  <CheckCircle className="w-4 h-4" />
+                               </div>
+                            )}
+                          </div>
                         ))}
                       </div>
 
                       {selectedArchiveGrade && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
-                          {allSubjects.map((subject, idx) => (
-                            <div 
-                              key={`${selectedArchiveGrade}-${subject.name}-${idx}`}
-                              onClick={() => {
-                                setSelectedArchiveSubject(subject.name);
-                                setSelectedArchiveSemester('الفصل الدراسي الأول');
-                              }}
+                        <div className="pt-6 border-t border-slate-100 animate-in fade-in slide-in-from-top-4 duration-300">
+                          <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                            <Calendar className="w-5 h-5 text-indigo-500" />
+                            اختر الفصل الدراسي
+                          </h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {['الفصل الدراسي الأول', 'الفصل الدراسي الثاني'].map((sem, idx) => (
+                              <button
+                                key={`archive-sem-${sem}-${idx}`}
+                                onClick={() => {
+                                  setSelectedArchiveSemester(sem);
+                                  setSelectedArchiveTeacher(null);
+                                }}
+                                className={cn(
+                                  "py-5 px-6 rounded-2xl text-sm font-black transition-all border-2 flex items-center justify-between group",
+                                  selectedArchiveSemester === sem 
+                                    ? "bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm" 
+                                    : "bg-white border-slate-100 text-slate-600 hover:border-emerald-200"
+                                )}
+                              >
+                                <span className="flex items-center gap-3">
+                                  <span className={cn(
+                                    "w-8 h-8 rounded-full flex items-center justify-center transition-all",
+                                    selectedArchiveSemester === sem ? "bg-emerald-600 text-white shadow-md" : "bg-slate-100 text-slate-400 group-hover:bg-emerald-100 group-hover:text-emerald-600"
+                                  )}>
+                                    {idx + 1}
+                                  </span>
+                                  {sem}
+                                </span>
+                                {selectedArchiveSemester === sem && <CheckCircle className="w-5 h-5 text-emerald-600" />}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedArchiveSemester && (
+                        <div className="pt-6 border-t border-slate-100 animate-in fade-in slide-in-from-top-4 duration-300">
+                          <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                              <Users className="w-5 h-5 text-indigo-500" />
+                              معلمات الصف {selectedArchiveGrade}
+                            </h3>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                            <button
+                              onClick={() => setSelectedArchiveTeacher('ALL')}
                               className={cn(
-                                "p-6 rounded-[24px] border-2 transition-all cursor-pointer group",
-                                selectedArchiveSubject === subject.name ? subject.bg + " " + subject.border : "bg-white border-slate-100 hover:border-slate-200"
+                                "flex flex-col items-center justify-center gap-3 p-4 rounded-3xl border-2 transition-all group",
+                                selectedArchiveTeacher === 'ALL'
+                                  ? "bg-indigo-600 border-indigo-700 text-white shadow-lg"
+                                  : "bg-gradient-to-br from-slate-50 to-white border-slate-200 hover:border-indigo-300 text-slate-700"
                               )}
                             >
-                              <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-4">
-                                  <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center", subject.iconBg, subject.iconText)}>
-                                    <subject.icon className="w-6 h-6" />
-                                  </div>
-                                  <h4 className="font-black text-slate-900">{subject.name}</h4>
-                                </div>
-                                <ChevronDown className={cn("w-5 h-5 text-slate-400 transition-transform", selectedArchiveSubject === subject.name ? "rotate-180" : "")} />
+                              <div className={cn(
+                                "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
+                                selectedArchiveTeacher === 'ALL' ? "bg-white/20 text-white" : "bg-indigo-100 text-indigo-600 group-hover:scale-110"
+                              )}>
+                                <LayoutGrid className="w-6 h-6" />
                               </div>
+                              <span className="font-bold text-xs text-center">عرض الكل</span>
+                            </button>
 
-                              {selectedArchiveSubject === subject.name && (
-                                <div className="mt-6 flex flex-wrap gap-3 animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-                                  {['الفصل الأول', 'الفصل الثاني', 'الفصل الدراسي الأول', 'الفصل الدراسي الثاني'].map((sem, idx) => {
-                                    // Only show semesters that actually have materials in the archive for this selection
-                                    const hasMaterials = lessonMaterials.some(m => 
-                                      m.academicYear === selectedArchiveYear && 
-                                      m.grade === selectedArchiveGrade && 
-                                      m.subject === subject.name && 
-                                      m.semester === sem &&
-                                      (m.isArchived === true || m.isActive === false)
-                                    );
-                                    
-                                    if (!hasMaterials && selectedArchiveSemester !== sem) return null;
-
-                                    return (
-                                      <button
-                                        key={`archive-sem-${sem}-${idx}`}
-                                        onClick={() => setSelectedArchiveSemester(sem)}
-                                        className={cn(
-                                          "flex-1 min-w-[120px] py-3 rounded-xl text-xs font-black transition-all border-2",
-                                          selectedArchiveSemester === sem 
-                                            ? "bg-white text-indigo-600 border-indigo-200 shadow-sm" 
-                                            : "bg-white/50 text-slate-500 border-transparent hover:border-slate-200"
-                                        )}
-                                      >
-                                        {sem}
-                                      </button>
-                                    );
-                                  })}
-                                  {/* Show a message if no materials are found for any semester */}
-                                  {!['الفصل الأول', 'الفصل الثاني', 'الفصل الدراسي الأول', 'الفصل الدراسي الثاني'].some(sem => 
-                                    lessonMaterials.some(m => 
-                                      m.academicYear === selectedArchiveYear && 
-                                      m.grade === selectedArchiveGrade && 
-                                      m.subject === subject.name && 
-                                      m.semester === sem &&
-                                      (m.isArchived === true || m.isActive === false)
-                                    )
-                                  ) && (
-                                    <div className="w-full text-center py-4 text-xs font-bold text-slate-400 bg-slate-50 rounded-xl">
-                                      لا توجد دروس مؤرشفة لهذه المادة
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                            {/* Dynamically extract teachers for this grade/semester from archive */}
+                            {Array.from(new Map(
+                              lessonMaterials.filter(m => 
+                                m.academicYear === selectedArchiveYear && 
+                                m.grade === selectedArchiveGrade && 
+                                m.semester === selectedArchiveSemester &&
+                                (m.subject === 'لغة عربية' || m.subject === 'تربية إسلامية') &&
+                                (m.isArchived || !m.isActive)
+                              ).filter(m => m.teacherId && m.teacherName)
+                              .map(m => [m.teacherId, m.teacherName])
+                            )).map(([id, name]) => (
+                               <button
+                                 key={`archive-teacher-${id}`}
+                                 onClick={() => setSelectedArchiveTeacher(id)}
+                                 className={cn(
+                                   "flex flex-col items-center justify-center gap-3 p-4 rounded-3xl border-2 transition-all group",
+                                   selectedArchiveTeacher === id
+                                     ? "bg-emerald-50 border-emerald-500 text-emerald-800 shadow-md"
+                                     : "bg-white border-slate-100 hover:border-emerald-200 text-slate-600"
+                                 )}
+                               >
+                                 <div className={cn(
+                                   "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
+                                   selectedArchiveTeacher === id ? "bg-emerald-600 text-white shadow-lg" : "bg-slate-50 text-emerald-600 group-hover:scale-110"
+                                 )}>
+                                   <UserIcon className="w-5 h-5" />
+                                 </div>
+                                 <span className="font-bold text-xs text-center line-clamp-1 w-full px-1">{name}</span>
+                               </button>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
                   )}
                 </div>
 
-                {selectedArchiveYear && selectedArchiveGrade && selectedArchiveSubject && selectedArchiveSemester && (
+                {selectedArchiveYear && selectedArchiveGrade && selectedArchiveSemester && selectedArchiveTeacher && (
                   <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
-                      <div className="flex items-center justify-between mb-8">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 pb-6 border-b border-slate-100">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
-                            <Archive className="w-6 h-6" />
+                          <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center">
+                            <Archive className="w-7 h-7" />
                           </div>
                           <div>
-                            <h3 className="text-xl font-black text-slate-900">نتائج الأرشيف</h3>
-                            <p className="text-xs font-bold text-slate-400">{selectedArchiveYear} • {selectedArchiveGrade} • {selectedArchiveSubject} • {selectedArchiveSemester}</p>
+                            <h3 className="text-2xl font-black text-slate-900 mb-1">ملفات الأرشيف</h3>
+                            <p className="text-xs font-bold text-slate-500">{selectedArchiveYear} • {selectedArchiveGrade} • {selectedArchiveSemester} {selectedArchiveTeacher !== 'ALL' ? '• عرض ملفات المعلمة' : '• عرض جميع الملفات'}</p>
                           </div>
-                        </div>
-                        <div className="px-4 py-2 bg-slate-50 rounded-xl text-xs font-black text-slate-500 border border-slate-100">
-                          {lessonMaterials.filter(m => 
-                            m.academicYear === selectedArchiveYear && 
-                            m.grade === selectedArchiveGrade && 
-                            m.subject === selectedArchiveSubject && 
-                            m.semester === selectedArchiveSemester &&
-                            (m.isArchived === true || m.isActive === false)
-                          ).length} درس مؤرشف
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {lessonMaterials.filter(m => 
-                          m.academicYear === selectedArchiveYear && 
-                          m.grade === selectedArchiveGrade && 
-                          m.subject === selectedArchiveSubject && 
-                          m.semester === selectedArchiveSemester &&
-                          (m.isArchived === true || m.isActive === false)
-                        ).map((lesson, idx) => {
-                          const fileInfo = getFileIcon(lesson);
-                          const Icon = fileInfo.icon;
-                          
-                          return (
-                            <div key={`archive-lesson-${lesson.id}-${idx}`} className="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-white hover:shadow-md transition-all">
-                              <div className="flex items-center gap-4">
-                                <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shadow-sm", fileInfo.bg, fileInfo.color)}>
-                                  <Icon className="w-6 h-6" />
-                                </div>
-                                <div>
-                                  <p className="text-sm font-black text-slate-900">{lesson.lessonTitle}</p>
-                                  <p className="text-[10px] text-slate-400 font-bold">{lesson.teacherName} • {new Date(lesson.createdAt).toLocaleDateString('ar-OM')}</p>
-                                </div>
-                              </div>
-                            <div className="flex gap-2 flex-wrap justify-end">
-                              <button 
-                                onClick={() => setViewingLesson(lesson)}
-                                className="p-2 hover:bg-indigo-50 text-indigo-600 rounded-xl transition-colors"
-                                title="معاينة"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </button>
-                              {lesson.attachments.map((attachment, idx) => (
-                                <button 
-                                  key={`${lesson.id}-${attachment.url}-${attachment.name}-${idx}`}
-                                  onClick={() => downloadFile(attachment.url, attachment.name || lesson.lessonTitle)}
-                                  className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm"
-                                  title={`تحميل ${attachment.name || `مرفق ${idx + 1}`}`}
-                                >
-                                  <Download className="w-4 h-4" />
-                                </button>
-                              ))}
-                              
-                              <button 
-                                onClick={() => {
-                                  if (window.confirm('هل أنت متأكد من الحذف النهائي؟ لا يمكن التراجع عن هذا الإجراء.')) {
-                                    onDeletePermanentlyLesson(lesson.id);
-                                  }
-                                }}
-                                className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-red-600 hover:border-red-200 transition-all shadow-sm"
-                                title="حذف نهائي"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                      <div className="space-y-10">
+                        {['لغة عربية', 'تربية إسلامية'].map((subject) => {
+                          const subjectMaterials = lessonMaterials.filter(m => 
+                            m.academicYear === selectedArchiveYear && 
+                            m.grade === selectedArchiveGrade && 
+                            m.subject === subject && 
+                            m.semester === selectedArchiveSemester &&
+                            (selectedArchiveTeacher === 'ALL' || m.teacherId === selectedArchiveTeacher) &&
+                            (m.isArchived === true || m.isActive === false)
+                          );
 
-                              {lesson.isActive === false && (
-                                <button 
-                                  onClick={() => onRestoreLesson(lesson.id)}
-                                  className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-lg shadow-emerald-600/20"
-                                >
-                                  <CheckCircle className="w-3 h-3" /> استعادة
-                                </button>
-                              )}
+                          if (subjectMaterials.length === 0) return null;
+
+                          return (
+                            <div key={`archive-cat-${subject}`}>
+                              <h4 className="text-xl font-black text-slate-800 mb-5 flex items-center gap-3">
+                                <span className={cn("inline-block w-3 h-3 rounded-full", subject === 'لغة عربية' ? "bg-amber-400" : "bg-emerald-400")}></span>
+                                {subject}
+                                <span className="bg-slate-100 text-slate-500 font-bold text-[10px] px-2 py-1 rounded-lg mr-2">{subjectMaterials.length} ملفات</span>
+                              </h4>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {subjectMaterials.map((lesson, idx) => {
+                                  const fileInfo = getFileIcon(lesson);
+                                  const Icon = fileInfo.icon;
+                                  return (
+                                    <div key={`archive-lesson-${lesson.id}-${idx}`} className="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-white hover:shadow-md transition-all group">
+                                      <div className="flex items-center gap-4">
+                                        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shadow-sm", fileInfo.bg, fileInfo.color)}>
+                                          <Icon className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                          <p className="text-sm font-black text-slate-900 group-hover:text-indigo-600 transition-colors">{lesson.lessonTitle}</p>
+                                          <p className="text-[10px] text-slate-400 font-bold mt-1 max-w-[200px] truncate">{lesson.teacherName} • {new Date(lesson.createdAt).toLocaleDateString('ar-OM')}</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex gap-2 shrink-0">
+                                        <button 
+                                          onClick={() => setViewingLesson(lesson)}
+                                          className="p-2.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all shadow-sm"
+                                          title="معاينة"
+                                        >
+                                          <Eye className="w-4 h-4" />
+                                        </button>
+                                        {lesson.attachments.map((attachment, idx) => (
+                                          <button 
+                                            key={`${lesson.id}-${attachment.url}-${attachment.name}-${idx}`}
+                                            onClick={() => downloadFile(attachment.url, attachment.name || lesson.lessonTitle)}
+                                            className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm"
+                                            title={`تحميل ${attachment.name || `مرفق ${idx + 1}`}`}
+                                          >
+                                            <Download className="w-4 h-4" />
+                                          </button>
+                                        ))}
+                                        {lesson.isActive === false && (
+                                          <button 
+                                            onClick={() => onRestoreLesson(lesson.id)}
+                                            className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-black hover:bg-emerald-600 hover:text-white transition-all flex items-center gap-1 shadow-sm"
+                                          >
+                                            <CheckCircle className="w-3 h-3" /> استعادة
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+
                         {lessonMaterials.filter(m => 
                           m.academicYear === selectedArchiveYear && 
                           m.grade === selectedArchiveGrade && 
-                          m.subject === selectedArchiveSubject && 
+                          (m.subject === 'لغة عربية' || m.subject === 'تربية إسلامية') &&
                           m.semester === selectedArchiveSemester &&
+                          (selectedArchiveTeacher === 'ALL' || m.teacherId === selectedArchiveTeacher) &&
                           (m.isArchived === true || m.isActive === false)
                         ).length === 0 && (
-                          <div className="col-span-full text-center py-20">
-                            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                              <Search className="w-10 h-10 text-slate-200" />
+                          <div className="col-span-full text-center py-20 bg-slate-50 border border-slate-100 border-dashed rounded-3xl">
+                            <div className="w-20 h-20 bg-white shadow-sm rounded-full flex items-center justify-center mx-auto mb-5">
+                              <Archive className="w-10 h-10 text-slate-300" />
                             </div>
-                            <h3 className="text-lg font-bold text-slate-900 mb-1">لا توجد دروس مؤرشفة</h3>
-                            <p className="text-slate-400 text-sm">لم يتم العثور على أي محتوى يطابق هذه الفلاتر في الأرشيف</p>
+                            <h3 className="text-xl font-bold text-slate-800 mb-2">لا توجد سجلات مؤرشفة</h3>
+                            <p className="text-slate-500 text-sm font-medium leading-relaxed">لم يتم العثور على أي مرفقات أو ملفات متعلقة بهذه المعلمة<br/> لهذا الصف الدراسي ضمن الأرشيف.</p>
                           </div>
                         )}
                       </div>
@@ -3200,9 +3242,9 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   </div>
                 </div>
               </motion.div>
-            ) : activeTab === 'security' && isMainSupervisor ? (
+            ) : activeTab === 'settings' && isMainSupervisor ? (
               <motion.div 
-                key="security"
+                key="settings"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
@@ -3214,7 +3256,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
                         <Settings className="w-6 h-6" />
                       </div>
-                      إعدادات النظام والأمان
+                      إعدادات النظام
                     </h3>
                     {securityView !== 'main' && (
                       <button 
@@ -3422,37 +3464,49 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">العام الأول</label>
-                            <input 
-                              type="text" 
+                            <select 
                               value={editStartYear} 
-                              onChange={e => setEditStartYear(e.target.value)} 
-                              placeholder="2025"
-                              className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" 
-                            />
+                              onChange={e => {
+                                setEditStartYear(e.target.value);
+                                setEditEndYear((parseInt(e.target.value) + 1).toString());
+                              }} 
+                              className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all cursor-pointer" 
+                            >
+                              {Array.from({length: 15}, (_, i) => {
+                                const year = new Date().getFullYear() - 5 + i;
+                                return <option key={year} value={year.toString()}>{year}</option>;
+                              })}
+                            </select>
                           </div>
                           <div className="space-y-2">
                             <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">العام الثاني</label>
-                            <input 
-                              type="text" 
+                            <select 
                               value={editEndYear} 
                               onChange={e => setEditEndYear(e.target.value)} 
-                              placeholder="2026"
-                              className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" 
-                            />
+                              className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all cursor-pointer" 
+                            >
+                              {Array.from({length: 15}, (_, i) => {
+                                const year = new Date().getFullYear() - 4 + i;
+                                return <option key={year} value={year.toString()}>{year}</option>;
+                              })}
+                            </select>
                           </div>
                         </div>
                         <div className="space-y-2">
                           <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">الفصل الدراسي</label>
-                          <input type="text" value={editSemester} onChange={e => setEditSemester(e.target.value)} className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all" />
+                          <select 
+                            value={editSemester} 
+                            onChange={e => setEditSemester(e.target.value)} 
+                            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all cursor-pointer" 
+                          >
+                            <option value="الفصل الدراسي الأول">الفصل الدراسي الأول</option>
+                            <option value="الفصل الدراسي الثاني">الفصل الدراسي الثاني</option>
+                          </select>
                         </div>
                       </div>
                     </section>
 
                     <button onClick={handleSaveConfig} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all">حفظ الإعدادات</button>
-
-                    <button className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all">
-                      حفظ كافة التغييرات
-                    </button>
                   </div>
                 </div>
               </motion.div>
@@ -3490,8 +3544,8 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                   {AVAILABLE_GRADES.map((g) => <option key={`grade-select-3-${g}`} value={g}>{g}</option>)}
                 </select>
                 <select value={newLessonSemester} onChange={e => setNewLessonSemester(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm">
-                  <option value="الفصل الأول">الفصل الأول</option>
-                  <option value="الفصل الثاني">الفصل الثاني</option>
+                  <option value="الفصل الدراسي الأول">الفصل الدراسي الأول</option>
+                  <option value="الفصل الدراسي الثاني">الفصل الدراسي الثاني</option>
                 </select>
                 <select value={newLessonSubject} onChange={e => setNewLessonSubject(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border-none font-bold text-sm">
                   {AVAILABLE_SUBJECTS.map((s) => <option key={`subject-select-3-${s}`} value={s}>{s}</option>)}

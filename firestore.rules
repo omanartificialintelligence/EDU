@@ -136,13 +136,7 @@ service cloud.firestore {
     }
 
     function canManagePosts() {
-      return isAdmin() || (
-        isAuthenticated() && exists(/databases/$(database)/documents/users/$(getUserId())) &&
-        get(/databases/$(database)/documents/users/$(getUserId())).data.role == 'TEMP_SUPERVISOR' &&
-        ("tempPermissions" in get(/databases/$(database)/documents/users/$(getUserId())).data) &&
-        (get(/databases/$(database)/documents/users/$(getUserId())).data.tempPermissions.hasFullAccess == true || 
-         get(/databases/$(database)/documents/users/$(getUserId())).data.tempPermissions.canManagePosts == true)
-      );
+      return isAnySupervisor();
     }
 
     match /users/{userId} {
