@@ -88,28 +88,15 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, teachers, onForgotPasswo
     const cleanId = forgotId.trim();
     if (!cleanId) return;
 
-    const isSupervisor = cleanId === '16115506' || cleanId.toUpperCase().startsWith('S') || cleanId.startsWith('99') || cleanId.toUpperCase() === 'OM12345';
+    const isSupervisor = cleanId === '16115506';
 
     if (isSupervisor) {
       setForgotStep('emergency');
       setForgotError('');
     } else {
-      // For regular users, ask for email to reset password
-      setForgotStep('email');
-      setForgotError('');
-    }
-  };
-
-  const handleEmailReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const email = `${forgotId}@moe.om`;
-    try {
-      await sendPasswordResetEmail(auth, email);
-      alert('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.');
+      // For regular users, request password reset through supervisor
+      onForgotPassword(cleanId);
       closeForgotModal();
-    } catch (error) {
-      console.error(error);
-      setForgotError('حدث خطأ أثناء إرسال رابط إعادة تعيين كلمة المرور.');
     }
   };
 

@@ -1619,6 +1619,45 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                       </form>
                     </div>
                   )}
+
+                  {resetRequests && resetRequests.length > 0 && (
+                    <div className="bg-amber-50 p-6 sm:p-8 rounded-[2rem] border border-amber-200">
+                      <h3 className="text-amber-900 font-black text-xl mb-6 flex items-center gap-3">
+                        <Shield className="w-6 h-6 text-amber-500" /> 
+                        طلبات إعادة تعيين كلمة المرور
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {resetRequests.map(req => {
+                          const reqTeacher = teachers.find(t => t.id === req.userId);
+                          return (
+                            <div key={req.id} className="bg-white p-5 rounded-2xl flex justify-between items-center shadow-sm border border-amber-100">
+                              <div>
+                                <p className="font-black text-slate-800 text-sm">{req.userName}</p>
+                                <p className="text-xs font-bold text-slate-500 mt-1">الرقم الوظيفي: {req.userId}</p>
+                                <p className="text-[10px] text-slate-400 mt-1">{req.requestedAt}</p>
+                              </div>
+                              <button
+                                onClick={async () => {
+                                  if (!reqTeacher) return alert('لم يتم العثور على المعلمة');
+                                  const newPass = await onResetPassword(req.userId);
+                                  setResetPassword(newPass);
+                                  setResetTeacherName(req.userName);
+                                  setResetTeacherPhone(reqTeacher.phoneNumber || '');
+                                  setResetTeacherId(req.userId);
+                                  setResetTeacherRole(reqTeacher.role || UserRole.TEACHER);
+                                  setShowPasswordModal(true);
+                                }}
+                                className="px-5 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black text-xs shadow-sm transition-all shadow-amber-500/20"
+                              >
+                                إعادة تعيين
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                 <div className="flex justify-between items-center">
                   <div>
                     <h2 className="text-2xl font-black text-slate-900">سجل الكادر التعليمي</h2>
@@ -2638,6 +2677,19 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                                             className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-black hover:bg-emerald-600 hover:text-white transition-all flex items-center gap-1 shadow-sm"
                                           >
                                             <CheckCircle className="w-3 h-3" /> استعادة
+                                          </button>
+                                        )}
+                                        {lesson.isActive === false && (
+                                          <button 
+                                            onClick={() => {
+                                              if(window.confirm('هل أنت متأكد من الحذف النهائي للدرس؟ لا يمكن التراجع عن هذا الإجراء.')) {
+                                                onDeletePermanentlyLesson(lesson.id);
+                                              }
+                                            }}
+                                            className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-all"
+                                            title="حذف نهائي"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
                                           </button>
                                         )}
                                       </div>

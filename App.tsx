@@ -619,7 +619,7 @@ const App: React.FC = () => {
         if (cleanRequest[key] === undefined) delete cleanRequest[key];
       });
       await setDoc(doc(db, 'resetRequests', newRequest.id), cleanRequest);
-      alert('تم إرسال طلب تصفير كلمة المرور للمشرفة.');
+      alert('سيتم إرسال إشعار إلى المشرفة لتقوم بإعادة تعيين كلمة مرورك.');
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `resetRequests/${newRequest.id}`);
     }
