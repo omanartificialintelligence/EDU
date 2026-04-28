@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
-  User, Project, Post, ProjectSubmission, Attachment, ResetRequest, 
+  User, Project, Post, Bulletin, ProjectSubmission, Attachment, ResetRequest, 
   LessonMaterial, LessonComment, UserRole, SupervisorConfig, Notification, AuditLog, Message 
 } from '../types';
 import SettingsPage from './SettingsPage';
@@ -32,6 +32,7 @@ interface SupervisorDashboardProps {
   user: User;
   teachers: User[];
   posts: Post[];
+  bulletins: Bulletin[];
   projects: Project[];
   lessonMaterials: LessonMaterial[];
   resetRequests: ResetRequest[];
@@ -41,6 +42,9 @@ interface SupervisorDashboardProps {
   onAddPost: (post: Post) => void;
   onDeletePost: (id: string) => void;
   onTogglePinPost: (id: string) => void;
+  onAddBulletin: (bulletin: Bulletin) => void;
+  onDeleteBulletin: (id: string) => void;
+  onDeletePermanentlyBulletin: (id: string) => void;
   onAddTeacher: (id: string, name: string, email?: string, phone?: string, assignments?: { grade: string; subject: string }[]) => void;
   onSoftDeleteTeacher: (id: string) => void;
   onRestoreTeacher: (id: string) => void;
@@ -74,9 +78,10 @@ interface SupervisorDashboardProps {
 }
 
 const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ 
-  user, teachers, posts, projects, lessonMaterials, resetRequests,
+  user, teachers, posts, bulletins, projects, lessonMaterials, resetRequests,
   messages, onSendMessage, onMarkMessageAsRead,
   onAddPost, onDeletePost, onTogglePinPost,
+  onAddBulletin, onDeleteBulletin, onDeletePermanentlyBulletin,
   onAddTeacher, onSoftDeleteTeacher, onRestoreTeacher, onUpdateTeacher, onResetPassword,
   onAddProject, onDeleteProject, onUpdateProjectSubmission,
   onAddTempSupervisor, onDeleteTempSupervisor, onUpdateSecurity, onUpdateLessonMaterial, onAddLessonMaterial,
@@ -92,7 +97,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const AVAILABLE_GRADES = ['الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع'];
   const AVAILABLE_SUBJECTS = ['لغة عربية', 'تربية إسلامية'];
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'feed' | 'lessons' | 'teachers' | 'archive' | 'security' | 'messages' | 'projects' | 'temp-supervisors' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'feed' | 'lessons' | 'teachers' | 'bulletins' | 'archive' | 'security' | 'messages' | 'projects' | 'temp-supervisors' | 'settings'>('overview');
   const [securityView, setSecurityView] = useState<'main' | 'change-main' | 'add-emergency'>('main');
   const [selectedTeacherForMessages, setSelectedTeacherForMessages] = useState<string | null>(null);
 
@@ -866,6 +871,12 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const [newPostIsPinned, setNewPostIsPinned] = useState(false);
   const [newPostAttachments, setNewPostAttachments] = useState<Attachment[]>([]);
 
+  // Bulletin State
+  const [showAddBulletinForm, setShowAddBulletinForm] = useState(false);
+  const [newBulletinTitle, setNewBulletinTitle] = useState('');
+  const [newBulletinDesc, setNewBulletinDesc] = useState('');
+  const [newBulletinAttachments, setNewBulletinAttachments] = useState<Attachment[]>([]);
+
   const isMainSupervisor = user.role === UserRole.SUPERVISOR;
   const isTempSupervisor = user.role === UserRole.TEMP_SUPERVISOR;
 
@@ -912,6 +923,10 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   const filteredPosts = useMemo(() => {
     return posts.filter(p => !p.isArchived);
   }, [posts]);
+
+  const filteredBulletins = useMemo(() => {
+    return bulletins.filter(b => !b.isArchived);
+  }, [bulletins]);
 
   const filteredLessons = useMemo(() => {
     let list = lessonMaterials.filter(m => m.isActive !== false && m.academicYear === academicYear && m.semester === semester && !m.isArchived);
@@ -993,6 +1008,7 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     { id: 'teachers', label: 'المعلمات', icon: Users, visible: isMainSupervisor || (isTempSupervisor && (user.tempPermissions?.hasFullAccess || user.tempPermissions?.canViewTeachers)) },
     { id: 'lessons', label: 'الدروس', icon: Palette, visible: isMainSupervisor || (isTempSupervisor && (user.tempPermissions?.hasFullAccess || user.tempPermissions?.canComment || (user.tempPermissions?.allowedSubjects && user.tempPermissions.allowedSubjects.length > 0))) },
     { id: 'feed', label: 'التعاميم', icon: MessageSquare, visible: true },
+    { id: 'bulletins', label: 'النشرات التربوية', icon: BookOpen, visible: true },
     { id: 'archive', label: 'الأرشيف', icon: Archive, visible: isMainSupervisor || (isTempSupervisor && !!user.tempPermissions?.hasFullAccess) },
     { id: 'projects', label: 'المشاريع', icon: Rocket, visible: isMainSupervisor || (isTempSupervisor && (user.tempPermissions?.hasFullAccess || user.tempPermissions?.canApproveProjects)) },
     { id: 'messages', label: 'الرسائل', icon: MessageSquare, visible: true },
@@ -2203,6 +2219,203 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                     )}
                   </div>
                 )}
+              </motion.div>
+            ) : activeTab === 'bulletins' ? (
+              <motion.div 
+                key="bulletins"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="max-w-4xl mx-auto space-y-8"
+              >
+                {(isMainSupervisor || isTempSupervisor) && (
+                  <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100">
+                    <h3 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-4">
+                      <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
+                        <Plus className="w-6 h-6" />
+                      </div>
+                      إضافة نشرة تربوية جديدة
+                    </h3>
+                    <form className="space-y-6" onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!newBulletinTitle) return alert('يرجى إدخال العنوان للنشرة');
+                      onAddBulletin({
+                        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+                        authorId: user.id,
+                        authorName: user.name,
+                        title: newBulletinTitle,
+                        description: newBulletinDesc,
+                        attachments: newBulletinAttachments,
+                        createdAt: new Date().toLocaleString('ar-SA'),
+                        academicYear: academicYear,
+                        semester: semester
+                      });
+                      
+                      setNewBulletinTitle('');
+                      setNewBulletinDesc('');
+                      setNewBulletinAttachments([]);
+                      alert('تمت إضافة النشرة بنجاح');
+                    }}>
+                      <div className="space-y-2">
+                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">عنوان النشرة</label>
+                        <input 
+                          type="text" 
+                          value={newBulletinTitle}
+                          onChange={e => setNewBulletinTitle(e.target.value)}
+                          placeholder="أدخل عنوان النشرة هنا" 
+                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">الوصف (اختياري)</label>
+                        <textarea 
+                          value={newBulletinDesc}
+                          onChange={e => setNewBulletinDesc(e.target.value)}
+                          placeholder="وصف النشرة أو معلومات إضافية..." 
+                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white font-bold text-sm outline-none transition-all min-h-[120px] resize-y"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest mr-2">المرفقات والروابط</label>
+                        <div className="p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                          <input 
+                            type="file" 
+                            multiple 
+                            id="bulletin-file-upload"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const files = Array.from(e.target.files || []);
+                              const validFiles = files.filter(f => f.size <= 5 * 1024 * 1024);
+                              if (validFiles.length < files.length) {
+                                alert("تم تجاهل بعض الملفات لأن حجمها يتجاوز 5 ميجابايت");
+                              }
+                              
+                              const newAtts = await Promise.all(validFiles.map(file => {
+                                return new Promise<Attachment>((resolve) => {
+                                  const reader = new FileReader();
+                                  reader.onload = (e) => {
+                                    resolve({
+                                      name: file.name,
+                                      url: e.target?.result as string,
+                                      type: file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : 'file'
+                                    });
+                                  };
+                                  reader.readAsDataURL(file);
+                                });
+                              }));
+                              setNewBulletinAttachments(prev => [...prev, ...newAtts]);
+                            }}
+                          />
+                          <div className="flex gap-4">
+                            <label htmlFor="bulletin-file-upload" className="flex-1 flex items-center justify-center gap-2 py-4 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-indigo-500 hover:text-indigo-600 transition-colors font-bold text-sm text-slate-600">
+                              <ImageIcon className="w-5 h-5" /> إرفاق ملفات (الحد الأقصى 5MB)
+                            </label>
+                            <button type="button" onClick={() => {
+                              const url = window.prompt("أدخل الرابط:");
+                              if (url) {
+                                setNewBulletinAttachments(prev => [...prev, {
+                                  name: url,
+                                  url: url,
+                                  type: 'link'
+                                }]);
+                              }
+                            }} className="flex-1 flex items-center justify-center gap-2 py-4 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-indigo-500 hover:text-indigo-600 transition-colors font-bold text-sm text-slate-600">
+                              <LinkIcon className="w-5 h-5" /> إضافة رابط
+                            </button>
+                          </div>
+                        </div>
+                        {newBulletinAttachments.length > 0 && (
+                          <div className="mt-4 space-y-2">
+                            {newBulletinAttachments.map((att, idx) => (
+                              <div key={`bulletin-att-${idx}`} className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl">
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                  {att.type === 'link' ? <LinkIcon className="w-4 h-4 text-indigo-500 shrink-0" /> : <FileIcon className="w-4 h-4 text-indigo-500 shrink-0" />}
+                                  <span className="text-xs font-bold text-slate-700 truncate" dir="ltr">{att.name}</span>
+                                </div>
+                                <button type="button" onClick={() => setNewBulletinAttachments(prev => prev.filter((_, i) => i !== idx))} className="text-slate-400 hover:text-red-500 transition-colors p-1">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="pt-4 flex justify-end">
+                        <button type="submit" className="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-200 hover:bg-indigo-700 hover:scale-105 active:scale-95 transition-all">
+                          إضافة النشرة
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+                
+                <div className="space-y-6">
+                  {filteredBulletins.length === 0 ? (
+                    <div className="text-center py-20 bg-white rounded-[3rem] border border-dashed border-slate-200">
+                      <BookOpen className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                      <h3 className="text-xl font-bold text-slate-900 mb-2">لا توجد نشرات تربوية</h3>
+                      <p className="text-slate-500 text-sm">لم يتم إضافة أي نشرة تربوية بعد.</p>
+                    </div>
+                  ) : (
+                    filteredBulletins.map((bulletin, index) => (
+                      <div key={bulletin.id} className="bg-white p-8 rounded-[2rem] border border-slate-100 hover:shadow-lg transition-all duration-300 group">
+                        <div className="flex items-start justify-between mb-6">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-100 to-white flex items-center justify-center border border-indigo-50">
+                              <BookOpen className="w-6 h-6 text-indigo-600" />
+                            </div>
+                            <div>
+                              <h4 className="font-black text-lg text-slate-800">{bulletin.title}</h4>
+                              <p className="text-xs font-bold text-slate-500 mt-1 flex items-center gap-2">
+                                {bulletin.authorName} • {bulletin.createdAt}
+                              </p>
+                            </div>
+                          </div>
+                          {(isMainSupervisor || bulletin.authorId === user.id) && (
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => {
+                                if(window.confirm('هل أنت متأكد من حذف هذه النشرة؟')) {
+                                  onDeleteBulletin(bulletin.id);
+                                }
+                              }} className="p-2 rounded-lg bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all" title="حذف النشرة">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        {bulletin.description && (
+                          <div className="mb-6 p-4 bg-slate-50 rounded-2xl text-sm font-bold leading-relaxed text-slate-700 whitespace-pre-wrap">
+                            {bulletin.description}
+                          </div>
+                        )}
+                        {bulletin.attachments && bulletin.attachments.length > 0 && (
+                          <div className="space-y-3">
+                            <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2 border-r-2 border-indigo-200">المرفقات</h5>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {bulletin.attachments.map((att, i) => (
+                                <button key={i} onClick={() => {
+                                  if (att.type === 'link') {
+                                    window.open(att.url, '_blank');
+                                  } else {
+                                    downloadFile(att.url, att.name);
+                                  }
+                                }} className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl hover:border-indigo-300 hover:shadow-md transition-all group/btn text-right w-full">
+                                  <div className="flex items-center gap-3 overflow-hidden">
+                                    <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0 group-hover/btn:bg-indigo-100 transition-colors">
+                                      {att.type === 'link' ? <LinkIcon className="w-4 h-4 text-indigo-500" /> : <FileIcon className="w-4 h-4 text-indigo-500" />}
+                                    </div>
+                                    <span className="text-xs font-bold text-slate-600 group-hover/btn:text-indigo-600 transition-colors truncate">{att.name}</span>
+                                  </div>
+                                  {att.type === 'link' ? <LinkIcon className="w-4 h-4 text-slate-300 shrink-0" /> : <Download className="w-4 h-4 text-slate-300 shrink-0" />}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
               </motion.div>
             ) : activeTab === 'feed' ? (
               <motion.div 

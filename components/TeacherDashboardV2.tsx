@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Project, Post, LessonMaterial, LessonComment, Notification, ProjectSubmission, Message, Attachment } from '../types';
+import { User, Project, Post, Bulletin, LessonMaterial, LessonComment, Notification, ProjectSubmission, Message, Attachment } from '../types';
 import { 
   LayoutDashboard, BookOpen, FolderOpen, Search, Bell, ChevronDown, 
   Plus, FileText, ExternalLink, Play, Image as ImageIcon, XCircle, Eye,
@@ -18,6 +18,7 @@ function cn(...inputs: ClassValue[]) {
 interface TeacherDashboardV2Props {
   user: User;
   posts: Post[];
+  bulletins: Bulletin[];
   projects: Project[];
   lessonMaterials: LessonMaterial[];
   messages: Message[];
@@ -35,7 +36,7 @@ interface TeacherDashboardV2Props {
 }
 
 const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
-  user, posts, lessonMaterials, onAddMaterial, onUpdateMaterial, notifications,
+  user, posts, bulletins, lessonMaterials, onAddMaterial, onUpdateMaterial, notifications,
   messages, onSendMessage, onMarkMessageAsRead, projects, updateProjectSubmission, onMarkAsRead, onAddNotification, currentYear, semester,
   onSwitchBackToSupervisorView
 }) => {
@@ -434,6 +435,13 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
           >
             <BookOpen className="w-5 h-5" />
             <span>الدروس</span>
+          </button>
+          <button 
+            onClick={() => { setActiveTab('bulletins'); setIsMobileMenuOpen(false); }}
+            className={cn("w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all", activeTab === 'bulletins' ? "bg-blue-50 text-blue-700" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900")}
+          >
+            <FileText className="w-5 h-5" />
+            <span>النشرات التربوية</span>
           </button>
           {onSwitchBackToSupervisorView && (
             <button 
@@ -1315,6 +1323,68 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {activeTab === 'bulletins' && (
+            <div className="space-y-6 animate-in fade-in duration-500">
+              <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3">
+                <BookOpen className="w-8 h-8 text-indigo-600" />
+                النشرات التربوية
+              </h2>
+              {bulletins && bulletins.filter(b => !b.isArchived).length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {bulletins.filter(b => !b.isArchived).map((bulletin) => (
+                    <div key={bulletin.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-50 flex flex-col items-center justify-center text-indigo-600">
+                          <BookOpen className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="font-black text-slate-900 text-sm line-clamp-1">{bulletin.title}</h3>
+                          <span className="text-[10px] font-bold text-slate-500">{bulletin.createdAt}</span>
+                        </div>
+                      </div>
+                      {bulletin.description && (
+                        <p className="text-xs text-slate-600 mb-4 line-clamp-3 leading-relaxed font-bold">{bulletin.description}</p>
+                      )}
+                      {bulletin.attachments && bulletin.attachments.length > 0 && (
+                        <div className="space-y-2 mt-4 pt-4 border-t border-slate-100">
+                          <h4 className="text-[10px] font-black tracking-widest text-slate-400">المرفقات ({bulletin.attachments.length})</h4>
+                          <div className="flex flex-col gap-2">
+                            {bulletin.attachments.map((att, idx) => (
+                              <button key={idx} onClick={() => {
+                                if (att.type === 'link') {
+                                  window.open(att.url, '_blank');
+                                } else {
+                                  const link = document.createElement('a');
+                                  link.href = att.url;
+                                  link.download = att.name;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                }
+                              }} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors group/btn text-right w-full">
+                                <div className="flex items-center gap-2 overflow-hidden">
+                                  {att.type === 'link' ? <LinkIcon className="w-3 h-3 text-indigo-500" /> : <FileIcon className="w-3 h-3 text-indigo-500" />}
+                                  <span className="text-[11px] font-bold text-slate-600 truncate">{att.name}</span>
+                                </div>
+                                {att.type === 'link' ? <LinkIcon className="w-3 h-3 text-slate-400 shrink-0" /> : <Download className="w-3 h-3 text-slate-400 shrink-0" />}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
+                  <BookOpen className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-slate-900 mb-2">لا توجد نشرات تربوية</h3>
+                  <p className="text-slate-500 text-sm">لم تقم المشرفة بإضافة أي تعاميم أو نشرات حالياً.</p>
+                </div>
+              )}
             </div>
           )}
 

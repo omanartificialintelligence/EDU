@@ -101,6 +101,12 @@ service cloud.firestore {
              data.createdAt is string;
     }
 
+    function isValidBulletin(data) {
+      return data.id is string && data.authorId is string && data.title is string &&
+             data.title.size() > 0 && data.title.size() < 200 &&
+             data.createdAt is string;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -162,6 +168,13 @@ service cloud.firestore {
       allow read: if true; // Keep public for now as requested, but ensure it works
       allow create: if canManagePosts() && isValidPost(request.resource.data);
       allow update: if canManagePosts() && isValidPost(request.resource.data);
+      allow delete: if canManagePosts();
+    }
+
+    match /bulletins/{bulletinId} {
+      allow read: if true;
+      allow create: if canManagePosts() && isValidBulletin(request.resource.data);
+      allow update: if canManagePosts() && isValidBulletin(request.resource.data);
       allow delete: if canManagePosts();
     }
 

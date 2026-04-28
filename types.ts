@@ -119,6 +119,19 @@ export interface Attachment {
   comment?: string; // Optional comment for the attachment
 }
 
+export interface Bulletin {
+  id: string;
+  authorId: string;
+  authorName: string;
+  title: string;
+  description: string;
+  attachments: Attachment[];
+  createdAt: string;
+  academicYear: string;
+  semester: string;
+  isArchived?: boolean;
+}
+
 export interface Post {
   id: string;
   authorId: string;

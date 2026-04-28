@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { UserRole, User, AuthState, Project, Post, ResetRequest, LessonMaterial, LessonComment, SupervisorConfig, Notification, Message, Attachment } from './types';
+import { UserRole, User, AuthState, Project, Post, Bulletin, ResetRequest, LessonMaterial, LessonComment, SupervisorConfig, Notification, Message, Attachment } from './types';
 import LoginForm from './components/LoginForm';
 import TeacherDashboard from './components/TeacherDashboardV2';
 import SupervisorDashboard from './components/SupervisorDashboard';
@@ -44,6 +44,7 @@ const App: React.FC = () => {
   const [lessonMaterials, setLessonMaterials] = useState<LessonMaterial[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [bulletins, setBulletins] = useState<Bulletin[]>([]);
   const [resetRequests, setResetRequests] = useState<ResetRequest[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [supervisorConfig, setSupervisorConfig] = useState<SupervisorConfig>({ 
@@ -153,6 +154,12 @@ const App: React.FC = () => {
         setPosts(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       }, (error) => handleFirestoreError(error, OperationType.LIST, 'posts'));
       unsubs.push(unsubPosts);
+
+      const unsubBulletins = onSnapshot(collection(db, 'bulletins'), (snapshot) => {
+        const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Bulletin));
+        setBulletins(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      }, (error) => handleFirestoreError(error, OperationType.LIST, 'bulletins'));
+      unsubs.push(unsubBulletins);
     };
 
     // Private listeners (only for authenticated users with roles)
@@ -586,6 +593,14 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDeletePermanentlyBulletin = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'bulletins', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `bulletins/${id}`);
+    }
+  };
+
   const handleResetPassword = async (id: string) => {
     const randomPass = Math.random().toString(36).substring(2, 10);
     try {
@@ -818,6 +833,7 @@ const App: React.FC = () => {
         <TeacherDashboard 
           user={auth.user} 
           posts={posts}
+          bulletins={bulletins}
           projects={projects}
           lessonMaterials={lessonMaterials}
           messages={messages}
@@ -850,6 +866,7 @@ const App: React.FC = () => {
         user={auth.user}
         teachers={teachers}
         posts={posts}
+        bulletins={bulletins}
         projects={projects}
         lessonMaterials={lessonMaterials}
         resetRequests={resetRequests}
@@ -857,6 +874,24 @@ const App: React.FC = () => {
         onUpdateUserPreferences={handleUpdateUserPreferences}
         onSendMessage={handleSendMessage}
         onMarkMessageAsRead={handleMarkMessageAsRead}
+        onAddBulletin={async (b) => {
+          try {
+            const cleanBulletin = { ...b } as any;
+            Object.keys(cleanBulletin).forEach(key => {
+              if (cleanBulletin[key] === undefined) delete cleanBulletin[key];
+            });
+            await setDoc(doc(db, 'bulletins', b.id), cleanBulletin);
+          } catch (error) {
+            handleFirestoreError(error, OperationType.WRITE, `bulletins/${b.id}`);
+          }
+        }}
+        onDeleteBulletin={async (id) => {
+          try {
+            await deleteDoc(doc(db, 'bulletins', id));
+          } catch (error) {
+            handleFirestoreError(error, OperationType.DELETE, `bulletins/${id}`);
+          }
+        }}
         onAddPost={async (p) => {
           try {
             const cleanPost = { ...p } as any;
@@ -1045,6 +1080,7 @@ const App: React.FC = () => {
         onRestoreAllLessons={handleRestoreAllArchivedLessons}
         onDeletePermanentlyLesson={handleDeletePermanentlyLesson}
         onDeletePermanentlyPost={handleDeletePermanentlyPost}
+        onDeletePermanentlyBulletin={handleDeletePermanentlyBulletin}
         onAddNotification={handleAddNotification}
         onCleanupOrphanedLessons={handleCleanupOrphanedLessons}
         notifications={notifications.filter(n => n.userId === auth.user?.id)}
@@ -1096,6 +1132,7 @@ const App: React.FC = () => {
         <TeacherDashboard 
           user={auth.user!} 
           posts={posts}
+          bulletins={bulletins}
           projects={projects}
           lessonMaterials={lessonMaterials}
           messages={messages}
