@@ -21,7 +21,8 @@
         "assignments": { "type": "array" },
         "supervisoryVisitDate": { "type": "string" },
         "tempPermissions": { "type": "object" },
-        "auditLogs": { "type": "array" }
+        "auditLogs": { "type": "array" },
+        "starredLessonIds": { "type": "array" }
       },
       "required": ["id", "name", "role", "code", "isActive"]
     },

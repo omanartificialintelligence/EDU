@@ -545,6 +545,24 @@ const App: React.FC = () => {
     }
   };
 
+  const handleToggleFavorite = async (lessonId: string) => {
+    if (!auth.user) return;
+    const starred = auth.user.starredLessonIds || [];
+    const newStarred = starred.includes(lessonId) 
+      ? starred.filter(id => id !== lessonId)
+      : [...starred, lessonId];
+    
+    try {
+      await updateDoc(doc(db, 'users', auth.user.id), { starredLessonIds: newStarred });
+      setAuth(prev => ({
+        ...prev,
+        user: prev.user ? { ...prev.user, starredLessonIds: newStarred } : null
+      }));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${auth.user.id}`);
+    }
+  };
+
   const handleSoftDeleteTeacher = async (id: string) => {
     try {
       await updateDoc(doc(db, 'users', id), { isActive: false });
@@ -857,6 +875,7 @@ const App: React.FC = () => {
           notifications={notifications.filter(n => n.userId === auth.user?.id)}
           onMarkAsRead={handleMarkNotificationAsRead}
           onAddNotification={handleAddNotification}
+          onToggleFavorite={handleToggleFavorite}
           onSwitchBackToSupervisorView={() => setIsPreviewMode(false)}
         />
       );
@@ -1167,6 +1186,7 @@ const App: React.FC = () => {
           notifications={notifications.filter(n => n.userId === auth.user?.id)}
           onMarkAsRead={handleMarkNotificationAsRead}
           onAddNotification={handleAddNotification}
+          onToggleFavorite={handleToggleFavorite}
         />
       </main>
 

@@ -996,12 +996,17 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
     return posts;
   }, [posts]);
 
+  const statsBulletins = useMemo(() => {
+    return bulletins;
+  }, [bulletins]);
+
   // Stats for Charts
   const statsData = useMemo(() => [
     { name: 'المعلمات', value: statsTeachers.length, color: '#4f46e5' },
+    { name: 'النشرات', value: statsBulletins.length, color: '#f59e0b' },
     { name: 'الدروس', value: statsLessons.length, color: '#10b981' },
     { name: 'التعاميم', value: statsPosts.length, color: '#ef4444' },
-  ], [statsTeachers, statsLessons, statsPosts]);
+  ], [statsTeachers, statsLessons, statsPosts, statsBulletins]);
 
   const sidebarItems = [
     { id: 'overview', label: 'الرئيسية', icon: LayoutDashboard, visible: true },
@@ -1294,10 +1299,11 @@ const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
                         isCustomizingDashboard && "ring-2 ring-indigo-500 ring-offset-4 rounded-[2.5rem] bg-indigo-50/5 opacity-80 scale-[0.98]"
                       )}>
                         {widgetId === 'stats' && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             {[
                               { label: 'المعلمات النشطات', value: filteredTeachers.length, icon: Users, color: 'indigo' },
                               { label: 'الدروس المرفوعة', value: lessonMaterials.length, icon: Palette, color: 'amber' },
+                              { label: 'النشرات التربوية', value: bulletins.length, icon: FileText, color: 'emerald' },
                               { label: 'التعاميم المنشورة', value: posts.length, icon: MessageSquare, color: 'rose' },
                             ].map((stat, i) => (
                               <div key={`stat-${stat.label.replace(/\s+/g, '-')}`} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center gap-6 group hover:shadow-xl hover:shadow-indigo-500/5 transition-all">

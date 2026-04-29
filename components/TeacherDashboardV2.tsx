@@ -5,7 +5,7 @@ import {
   Plus, FileText, ExternalLink, Play, Image as ImageIcon, XCircle, Eye,
   MessageSquare, Settings, Award, FileIcon, Link as LinkIcon, Video,
   TrendingUp, Users, ClipboardList, Send, Music, CheckCircle2, AlertCircle,
-  Calendar, ListTodo, Trash2, Clock, X, Edit, Download, LogOut
+  Calendar, ListTodo, Trash2, Clock, X, Edit, Download, LogOut, Star
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -32,12 +32,13 @@ interface TeacherDashboardV2Props {
   notifications: Notification[];
   onMarkAsRead: (id: string) => void;
   onAddNotification?: (notification: Notification) => void;
+  onToggleFavorite: (lessonId: string) => void;
   onSwitchBackToSupervisorView?: () => void;
 }
 
 const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
   user, posts, bulletins, lessonMaterials, onAddMaterial, onUpdateMaterial, notifications,
-  messages, onSendMessage, onMarkMessageAsRead, projects, updateProjectSubmission, onMarkAsRead, onAddNotification, currentYear, semester,
+  messages, onSendMessage, onMarkMessageAsRead, projects, updateProjectSubmission, onMarkAsRead, onAddNotification, onToggleFavorite, currentYear, semester,
   onSwitchBackToSupervisorView
 }) => {
   // Dynamic Grades and Subjects based on Assignments
@@ -764,6 +765,15 @@ const TeacherDashboardV2: React.FC<TeacherDashboardV2Props> = ({
                                   )}
                                 </div>
                                 <div className="flex gap-1">
+                                  <button 
+                                    onClick={() => onToggleFavorite(material.id)}
+                                    className={cn("p-2 rounded-xl transition-colors", 
+                                      user.starredLessonIds?.includes(material.id) ? "text-amber-500 bg-amber-50" : "text-slate-400 hover:bg-slate-100 hover:text-amber-500"
+                                    )}
+                                    title="تفضيل الدرس"
+                                  >
+                                    <Star className={cn("w-4 h-4", user.starredLessonIds?.includes(material.id) && "fill-current")} />
+                                  </button>
                                   <button 
                                     onClick={() => setViewingLesson(material)}
                                     className="p-2 hover:bg-indigo-50 text-indigo-600 rounded-xl transition-colors"

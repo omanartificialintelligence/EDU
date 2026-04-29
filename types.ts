@@ -42,6 +42,7 @@ export interface User {
   supervisoryVisitDate?: string; // وقت الزيارة الإشرافية
   tempPermissions?: TempPermissions; // For Temp Supervisors
   auditLogs?: AuditLog[];
+  starredLessonIds?: string[];
   preferences?: {
     dashboardWidgets?: string[];
   };
